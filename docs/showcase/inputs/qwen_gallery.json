@@ -1,0 +1,32 @@
+{
+ "_note": "The two extra Qwen-Image 2.1 stills in the showcase, from the studio's Images page. Copied from output/images/img_00024.json and img_00018.json (the image sidecars) and the graphs embedded in the PNGs.",
+ "graph": {
+  "unet": "qwen_image_2.1_Q5_K_M.gguf",
+  "lora": "p_qwen_image_2.1_8step_v0.1.safetensors (1.0)",
+  "text_encoder": "qwen3vl_8b_int8_convrot.safetensors (on the CPU)",
+  "vae": "qwen_image_2.1_vae_bf16_compact.safetensors",
+  "sampler": "euler / simple, 8 steps, CFG 1.0",
+  "latent": "1024x1024",
+  "finish": "4x-UltraSharp, then x0.5: 2048x2048"
+ },
+ "images": [
+  {
+   "file": "docs/showcase/stills/qwen_samurai_duel.jpg",
+   "source": "output/images/img_00024.png",
+   "model": "qwen21_fast",
+   "seed": 893960,
+   "rendered": "2026-10-02 00:39:22",
+   "exec_s": 396.9,
+   "prompt": "Cinematic anime screengrab still, high-end ufotable and MAPPA sakuga aesthetic, dynamic 2D anime illustration. A tense, balanced medium-wide 16:9 cowboy two-shot of two legendary rival samurai facing off in an ancient mountain shrine bamboo grove at dusk. \n\nOn the left, an aggressive ronin in a tattered charcoal-black hakama with a torn crimson sash stands braced in a low forward lunge, gripping a heavy curved nodachi katana radiating crackling solar-flame embers, heat distortion, and molten orange sparks. \n\nOn the right, a stoic wandering swordmaster in an indigo and weathered slate-grey haori stands in a balanced sideways iaidō stance, drawing a slender silver chokuto katana enveloped in spiraling azure frost tendrils and sharp pale-blue lightning arcs. \n\nBoth warriors are framed from mid-thigh up in 3/4 profile, locking intense glares across center-frame directly into each other's eyes with furrowed brows and fierce expressions; neither character looks toward the camera. Between them lies an open expanse of cracked mossy stone pavers, fallen autumn leaves, and drifting twilight mist. \n\nDramatic dual-rim lighting matching their opposing elemental palettes (warm crimson amber on the left, cold electric azure on the right), sharp hand-drawn cel-shading, rich volumetric atmosphere, perfectly balanced spatial composition leaving negative space in the center for kinetic trajectory. Single unified cinematic shot, ultra-sharp line art. No split-screen, no manga panels, no speech bubbles, no typography, no watermarks, no subtitles."
+  },
+  {
+   "file": "docs/showcase/stills/qwen_city_walk.jpg",
+   "source": "output/images/img_00018.png",
+   "model": "qwen21_fast",
+   "seed": 824807,
+   "rendered": "2026-10-01 05:25:13",
+   "exec_s": 303.5,
+   "prompt": "Cinematic 35mm street-style portrait of a stunning, modern 26-year-old woman walking mid-stride down a sleek metropolitan avenue in Tokyo. She has sharp facial bone structure, warm olive skin with visible natural skin pores and realistic texture, refined natural makeup, and voluminous dark brown hair gently swept by the wind. She is wearing a chic tailored charcoal-grey wool blazer over a fitted black mock-neck top, high-waisted wide-leg cream trousers, and pointed leather boots, carrying a structured black leather handbag on one forearm. Medium-full framing capturing her from mid-calf up, centered in frame, with her body angled slightly 3/4 toward the camera while her eyes look naturally off-axis down the street, avoiding direct eye contact with the lens. Background features modern glass skyscrapers, architectural clean lines, and soft atmospheric afternoon sunlight casting warm specular highlights, with subtle depth of field blurring distant pedestrians. Realistic material textures, soft natural contrast, crisp focus, photorealistic 85mm optical rendering, zero artificial skin smoothing."
+  }
+ ]
+}

@@ -1,0 +1,57 @@
+{
+ "_note": "Record of the 4-link H3 forest take (lab gate chain lab_h3_gate_5c9b1e8b, refine variant R25). Copied from output/seamlab/runs/20261023_194620_h3_gate_R25/spec.json and the link graphs. The two cast references and the opening frame are not redistributed, so this file documents the take; it does not reproduce it.",
+ "chain": "lab_h3_gate_5c9b1e8b",
+ "models": {
+  "unet": "Minimax-h3_Singularity_ref2va_v1.3_Pruned_w4a8.safetensors",
+  "text_encoder": "qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors"
+ },
+ "link_recipe": {
+  "width": 960,
+  "height": 544,
+  "steps": 32,
+  "sampler": "euler",
+  "scheduler": "simple",
+  "shift_video": 12.0,
+  "shift_audio": 3.0,
+  "attention": "comfy kitchen attention",
+  "carried_frames": 39
+ },
+ "refine": {
+  "variant": "R25",
+  "sigmas": "0.2500, 0.1967, 0.1081, 0.0000",
+  "size": "1920x1088",
+  "tiles": "1024x704"
+ },
+ "references": {
+  "pic1": "cast portrait, woman (kf_342d89ef.png)",
+  "pic2": "cast portrait, man (kf_6c5c473d.png)",
+  "start_image": "opening frame (kf_d6c44e43.png)"
+ },
+ "seams": [
+  192,
+  345,
+  498
+ ],
+ "links": [
+  {
+   "seed": 437180088,
+   "frames": 192,
+   "prompt": "[REFERENCES & RETENTION]\nOpening Frame: Lock exact forest spatial geometry, golden-hour sunbeams, and waist-up starting positions from the opening anchor frame.\n<Picture 1>: subject_identity -> fully_preserved. Lock facial bone structure, skin texture, and knit sweater.\n<Picture 2>: subject_identity -> fully_preserved. Lock facial structure, stubble, and wool overshirt.\n\n[SPATIAL & GAZE ANCHORS]\nFraming: Close waist-up portrait two-shot.\nGaze: <Picture 1> looks downward toward the dirt path; <Picture 2> looks directly at <Picture 1>. Zero camera eye contact.\n\n[TIMELINE (0.00s - 5.00s)]\n[0.00s - 1.60s] [Starting State]: Continuing from the opening frame, <Picture 1> and <Picture 2> walk slowly forward along the sunlit forest road as glowing dust motes drift behind them.\n[1.60s - 3.40s] [Movement Vector]: <Picture 1>'s stride falters and slows to a complete stop. Her shoulders drop with a heavy, shaky exhale as her chin quivers in grief. <Picture 2> halts half a step ahead and pivots smoothly to face her.\n[3.40s - 5.00s] [Terminal State]: <Picture 2> reaches his right hand up to gently touch <Picture 1>'s left forearm. Both hold a stationary, well-lit medium-close two-shot as <Picture 1> blinks back surfacing tears.\n\n[CAMERA KINEMATICS]\n[dolly] Smooth backward tracking shot matching their slow walk from 0.00s to 1.80s, decelerating to a [static] medium-close portrait two-shot with shallow depth of field.\n\n[OVERALL SOUNDSCAPE]\ndiegetic_foley: Soft footsteps crunching on damp forest soil and autumn leaves slowing to a halt at 1.80s; a shaky female sigh at 2.20s; subtle fabric rustle at 3.50s.\nroom_tone: Gentle forest breeze through pine needles and distant bird calls.\naudio_constraints: Zero non-diegetic music; zero speech.\n\n[CONSTRAINTS]\nDo not look into the camera lens. End on a bright, unobstructed view of both faces. No background warping or facial drift."
+  },
+  {
+   "seed": 437180089,
+   "frames": 192,
+   "prompt": "[REFERENCES & RETENTION]\nOpening Frame: Continue seamlessly from the terminal frame of the previous clip.\n<Picture 1>: subject_identity -> fully_preserved.\n<Picture 2>: subject_identity -> fully_preserved.\n\n[SPATIAL & GAZE ANCHORS]\nFraming: Tight medium-close portrait two-shot.\nGaze: Locked between <Picture 1> and <Picture 2>, with a brief upward glance toward the canopy light. Zero lens stare.\n\n[TIMELINE (0.00s - 5.00s)]\n[0.00s - 1.20s] [Starting State]:Anchored in the terminal two-shot of the previous clip, <Picture 2> gently squeezes <Picture 1>'s forearm, glances briefly upward toward the golden sunbeams piercing the canopy, then locks his warm gaze back onto her face and draws a soft breath.\n[1.20s - 3.80s] [Movement Vector]: <Picture 2> speaks in a tender, comforting low voice: \"Hey, I know it's hard. Look at that light—I'm pretty sure he's watching us from the sky.\" As he speaks, <Picture 1> slowly lifts her glistening eyes to meet his gaze.\n[3.80s - 5.00s] [Terminal State]: <Picture 1>'s lower lip trembles and tears pool brightly along her lower eyelids. <Picture 2> opens his arms slightly, inviting her into an embrace, holding a clear, warmly lit close composition.\n\n[CAMERA KINEMATICS]\n[zoom] Subtle, stabilized 15% push-in at eye level, tightening into an intimate chest-up portrait two-shot with creamy background bokeh.\n\n[OVERALL SOUNDSCAPE]\ndiegetic_dialogue: <Picture 2> speaking warmly with natural breath lead-in: \"Hey, I know it's hard. Look at that light—I'm pretty sure he's watching us from the sky.\"\ndiegetic_foley: Quiet emotional intake of breath from <Picture 1> at 3.90s; soft wool sleeve friction.\nroom_tone: Soft wind rustling high autumn branches. No non-diegetic music.\n\n[CONSTRAINTS]\nZero camera eye contact. Maintain sharp lip-sync, natural skin pores, and bright facial illumination on the final frame."
+  },
+  {
+   "seed": 437180090,
+   "frames": 192,
+   "prompt": "[REFERENCES & RETENTION]\nOpening Frame: Continue seamlessly from the terminal frame of the previous clip.\n<Picture 1>: subject_identity -> fully_preserved.\n<Picture 2>: subject_identity -> fully_preserved.\n\n[SPATIAL & GAZE ANCHORS]\nFraming: Intimate chest-up portrait transitioning into an over-the-shoulder close-up on <Picture 1>.\nGaze: <Picture 1>'s eyes angle downward across screen-right; zero camera eye contact.\n\n[TIMELINE (0.00s - 5.00s)]\n[0.00s - 1.50s] [Starting State]: From the terminal frame of the previous clip, <Picture 2> steps forward half a pace, closing the space between them and wrapping both arms protectively around <Picture 1>'s upper back.\n[1.50s - 3.50s] [Movement Vector]: <Picture 1> exhales a broken breath and leans in, resting her left cheek gently against <Picture 2>'s right shoulder so her face remains angled 3/4 toward the camera in warm golden light.\n[3.50s - 5.00s] [Terminal State]: <Picture 2> rests his cheek softly against the crown of her hair. <Picture 1>'s eyes glisten with heavy tears brimming at her lashes, her face fully visible and sharply focused against his shoulder.\n\n[CAMERA KINEMATICS]\n[dolly] Slow, stabilized push-in past <Picture 2>'s shoulder at 20% speed, settling on a tight, well-lit portrait close-up of <Picture 1>'s face resting on his shoulder.\n\n[OVERALL SOUNDSCAPE]\ndiegetic_foley: Soft rustle of knit sweater pressing against wool overshirt at 1.20s; a trembling, quiet female exhale at 2.40s; gentle footsteps shifting on dirt.\nroom_tone: Warm forest stillness and faint breeze.\naudio_constraints: Zero non-diegetic music; zero dialogue.\n\n[CONSTRAINTS]\nKeep <Picture 1>'s face turned toward the camera side of <Picture 2>'s shoulder so her facial identity remains 100% unobstructed and well-lit at 5.00s. No mesh merging."
+  },
+  {
+   "seed": 437180091,
+   "frames": 192,
+   "prompt": "[REFERENCES & RETENTION]\nOpening Frame: Continue seamlessly from the terminal close-up frame of the previous clip.\n<Picture 1>: subject_identity -> fully_preserved.\n<Picture 2>: subject_identity -> fully_preserved.\n\n[SPATIAL & GAZE ANCHORS]\nFraming: Tight cinematic macro-portrait close-up on <Picture 1>'s face resting on <Picture 2>'s shoulder.\nGaze: Eyes closing softly, then looking slightly down off-axis. Zero lens stare.\n\n[TIMELINE (0.00s - 5.00s)]\n[0.00s - 1.40s] [Starting State]: Beginning from the close-up embrace of the previous clip's terminal frame, <Picture 2>'s right hand rises smoothly into frame to cradle the back of <Picture 1>'s head, his fingers gently smoothing her wavy hair.\n[1.40s - 3.40s] [Movement Vector]: <Picture 1> squeezes her eyelids shut as a visible, glistening tear spills over her lower lashes and tracks slowly down her sunlit cheek.\n[3.40s - 5.00s] [Terminal State]: <Picture 1> draws a slow, steadying breath, her eyelids fluttering halfway open as her expression softens in quiet comfort against his shoulder while golden sunbeams glow in the background bokeh.\n\n[CAMERA KINEMATICS]\n[static] Locked, ultra-stable portrait close-up with razor-sharp focus on <Picture 1>'s eyelashes, tear track, and skin texture, maintaining shallow depth of field.\n\n[OVERALL SOUNDSCAPE]\ndiegetic_foley: Gentle brush of fingers against hair at 1.00s; a soft, wet sniffle at 2.10s followed by a long, comforted sigh from <Picture 1> at 3.60s.\nroom_tone: Serene forest ambience and soft wind through leaves.\naudio_constraints: Zero non-diegetic music; zero dialogue.\n\n[CONSTRAINTS]\nDo not look into the camera lens. Preserve crisp tear physics, natural skin pore detail, and clean hand anatomy."
+  }
+ ]
+}

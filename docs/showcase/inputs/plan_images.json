@@ -1,0 +1,98 @@
+{
+ "images": [
+  {
+   "id": "maren_portrait",
+   "size": "1344x768",
+   "seeds": [
+    24101,
+    24102
+   ],
+   "prompt": "A photorealistic studio photograph of a woman in her late twenties with a short, tousled platinum-blonde pixie cut, light freckles across her nose and cheeks, grey-green eyes and fair skin. She wears a dark forest-green wool coat open over a cream cable-knit sweater, a burgundy knit scarf loosely wrapped around her neck, and dark blue jeans. She stands in a relaxed three-quarter pose against a plain seamless light-grey backdrop, framed from mid-thigh up and centred, looking slightly off-camera with a calm, neutral expression. Soft, even diffused key light, natural skin texture with visible pores, sharp focus on the face, 85mm lens. Nothing else is in the frame: no props, no text, no logos."
+  },
+  {
+   "id": "theo_portrait",
+   "size": "1344x768",
+   "seeds": [
+    24201,
+    24202
+   ],
+   "prompt": "A photorealistic studio photograph of a man around thirty with short dark-brown curly hair, a neatly trimmed short dark beard, warm brown eyes and light olive skin. He wears a charcoal crew-neck knit sweater over a white collared shirt, the collar showing at the neck, and dark trousers. He stands in a relaxed three-quarter pose against a plain seamless light-grey backdrop, framed from mid-thigh up and centred, looking slightly off-camera with a calm, neutral expression. Soft, even diffused key light, natural skin texture with visible pores, sharp focus on the face, 85mm lens. Nothing else is in the frame: no props, no text, no logos."
+  },
+  {
+   "id": "ruth_portrait",
+   "size": "1344x768",
+   "seeds": [
+    24301,
+    24302
+   ],
+   "prompt": "A photorealistic studio photograph of a woman in her mid-sixties with a chin-length silver-grey bob, warm hazel eyes, soft smile lines and fair skin. She wears a mustard-yellow knit cardigan over a navy-blue blouse and grey trousers. She stands in a relaxed three-quarter pose against a plain seamless light-grey backdrop, framed from mid-thigh up and centred, looking slightly off-camera with a calm, kind expression. Soft, even diffused key light, natural skin texture with visible pores and fine wrinkles, sharp focus on the face, 85mm lens. She wears no glasses. Nothing else is in the frame: no props, no text, no logos."
+  },
+  {
+   "id": "lena_portrait",
+   "size": "1344x768",
+   "seeds": [
+    24401,
+    24402
+   ],
+   "prompt": "A photorealistic studio photograph of a woman in her mid-twenties with long dark-brown hair worn in a single loose braid over her left shoulder, dark brown eyes, straight dark eyebrows and light olive skin. She wears a light-blue denim shirt open over a plain white t-shirt and black jeans. She stands in a relaxed three-quarter pose against a plain seamless light-grey backdrop, framed from mid-thigh up and centred, looking slightly off-camera with a calm, neutral expression. Soft, even diffused key light, natural skin texture with visible pores, sharp focus on the face, 85mm lens. Nothing else is in the frame: no props, no text, no logos."
+  },
+  {
+   "id": "cliff_open",
+   "size": "1344x768",
+   "seeds": [
+    24111,
+    24112
+   ],
+   "refs": [
+    "maren_portrait"
+   ],
+   "prompt": "A cinematic photograph of the woman from image_1, in the same dark green wool coat, cream sweater and burgundy scarf, walking toward the camera along a narrow dirt path through short golden grass on top of a sea cliff at golden hour. The calm sea fills the left side of the frame and stretches to a distant headland; a line of weathered wooden fence posts runs along the cliff edge between the path and the sea. Low warm sunlight from the left lights her face and makes the edges of her hair glow, and the ends of her scarf lift slightly in the breeze. Medium waist-up shot at eye level, 50mm lens, shallow depth of field with the background softly out of focus. She looks ahead along the path, not into the camera, with a calm, relaxed expression. Photorealistic, natural skin texture, gentle film grain. No other people, no text, no watermark."
+  },
+  {
+   "id": "letter_open",
+   "size": "1344x768",
+   "seeds": [
+    24211,
+    24212
+   ],
+   "refs": [
+    "theo_portrait"
+   ],
+   "prompt": "A cinematic photograph at night of the man from image_1, in the same charcoal knit sweater over a white collared shirt, sitting at a small wooden desk beside a tall window streaked with rain in a cosy, dim apartment. He holds a folded cream sheet of handwritten paper in both hands just above the desk, about to open it, and looks down at it with a quiet, thoughtful expression. A brass desk lamp on the desk casts warm amber light across his face and hands; beyond the wet glass, the city at night is a soft blur of blue and amber lights. Medium shot from slightly in front of him at eye level, 50mm lens, shallow depth of field. Photorealistic, natural skin texture, gentle film grain. No other people, no text on screen, no watermark."
+  },
+  {
+   "id": "kitchen_open",
+   "size": "1344x768",
+   "seeds": [
+    24311,
+    24312
+   ],
+   "refs": [
+    "ruth_portrait",
+    "lena_portrait"
+   ],
+   "prompt": "A cinematic photograph of a sunlit farmhouse kitchen on a calm morning. The older woman from image_1, in the same mustard-yellow cardigan, and the young woman from image_2, in the same denim shirt with her long braid, sit at the corner of a round wooden table, angled toward each other so both faces are seen in three-quarter view from the camera. The older woman, on the left of the frame, holds a white ceramic teapot above the table; the young woman, on the right, has an empty white mug in front of her and smiles at her. Soft morning light comes through a window behind them, with green plants on the sill and a little steam rising from the teapot spout. Medium two-shot at eye level, 40mm lens, both faces sharp and well lit. Photorealistic, natural skin texture, gentle film grain. No other people, no text, no watermark."
+  },
+  {
+   "id": "elias_portrait",
+   "size": "1344x768",
+   "seeds": [
+    24501,
+    24502
+   ],
+   "prompt": "A photorealistic studio photograph of a man in his mid-sixties with a full, neatly trimmed white beard, weathered fair skin with fine wrinkles, pale blue eyes and bushy grey eyebrows. He wears a rust-orange knit beanie, a heavy dark-navy wool pea coat buttoned up over a grey knit sweater, and dark trousers. He stands in a relaxed three-quarter pose against a plain seamless light-grey backdrop, framed from mid-thigh up and centred, looking slightly off-camera with a calm, kind expression. Soft, even diffused key light, natural skin texture with visible pores and fine wrinkles, sharp focus on the face, 85mm lens. He wears no glasses and no gloves. Nothing else is in the frame: no props, no text, no logos."
+  },
+  {
+   "id": "lantern_open",
+   "size": "1344x768",
+   "seeds": [
+    24511,
+    24512
+   ],
+   "refs": [
+    "elias_portrait"
+   ],
+   "prompt": "A cinematic photograph at blue hour of the man from image_1, in the same rust-orange knit beanie and dark-navy wool pea coat, standing on the snow-covered wooden porch of a small log cabin in a pine forest while snow falls gently around him. He holds a lit brass storm lantern by its wire handle at chest height; its warm amber glow lights his face and white beard from the side, and his breath mists in the cold air. Behind him the snowy pine forest fades into deep blue twilight, and a cabin window on the left of the frame glows warm orange. Medium waist-up shot at eye level, 50mm lens, shallow depth of field with the forest softly out of focus. His face is in clear three-quarter view; he looks out past the camera toward the forest, not into the camera, with a calm, quiet expression. Photorealistic, natural skin texture, gentle film grain. No other people, no text, no watermark."
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "chain": "show_ltx_letter",
+ "model": "ltx25_s6_cq",
+ "seed": 2410541,
+ "frames": 97,
+ "negative": "",
+ "start_image": "output/showcase/images/letter_open.png",
+ "cast": [
+  {
+   "slot": "pic1",
+   "path": "output/showcase/images/theo_portrait.png",
+   "type": "face",
+   "name": "Theo",
+   "description": "a man around thirty with short dark-brown curly hair, a neatly trimmed short dark beard, warm brown eyes and light olive skin, in a charcoal knit sweater over a white collared shirt"
+  }
+ ],
+ "prompts": [
+  "A medium shot begins from the rain-streaked window, warm lamplight and seated pose established in the opening key image. The man holds the open handwritten letter in both hands above the desk and reads it slowly, his eyes moving along the lines, then tilts the page a little toward the lamplight. The camera performs a slow, stabilized push-in at eye level, the rainy city lights softly blurred behind the glass. Diegetic audio: steady rain tapping on the window, a crisp rustle of paper, and a quiet room hum; no non-diegetic score.",
+  "A medium close-up continues seamlessly as the man reads the letter in the warm lamplight. A small smile slowly forms on his face and he lets out a soft breath of a laugh through his nose, his eyes still following the handwriting. The camera continues its slow push-in, settling on a medium close-up of his face and the top edge of the letter. Diegetic audio: rain on the glass, a faint paper rustle, and a soft amused exhale; no non-diegetic score.",
+  "A medium close-up continues seamlessly in one continuous shot from the same camera angle, the brass lamp glowing at the right edge of the frame. The man lowers the letter onto the desk, leans back a little in his chair and closes his eyes for a moment, a soft, moved smile lingering on his face in the warm lamplight. The camera holds a steady, locked medium close-up from the same position at eye level. Diegetic audio: rain tapping on the window, a slow, contented breath out, and the quiet hum of the room; no non-diegetic score.",
+  "A medium close-up continues seamlessly in one continuous shot from the same camera angle as the man opens his eyes and looks down at the letter on the desk. He folds the sheet carefully along its creases and rests his hand flat on top of it, a calm, content expression on his face. The camera slowly pulls back to a steady medium shot of him at the desk, the brass lamp glowing on the right of the frame and the rain-streaked window behind him. Diegetic audio: the soft crease of folding paper, rain tapping on the window, and the quiet hum of the room; no non-diegetic score."
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "chain": "show_ltx_lantern",
+ "model": "ltx25_s6_cq",
+ "seed": 2410641,
+ "frames": 97,
+ "negative": "",
+ "start_image": "output/showcase/images/lantern_open.png",
+ "cast": [
+  {
+   "slot": "pic1",
+   "path": "output/showcase/images/elias_portrait.png",
+   "type": "face",
+   "name": "Elias",
+   "description": "a man in his mid-sixties with a full, neatly trimmed white beard, weathered fair skin, pale blue eyes and grey eyebrows, in a rust-orange knit beanie and a dark-navy double-breasted wool pea coat over a grey sweater"
+  }
+ ],
+ "prompts": [
+  "A medium waist-up shot begins on the snowy cabin porch, the blue-hour twilight, falling snow and warm lantern glow established in the opening key image. The old man slowly lifts the lit brass storm lantern a little higher in his right hand and gazes out across the snowy pine forest, his breath misting in the cold air as soft snowflakes drift down around him. The camera performs a slow, stabilized push-in at eye level, the glowing cabin window and the dark pines softly out of focus behind him. Diegetic audio: a soft winter wind through the pines, the faint creak of the lantern's wire handle, and the quiet hush of falling snow; no non-diegetic score.",
+  "A medium shot continues seamlessly in one continuous shot from the same camera angle on the snowy porch. The man holds out his free left hand, palm up, and watches a few snowflakes land and melt on his bare palm, a faint, fond smile crossing his face, the lantern still glowing steadily in his right hand. The camera holds a steady medium shot at eye level as the snow keeps falling. Diegetic audio: the wind in the pines, snow creaking softly under his boots, and the faint creak of the lantern's handle; no non-diegetic score.",
+  "A medium close-up continues seamlessly in one continuous shot from the same camera angle. The man lowers his hand, tilts his head back to look up at the snow falling out of the dark blue sky, and closes his eyes as a few flakes settle on his white beard and beanie, a quiet, peaceful smile forming in the warm lantern light. The camera performs a slow, stabilized push-in, finishing on a medium close-up of his face and shoulders. Diegetic audio: the soft hush of falling snow, a slow, calm breath out, and the distant wind in the pines; no non-diegetic score.",
+  "A medium close-up continues seamlessly in one continuous shot from the same camera angle as the man opens his eyes and looks out at the forest again. He lets out a long, slow breath that clouds golden in the lantern light and gives a small, contented nod. The camera slowly pulls back to a steady medium waist-up shot of him on the porch, the lantern glowing in his right hand and the cabin window glowing warm behind him. Diegetic audio: a long, slow exhale, the wind through the pines, and the faint creak of the lantern's handle; no non-diegetic score."
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "chain": "show_ltx_cliff",
+ "model": "ltx25_s6_cq",
+ "seed": 2410241,
+ "frames": 97,
+ "negative": "",
+ "start_image": "output/showcase/images/cliff_open.png",
+ "cast": [
+  {
+   "slot": "pic1",
+   "path": "output/showcase/images/maren_portrait.png",
+   "type": "face",
+   "name": "Maren",
+   "description": "a woman in her late twenties with a short tousled platinum-blonde pixie cut, light freckles, grey-green eyes and fair skin, in a dark green wool coat, a cream knit sweater and a burgundy knit scarf"
+  }
+ ],
+ "prompts": [
+  "A medium waist-up tracking shot begins from the cliff-top path, golden-hour light and walking posture established in the opening key image. The woman walks slowly toward the camera along the narrow dirt path, her short platinum hair and the ends of her burgundy scarf stirring in the sea breeze, her gaze calm and fixed ahead along the path. The camera executes a smooth backward dolly at her walking pace, keeping her centred at eye level with the sunlit sea and the line of weathered fence posts softly out of focus on the left. Diegetic audio: steady footsteps on dry dirt and grass, a constant sea breeze, and distant waves breaking against the cliffs below; no non-diegetic score.",
+  "A medium waist-up shot continues seamlessly from the previous moment on the cliff-top path. The woman slows her pace and comes to a stop beside a weathered wooden fence post, rests her right hand on top of it, and turns her head toward the sea on the left of the frame, her face in three-quarter view and softly lit by the low golden sun. The camera decelerates from its backward dolly and settles into a steady medium shot at eye level. Diegetic audio: her footsteps slowing to a stop on the dirt, a faint creak of the old post under her hand, wind over the grass and waves rolling in far below; no non-diegetic score.",
+  "A medium close-up continues seamlessly as the woman stands at the fence post looking out over the sea. A gust of wind lifts the ends of her burgundy scarf; she gathers the scarf with both hands and pulls it snugly around her neck, closes her eyes, and breathes in slowly as a small, contented smile forms, her freckled face warmly lit by the golden light. The camera performs a slow, stabilized push-in at eye level, finishing on a medium close-up of her face and shoulders. Diegetic audio: a rush of wind, the soft rustle of knitted wool, a slow calm breath in and out, and distant surf; no non-diegetic score.",
+  "A medium close-up continues seamlessly on the cliff-top as the woman opens her eyes and lets her hands fall from the scarf. She turns away from the sea back toward the path and the camera, and starts walking slowly again with a relaxed, peaceful expression, the low sun lighting the side of her face. The camera eases into a smooth backward dolly at her walking pace, widening gently to a medium waist-up shot with the sea and the fence posts behind her. Diegetic audio: her footsteps resuming on the dirt path, the steady sea breeze, and waves breaking below; no non-diegetic score."
+ ]
+}

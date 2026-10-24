@@ -1,0 +1,27 @@
+{
+ "chain": "show_h3_kitchen",
+ "model": "minimax_h3_hero_v2",
+ "seed": 2410441,
+ "frames": 90,
+ "negative": "",
+ "start_image": "output/showcase/images/kitchen_open.png",
+ "cast": [
+  {
+   "slot": "pic1",
+   "path": "output/showcase/images/ruth_portrait.png",
+   "type": "face",
+   "name": "Ruth"
+  },
+  {
+   "slot": "pic2",
+   "path": "output/showcase/images/lena_portrait.png",
+   "type": "face",
+   "name": "Lena"
+  }
+ ],
+ "prompts": [
+  "[REFERENCES & RETENTION]\nOpening Frame: Lock the sunlit farmhouse kitchen, the round wooden table, the window behind them and both seated positions from the opening anchor frame.\n<Picture 1>: subject_identity -> fully_preserved. Lock facial structure, silver-grey bob and mustard-yellow cardigan.\n<Picture 2>: subject_identity -> fully_preserved. Lock facial structure, long dark-brown braid and denim shirt.\n\n[SPATIAL & GAZE ANCHORS]\nFraming: Medium two-shot at eye level; <Picture 1> seated on the left of the frame, <Picture 2> seated on the right.\nGaze: <Picture 1> watches the mug as she pours; <Picture 2> watches <Picture 1>. Zero camera eye contact.\n\n[TIMELINE (0.00s - 3.75s)]\n[0.00s - 1.00s] [Starting State]: Continuing from the opening frame, <Picture 1> tilts the white ceramic teapot toward <Picture 2>'s mug.\n[1.00s - 3.00s] [Movement Vector]: A steady stream of amber tea pours into the white mug and steam curls up from it; <Picture 2> smiles as she watches.\n[3.00s - 3.75s] [Terminal State]: <Picture 1> lifts the teapot upright and sets it down on the table.\n\n[CAMERA KINEMATICS]\n[static] Locked eye-level medium two-shot in soft morning window light.\n\n[OVERALL SOUNDSCAPE]\ndiegetic_foley: Tea pouring into a ceramic mug from 1.00s; a soft clink as the teapot touches the table at 3.40s.\nroom_tone: Quiet morning kitchen, birdsong outside the window.\naudio_constraints: Zero non-diegetic music; zero speech.\n\n[CONSTRAINTS]\nDo not look into the camera lens. Keep both faces visible and well lit. Clean hand anatomy, no spilled tea, no mesh merging.",
+  "[REFERENCES & RETENTION]\nOpening Frame: Continue seamlessly from the terminal frame of the previous clip.\n<Picture 1>: subject_identity -> fully_preserved.\n<Picture 2>: subject_identity -> fully_preserved.\n\n[SPATIAL & GAZE ANCHORS]\nFraming: Medium two-shot at eye level; <Picture 1> on the left, <Picture 2> on the right.\nGaze: <Picture 2> looks at her mug, then at <Picture 1>; <Picture 1> looks at <Picture 2>. Zero camera eye contact.\n\n[TIMELINE (0.00s - 5.88s)]\n[0.00s - 1.60s] [Starting State]: Anchored in the terminal frame of the previous clip, <Picture 2> wraps both hands around the warm mug and lifts it.\n[1.60s - 2.80s] [Movement Vector]: <Picture 2> takes a small sip, lowers the mug to the table and grins at <Picture 1>.\n[2.80s - 5.88s] [Terminal State]: <Picture 2> speaks in a light, teasing voice: \"You still make it far too strong, Gran.\" <Picture 1> laughs softly, her eyes crinkling.\n\n[CAMERA KINEMATICS]\n[zoom] Subtle, stabilized 10% push-in at eye level, keeping both faces in frame.\n\n[OVERALL SOUNDSCAPE]\ndiegetic_dialogue: <Picture 2> speaking playfully with a natural breath lead-in: \"You still make it far too strong, Gran.\"\ndiegetic_foley: A soft sip at 2.00s; the mug set down on wood at 2.60s; a warm, quiet laugh from <Picture 1> at 4.80s.\nroom_tone: Quiet morning kitchen, birdsong outside the window.\naudio_constraints: Zero non-diegetic music; only <Picture 2> speaks.\n\n[CONSTRAINTS]\nZero camera eye contact. Maintain sharp lip-sync, natural skin texture and bright, even light on both faces.",
+  "[REFERENCES & RETENTION]\nOpening Frame: Continue seamlessly from the terminal frame of the previous clip.\n<Picture 1>: subject_identity -> fully_preserved.\n<Picture 2>: subject_identity -> fully_preserved.\n\n[SPATIAL & GAZE ANCHORS]\nFraming: Medium two-shot at eye level; <Picture 1> on the left, <Picture 2> on the right.\nGaze: <Picture 1> and <Picture 2> look at each other. Zero camera eye contact.\n\n[TIMELINE (0.00s - 5.88s)]\n[0.00s - 1.60s] [Starting State]: Anchored in the terminal frame of the previous clip, <Picture 1> leans back slightly in her chair, still smiling.\n[1.60s - 4.40s] [Movement Vector]: <Picture 1> replies in a warm, gentle voice: \"That's exactly how your grandfather liked it.\"\n[4.40s - 5.88s] [Terminal State]: <Picture 2>'s grin softens into a tender smile and she nods slowly, both hands around her mug.\n\n[CAMERA KINEMATICS]\n[static] Locked eye-level medium two-shot in soft morning window light.\n\n[OVERALL SOUNDSCAPE]\ndiegetic_dialogue: <Picture 1> speaking warmly, with a soft breath before the line: \"That's exactly how your grandfather liked it.\"\ndiegetic_foley: Faint creak of the wooden chair at 0.60s; ceramic mug shifting on the table at 4.60s.\nroom_tone: Quiet morning kitchen, birdsong outside the window.\naudio_constraints: Zero non-diegetic music; only <Picture 1> speaks.\n\n[CONSTRAINTS]\nZero camera eye contact. Maintain sharp lip-sync, natural skin texture and both faces unobstructed and well lit at 5.88s."
+ ]
+}
