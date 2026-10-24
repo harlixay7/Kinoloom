@@ -1,0 +1,16 @@
+# Qwen-Image-2.1 instance — weights mounted zero-copy from the studio's
+# canonical models tree (same pattern as the h3_lab block in the LTX farm).
+# `unet` is mapped onto diffusion_models so ComfyUI-GGUF's UnetLoaderGGUF
+# lists the same files the registry references (models.py is_available checks
+# diffusion_models/).
+kinoloom:
+  base_path: ../models/
+  checkpoints: checkpoints
+  diffusion_models: diffusion_models
+  unet: diffusion_models
+  text_encoders: text_encoders
+  vae: vae
+  loras: loras
+  upscale_models: upscale_models
+  clip: clip
+  clip_vision: clip_vision

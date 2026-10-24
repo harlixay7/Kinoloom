@@ -1,0 +1,26 @@
+kinoloom_shared:
+    base_path: ../models
+    diffusion_models: diffusion_models
+    text_encoders: text_encoders
+    vae: vae
+    latent_upscale_models: latent_upscale_models
+    loras: loras
+    checkpoints: checkpoints
+
+h3_lab:
+    base_path: ${H3_LAB_MODELS}
+    diffusion_models: diffusion_models
+    text_encoders: text_encoders
+    vae: vae
+    latent_upscale_models: latent_upscale_models
+    loras: loras
+    checkpoints: checkpoints
+
+ltx25_lab:
+    base_path: ${LTX25_LAB_MODELS}
+    diffusion_models: diffusion_models
+    text_encoders: text_encoders
+    vae: vae
+    latent_upscale_models: latent_upscale_models
+    loras: loras
+    checkpoints: checkpoints

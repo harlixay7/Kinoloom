@@ -1,0 +1,15 @@
+# Kinoloom: extra model paths for the main ComfyUI tree
+kinoloom:
+    checkpoints: ../models/checkpoints
+    diffusion_models: ../models/diffusion_models
+    clip: ../models/clip
+    text_encoders: ../models/text_encoders
+    vae: ../models/vae
+    loras: ../models/loras
+    upscale_models: ../models/upscale_models
+    ipadapter: ../models/ipadapter
+    clip_vision: ../models/clip_vision
+
+# external video LoRA library, scanned by tool/lora_video.py
+kinoloom_external_loras:
+    loras: ../external_loras/VideoGeneration
