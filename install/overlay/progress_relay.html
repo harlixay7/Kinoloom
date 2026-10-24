@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>vs progress relay</title></head>
+<body>
+<script>
+/* Tiny relay served BY the farm itself (same origin), so ComfyUI's host/origin
+   middleware accepts the websocket. Forwards progress to the studio UI via
+   postMessage. Strictly read-only: it never posts to the queue. */
+(function () {
+  var port = location.port || "80";
+  function send(d) { try { parent.postMessage(d, "*"); } catch (e) {} }
+  function labelsFrom(q) {
+    var g = ((q.queue_running || [])[0] || [])[2] || {};
+    var labels = {};
+    Object.keys(g).forEach(function (id) {
+      labels[id] = String((g[id] || {}).class_type || "").replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+    });
+    return labels;
+  }
+  function fetchLabels() {
+    fetch("/queue").then(function (r) { return r.json(); }).then(function (q) {
+      send({ type: "vs-labels", port: port, labels: labelsFrom(q) });
+    }).catch(function () {});
+  }
+  function connect() {
+    var ws;
+    try { ws = new WebSocket("ws://" + location.host + "/ws?clientId=vs-relay"); }
+    catch (e) { send({ type: "vs-relay", port: port, state: "failed" }); return; }
+    ws.onopen = function () {
+      send({ type: "vs-relay", port: port, state: "open" });
+      fetchLabels();
+    };
+    ws.onmessage = function (ev) {
+      var d = null;
+      try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (d.type === "progress" || d.type === "executing" || d.type === "status") {
+        send({ type: "vs-farm", port: port, msg: d });
+        if (d.type === "executing" && d.data && d.data.node != null) fetchLabels();
+      }
+    };
+    ws.onclose = function () {
+      send({ type: "vs-relay", port: port, state: "closed" });
+      setTimeout(connect, 3000);
+    };
+    ws.onerror = function () { try { ws.close(); } catch (e) {} };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

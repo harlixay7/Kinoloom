@@ -1,0 +1,94 @@
+{
+  "schema": "videolab.proven/2",
+  "family": "Qwen-Image-2.1 (7B DiT base; Qwen3-VL 8B text encoder; still images, 2048x2048 RGBA)",
+  "workflow": "workflows/qwen_2k_tiled_refine.json",
+  "hardware": "RTX 3070 8 GB, 64 GB DDR4, Windows 11, ComfyUI v0.37.4, PyTorch 2.13.0+cu130",
+  "pipeline": {
+    "base_pass": "1024x1024 latent, KSampler, euler/simple",
+    "quality_steps": 40,
+    "quality_cfg": 3.5,
+    "quality_negative": "TextEncodeQwenImage21 negative prompt (real negative; CFG 3.5 depends on it)",
+    "fast_steps": 8,
+    "fast_cfg": 1.0,
+    "fast_adapter": "p_qwen_image_2.1_8step_v0.1.safetensors (Pruna DMD), strength 1.0; not redistributed - adapter weights are not in the manifest and no FAST workflow ships, so this row is baseline research",
+    "vae": "qwen_image_2.1_vae_bf16_compact.safetensors (64 latent channels, 16x compression, RGBA)",
+    "decode": "VAEDecode untiled in the locked production config (the tiled premul path exists in the workflow but is not executed)",
+    "upscale": "4x-UltraSharp on RGB, bicubic x4 on alpha, merged, lanczos to 2048x2048",
+    "prompt_enhancer": "installed but bypassed (measured 124 s through VRAM paging)",
+    "refiner_branch": "LatentTiledRefiner present in the workflow but unreachable in the locked config (SaveImageAdvanced reads the upscaled image directly). Wiring it active failed end-to-end verification on 2026-09-30: the run peaked at 7,811 MB, over the 7,392 MB usable ceiling, with ~1.8 GB ambient desktop VRAM, and the A/B measurement showed lower foreground sharpness (513 vs 453). Rewire SaveImageAdvanced to node 20 to enable the branch."
+  },
+  "tiling_algebra": {
+    "problem": "refine a 128x128 latent in 2x2 windows without seams",
+    "closure": "n*T - (n-1)*O = H with n=2, O=16, H=128 -> T=72, stride 56",
+    "deployed": "72-token windows, 2x2 grid, 16-token overlap, exact closure 2*72-16=128",
+    "why_not_64": "T=64 closes only with zero overlap (seams) or a 3x3 grid (9 tiles, over budget)",
+    "window_token_ceiling": 6400,
+    "vram_gates_mb": {"pre_loop": 7000, "in_loop_paging_guard": 900, "decode_stages": 6500}
+  },
+  "measurements": {
+    "turbo_draft": {
+      "config": "Q4_K_M base, 6 steps, CFG 1.0",
+      "runs": [68.79, 23.53, 23.44],
+      "warm_mean_s": 23.49,
+      "peak_device_vram_gb": [5.92, 6.05],
+      "warming_time_s": 45.3,
+      "target_s": "10.0 +/- 2.0",
+      "verdict": "FAIL recorded against the target window",
+      "label": "N=3 warm (distinct seeds)",
+      "archive_run_id": "benchmark_turbo_1790559533"
+    },
+    "two_pass_2k": {
+      "config": "two-pass 2K shape; the quant in use for this retained benchmark run is not recorded in its JSON (the Q5_K_M pivot happened in the same session; the locked quality config uses Q5_K_M)",
+      "runs": [481.88, 262.29],
+      "warm_mean_s": 262.29,
+      "warming_time_s": 219.59,
+      "peak_device_vram_gb": {"cold": 6.54, "warm": 6.22},
+      "target_s": "88.6 +/- 4.0",
+      "verdict": "FAIL recorded against the target window; the memory ceiling held",
+      "label": "N=2 warm",
+      "archive_run_id": "benchmark_twopass_1790559335"
+    },
+    "speed_suite_single_runs": {
+      "control_locked_40step_tiled": {"wall_s": 304.3, "foreground_sharpness": 3499.4, "note": "inherited single run used as control, not re-measured in the same session"},
+      "locked_40step_untiled": {"wall_s": 214.2, "foreground_sharpness": 3477.4},
+      "viggle_turbo_6step": {"wall_s": 117.4, "foreground_sharpness": 3072.0},
+      "pruna_dmd_8step": {"wall_s": 48.3, "foreground_sharpness": 3807.5},
+      "label": "N=1 per variant; control inherited",
+      "archive_run_id": "speed_suite_1790587992"
+    },
+    "quality_ab_single_runs": {
+      "E1_q4_cfg1": {"foreground_sharpness": 2729.0, "wall_s": 156.8},
+      "E2_q4_cfg35": {"foreground_sharpness": 3535.8, "wall_s": 275.8},
+      "E3_q5km_cfg35": {"foreground_sharpness": 3460.9, "wall_s": 219.5},
+      "note": "single run each on identical seeds; the CFG 3.5 + real-negative pivot rests on these three runs plus visual review",
+      "archive_run_id": "exp_quality_*"
+    },
+    "final_suite_fast_mode": {
+      "five_images_s": [39.3, 78.3, 78.3, 78.4, 75.5],
+      "resolution": "2048x2048 RGBA",
+      "distinctness": "all pairwise dHash Hamming distances >= 25",
+      "checks": "one recorded FAIL row: a uniform foreground-sharpness threshold fails on deliberately shallow-DOF and long-exposure scenes",
+      "label": "one run per image, one seed each",
+      "archive_run_id": "final_suite_1790588546"
+    },
+    "text_encoder_residency": {
+      "cuda_resident_mb": 0,
+      "measurement": "parameter bytes recorded per encode",
+      "lab_record_id": "VERIFICATION_REPORT"
+    }
+  },
+  "deviations": {
+    "cfg_pivot": "the initial design specified CFG 1.0 + res_multistep/beta/30; adopted euler/simple/40/CFG 3.5 with a real negative prompt",
+    "quant_pivot": "the initial design specified Q4_K_M; adopted Q5_K_M after the detail investigation",
+    "refine_removed": "pass-2 latent re-denoise removed; removing it raised foreground sharpness 513 vs 453",
+    "pe_bypassed": "prompt enhancer bypassed (124 s per call through VRAM paging)",
+    "banned_flags": "--gpu-only-unet and res_2m do not exist in the installed argparse; the launcher purges them"
+  },
+  "notes": [
+    "Laplacian sharpness is scene-dependent; cross-image comparisons are informational, within-scene comparisons are the evidence",
+    "VRAM figures come from free-memory sampling via torch.cuda.mem_get_info; the 7,392 MB usable ceiling was never exceeded in any retained run",
+    "Peak device VRAM in later suite runs reached 6.5-7.0 GB in early runs recorded in the benchmark JSONs; the retained production runs stayed at or below 6.54 GB",
+    "The 4-reference image cap is an 8 GB workstation deployment constraint to manage cross-attention activation memory; Qwen officially supports up to 10 references",
+    "archive_run_id / lab_record_id identify immutable records in the non-redistributed laboratory archive (campaign-prefixed BENCH_YYYY-MM-DD_* ids; '+' joins multiple records; _sN is a section suffix). See docs/ARCHIVE_INDEX.md."
+  ]
+}

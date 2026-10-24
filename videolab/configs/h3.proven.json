@@ -1,0 +1,187 @@
+{
+  "schema": "videolab.proven/2",
+  "family": "MiniMax H3 (Hailuo 3.0)",
+  "workflow": "workflows/h3_ulta_8gb_production.json",
+  "bench_defaults": {
+    "workflows/h3_ulta_8gb_production.json": {"STEPS": 6, "FRAMES": 124},
+    "workflows/h3_c3_8gb_speed.json": {"STEPS": 4, "FRAMES": 124},
+    "workflows/h3_flagship_8gb.json": {"STEPS": 25, "FRAMES": 124},
+    "workflows/h3_t2_243f_8gb.json": {"STEPS": 25, "FRAMES": 243}
+  },
+  "hardware": "RTX 3070 8 GB (SM 8.6), 64 GB DDR4, Windows 11; initial baselines on ComfyUI v0.36.0 / comfy-kitchen 0.2.34, re-verified on ComfyUI v0.37.4 / comfy-kitchen 0.2.35; PyTorch 2.13.0+cu130",
+  "model_geometry": {
+    "latent": "f16t4d24 (16x spatial, 4x temporal, 24 channels) with 1x2x2 patch merge = 32x spatial",
+    "frame_grid": "(frames - 5) % 17 == 0, fps 24, native 4-15 s",
+    "sequence_960x544_124f": {
+      "temporal_latents": 31,
+      "spatial_tokens_after_patch": 510,
+      "sequence_length": 15810,
+      "linear_term_flops_per_step": 1.043e15,
+      "derivation": "2 * 33e9 params * 15810 tokens; excludes attention and embedding terms"
+    },
+    "measured_step_rate": {
+      "s_per_step": [15.5, 16.6],
+      "implied_tflops": [62.8, 67.3],
+      "kernel_gate_tflops": 67.2,
+      "note": "phase-1 runs at 93.5-100% of the measured fused-GEMM ceiling; corrected from the earlier 63k-token figure (see docs/03 retraction 5)"
+    }
+  },
+  "sampler_constants": {
+    "sampler": "euler",
+    "scheduler": "simple",
+    "cfg": 1.0,
+    "shift_video": 12.0,
+    "shift_audio": 3.0,
+    "fps": 24,
+    "frames": 124,
+    "duration_s": 5.17,
+    "phase1_canvas": "960x544",
+    "refine_canvas": "1920x1088",
+    "refine_sigmas": "0.4500, 0.3612, 0.3032, 0.1967, 0.1081, 0.0",
+    "refine_tiles": "1024x704, overlap_ratio 0.25, fade_ratio 0.5, seam_denoise 0.8, color_match true",
+    "encode": "libx264 CRF 16"
+  },
+  "configurations": {
+    "ulta_larryvrh_6step": {
+      "adopted_as": "quality 1080p path at archive time",
+      "workflow": "workflows/h3_ulta_8gb_production.json",
+      "phase1_steps": 6,
+      "lora": "minimax_h3_turbo_v4_step600_ema.safetensors",
+      "lora_strength": 1.0,
+      "seed": 519438276610342,
+      "label": "exploratory (N=1, single seed)",
+      "measured": {
+        "wall_s": 1153.3,
+        "sampling_phase1_s": 121,
+        "peak_device_vram_gib": 7.60,
+        "min_device_vram_free_gib": 0.40,
+        "pcie_rx_gib": 700.7,
+        "pcie_tx_gib": 101.1,
+        "peak_power_w": 219.3,
+        "peak_temp_c": 76,
+        "edge_proxy_mean": 2819.8,
+        "edge_proxy_p10": 1735.4,
+        "motion_proxy": 25.26
+      },
+      "archive_run_id": "h3_ultA_544_larry6_run"
+    },
+    "c3_lightx2v_4step": {
+      "adopted_as": "fast path to 1080p at archive time",
+      "workflow": "workflows/h3_c3_8gb_speed.json",
+      "phase1_steps": 4,
+      "lora": "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+      "lora_strength": 1.0,
+      "seed": 519438276610342,
+      "label": "exploratory (N=1, single seed)",
+      "measured": {
+        "wall_s": 876.4,
+        "peak_device_vram_gib": 7.59,
+        "min_device_vram_free_gib": 0.41,
+        "pcie_rx_gib": 821.9,
+        "pcie_tx_gib": 118.2,
+        "peak_power_w": 219.5,
+        "peak_temp_c": 76,
+        "edge_proxy_mean": 2363.5,
+        "edge_proxy_p10": 1261.4,
+        "motion_proxy": 25.46
+      },
+      "archive_run_id": "h3_c3_turbo_1080p_run"
+    },
+    "flagship_base25": {
+      "adopted_as": "no-LoRA reference configuration",
+      "workflow": "workflows/h3_flagship_8gb.json",
+      "phase1_steps": 25,
+      "seed": 519438276610342,
+      "label": "exploratory (N=1, single seed)",
+      "measured": {
+        "wall_s": 1484.1,
+        "peak_device_vram_gib": 7.62,
+        "pcie_rx_gib": 640.6,
+        "pcie_tx_gib": 133.2,
+        "edge_proxy_mean": 1472.5,
+        "edge_proxy_p10": 948.6,
+        "motion_proxy": 22.86
+      },
+      "archive_run_id": "h3_flagship1080_run"
+    },
+    "composite_anchor_variant": {
+      "adopted_as": "default identity-binding mechanism when a prior render of the scene exists",
+      "change": "anchor + primary reference replaced by a frame extracted from a prior render (composite_f15); all else equal to ulta_larryvrh_6step",
+      "seed": 519438276610342,
+      "label": "exploratory (N=1, single seed); adoption also rests on frame-level visual checks (wardrobe held across 124 frames)",
+      "measured": {
+        "wall_s": 1154.0,
+        "peak_device_vram_gib": 7.85,
+        "pcie_rx_gib": 685.1,
+        "edge_proxy_mean": 3053.3,
+        "edge_proxy_p10": 1722.8,
+        "motion_proxy": 21.39
+      },
+      "archive_run_id": "h3_composite_f15_larry6_run"
+    },
+    "chain_link_on_c3": {
+      "adopted_as": "continuation mechanism for longer clips",
+      "change": "link 2 anchors on link 1's literal last frame; C3 config unchanged",
+      "label": "exploratory (N=1); seam is a single measured frame pair",
+      "measured": {
+        "wall_s_log": 893.7,
+        "wall_s_report": 899,
+        "peak_device_vram_gib": 7.70,
+        "seam_mean_abs_diff_0_255": 6.75,
+        "assembled_duration_s": 10.33
+      },
+      "archive_run_id": "h3_c3chain_turbo1080_run + BENCH_2026-09-27_REPORT"
+    },
+    "h1_h2_544p_single_pass": {
+      "adopted_as": "context only (superseded by the two-phase paths above)",
+      "configs": {
+        "h1_6step": {"wall_s": 426.0, "state": "documented as cold", "peak_device_vram_gib": 7.51, "edge_proxy_mean": 2556.9, "pcie_rx_gib": 145.7},
+        "h2_8step": {"wall_s": 211.3, "state": "documented as warm", "peak_device_vram_gib": 7.83, "edge_proxy_mean": 1914.3, "pcie_rx_gib": 132.4}
+      },
+      "label": "exploratory (N=1 each); the two runs are not a controlled A/B (different cache states)",
+      "archive_run_id": "h3_h1_larry6_run + h3_h2_larry8_run"
+    },
+    "t2_243f_single_pass": {
+      "adopted_as": "10.13 s single-pass 544p path",
+      "workflow": "workflows/h3_t2_243f_8gb.json",
+      "phase1_steps": 25,
+      "frames": 243,
+      "label": "exploratory (N=1, single seed)",
+      "measured": {"wall_s": 1271.4, "peak_device_vram_gib": 7.70, "pcie_rx_gib": 458.3, "edge_proxy_mean": 1611.6},
+      "archive_run_id": "h3_t2_243f_run"
+    }
+  },
+  "rejected_configurations": {
+    "pdd8_acceleration": {
+      "measured": {"edge_proxy_pdd8": 746.6, "edge_proxy_20step_warm": 962.4, "delta": "-22.4%", "speed_gain_39f": "~6%", "speed_gain_124f_documented": "~15%"},
+      "verdict": "banned from quality paths; kept only as an explicitly labeled draft tier",
+      "lab_record_id": "BENCH_2026-09-22_REPORT"
+    },
+    "243f_1080p_refine": {
+      "measured": {"first_temporal_tile_group": "62.5 min for 5 steps", "s_per_step_range": [532, 1087], "pcie_sustained_gbs": [5, 10], "killed_after_s": 5400},
+      "verdict": "not viable on 8 GB; 10.13 s at true 1080p requires concatenation, last-frame chaining, post-upscale, or a larger card",
+      "lab_record_id": "BENCH_2026-09-27_REPORT"
+    },
+    "768p_few_step_dispatch_collapse": {
+      "measured": {"s_per_step": 582},
+      "verdict": "few-step LoRA at non-native block dimensions collapses throughput; not used",
+      "lab_record_id": "BENCH_2026-09-25_H3_LORA_RESEARCH"
+    },
+    "step_16_profile": {
+      "measured": {"edge_delta_shockwave": "-8.3%"},
+      "verdict": "fails parity; the value profile is 25 steps",
+      "lab_record_id": "BENCH_2026-09-23_REPORT"
+    },
+    "nvfp4": {
+      "verdict": "no native kernel path on SM 8.6; never used",
+      "lab_record_id": "PROVEN_CONFIGS_H3"
+    }
+  },
+  "notes": [
+    "All wall times include submit-to-completion end to end (staging, encode, queue).",
+    "edge_proxy is a Laplacian edge-variance indicator, not perceptual quality; it is not comparable across resolutions and has no error bars here. See docs/03 retraction 4.",
+    "No configuration in this file was clock-locked. GPU power ran at 219-221 W against the 220 W board limit at 74-77 C.",
+    "The 124-frame audio stream in the output container is documented as 2x the video duration in the source lab; not fixed at archive time.",
+    "archive_run_id / lab_record_id identify immutable records in the non-redistributed laboratory archive (campaign-prefixed BENCH_YYYY-MM-DD_* ids; '+' joins multiple records; _sN is a section suffix). See docs/ARCHIVE_INDEX.md."
+  ]
+}

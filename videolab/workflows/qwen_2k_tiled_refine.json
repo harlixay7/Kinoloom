@@ -1,0 +1,260 @@
+{
+ "_contract": "Qwen-Image-2.1 production photorealism pipeline (quality-locked; matches configs/qwen21.proven.json). Q5_K_M quant, euler/simple 40 steps, CFG 3.5 with a real negative prompt, engineered inline prompt (PE bypassed), untiled VAEDecode, 4x-UltraSharp RGB upscale + bicubic alpha, lanczos 2K scale, RGBA PNG export via SaveImageAdvanced. The latent re-denoise refine branch (nodes 16-20) is present but unreachable: the A/B measurement showed it reduced foreground sharpness (513 vs 453) and produced the painted look, so the locked config reads the upscaled image directly. To enable the branch, rewire SaveImageAdvanced to node 20.",
+ "_budget": "peak VRAM measured 6,543 MB vs 7,392 MB usable ceiling; measured wall clock ~260-300 s per image on RTX 3070 (plan's 88.6 s assumed 1.28 s/step; this card measures 2.3 s/step)",
+ "1": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+   "type": "qwen_image",
+   "device": "cpu"
+  }
+ },
+ "3": {
+  "class_type": "TextEncodeQwenImage21CPU",
+  "inputs": {
+   "clip": [
+    "1",
+    0
+   ],
+   "prompt": "{PROMPT}",
+   "token_budget": 4096,
+   "measure_dma": true
+  }
+ },
+ "30": {
+  "class_type": "TextEncodeQwenImage21",
+  "inputs": {
+   "clip": [
+    "1",
+    0
+   ],
+   "prompt": "{NEGATIVE}",
+   "negative_prompt": "",
+   "resolution": 512
+  }
+ },
+ "5": {
+  "class_type": "UnetLoaderGGUF",
+  "inputs": {
+   "unet_name": "qwen_image_2.1_Q5_K_M.gguf"
+  }
+ },
+ "6": {
+  "class_type": "EmptyQwen21LatentImage",
+  "inputs": {
+   "width": 1024,
+   "height": 1024,
+   "batch_size": 1
+  }
+ },
+ "7": {
+  "class_type": "KSampler",
+  "inputs": {
+   "model": [
+    "5",
+    0
+   ],
+   "seed": "{SEED}",
+   "steps": 40,
+   "cfg": 3.5,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "positive": [
+    "3",
+    0
+   ],
+   "negative": [
+    "30",
+    1
+   ],
+   "latent_image": [
+    "6",
+    0
+   ],
+   "denoise": 1.0
+  }
+ },
+ "8": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "qwen_image_2.1_vae_bf16_compact.safetensors"
+  }
+ },
+ "9": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "7",
+    0
+   ],
+   "vae": [
+    "8",
+    0
+   ]
+  }
+ },
+ "10": {
+  "class_type": "SplitImageRGBA",
+  "inputs": {
+   "image": [
+    "9",
+    0
+   ]
+  }
+ },
+ "11": {
+  "class_type": "UpscaleModelLoader",
+  "inputs": {
+   "model_name": "4x-UltraSharp.pth"
+  }
+ },
+ "12": {
+  "class_type": "ImageUpscaleWithModel",
+  "inputs": {
+   "upscale_model": [
+    "11",
+    0
+   ],
+   "image": [
+    "10",
+    0
+   ]
+  }
+ },
+ "13": {
+  "class_type": "ImageScaleBy",
+  "inputs": {
+   "image": [
+    "10",
+    1
+   ],
+   "upscale_method": "bicubic",
+   "scale_by": 4.0
+  }
+ },
+ "14": {
+  "class_type": "MergeImageRGBA",
+  "inputs": {
+   "rgb": [
+    "12",
+    0
+   ],
+   "alpha": [
+    "13",
+    0
+   ]
+  }
+ },
+ "15": {
+  "class_type": "ImageScale",
+  "inputs": {
+   "image": [
+    "14",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "width": 2048,
+   "height": 2048,
+   "crop": "disabled"
+  }
+ },
+ "16": {
+  "class_type": "VAEEncodeTiled",
+  "inputs": {
+   "pixels": [
+    "15",
+    0
+   ],
+   "vae": [
+    "8",
+    0
+   ],
+   "tile_size": 1024,
+   "overlap": 128,
+   "temporal_size": 64,
+   "temporal_overlap": 8
+  }
+ },
+ "17": {
+  "class_type": "TextEncodeQwenImage21CPU",
+  "inputs": {
+   "clip": [
+    "1",
+    0
+   ],
+   "prompt": "{REFINE_PROMPT}",
+   "token_budget": 4096,
+   "measure_dma": true
+  }
+ },
+ "18": {
+  "class_type": "ConditioningZeroOut",
+  "inputs": {
+   "conditioning": [
+    "17",
+    0
+   ]
+  }
+ },
+ "19": {
+  "class_type": "LatentTiledRefiner",
+  "inputs": {
+   "model": [
+    "5",
+    0
+   ],
+   "latent": [
+    "16",
+    0
+   ],
+   "positive": [
+    "17",
+    0
+   ],
+   "negative": [
+    "18",
+    0
+   ],
+   "noise_seed": "{REFINE_SEED}",
+   "tile_size": 72,
+   "overlap": 16,
+   "max_window_tokens": 6400,
+   "steps": 8,
+   "cfg": 1.0,
+   "denoise": 0.25,
+   "sampler_name": "res_multistep",
+   "scheduler": "beta",
+   "vram_gate_mb": 7000
+  }
+ },
+ "20": {
+  "class_type": "VAEDecodeTiledPremulAlpha",
+  "inputs": {
+   "samples": [
+    "19",
+    0
+   ],
+   "vae": [
+    "8",
+    0
+   ],
+   "tile_size": 512,
+   "overlap": 64,
+   "premultiply": true,
+   "vram_gate_mb": 6500
+  }
+ },
+ "21": {
+  "class_type": "SaveImageAdvanced",
+  "inputs": {
+   "images": [
+    "15",
+    0
+   ],
+   "filename_prefix": "videolab/qwen21_2k",
+   "format": "png",
+   "format.bit_depth": "8-bit",
+   "format.input_color_space": "sRGB"
+  }
+ }
+}

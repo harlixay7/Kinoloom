@@ -1,0 +1,971 @@
+{
+ "_readme": [
+  "What install/install_components.py installs. Every download is pinned: ComfyUI and the node",
+  "packs by git commit, weights by size and sha256 (my own copies, or the served file where I have",
+  "none). 'manual' files are never downloaded: MiniMax H3 (its license) and RealVisXL (no public",
+  "copy I could check). 'derive' files are made locally from another file. A venv's size_gb is",
+  "what that venv takes on my PC (measured 2026-10-24)."
+ ],
+ "schema": 1,
+ "trees": {
+  "farm": {
+   "dir": "ComfyUI",
+   "title": "render farm (port 8188)",
+   "core": {
+    "repo": "comfyanonymous/ComfyUI",
+    "version": "0.30.0",
+    "commit": "b1693ecba9f5b65f8c80ab36b195ab963ec92413"
+   },
+   "note": "no venv of its own: it runs on the control room's packages (tool/requirements.txt)"
+  },
+  "ltx": {
+   "dir": "ComfyUI_LTX",
+   "title": "LTX-2.5 and MiniMax H3 (ports 8189 and 8199)",
+   "core": {
+    "repo": "comfyanonymous/ComfyUI",
+    "version": "0.36.0",
+    "commit": "ee71d5c4993f29086b27fde1629a945ae48425bf"
+   },
+   "venv": {
+    "requirements": "install/requirements-frozen/ltx-venv.txt",
+    "index": "https://download.pytorch.org/whl/cu130",
+    "fallback": "requirements.txt",
+    "size_gb": 4.17
+   }
+  },
+  "qwen": {
+   "dir": "ComfyUI_Qwen21",
+   "title": "Qwen-Image 2.1 (port 8190)",
+   "core": {
+    "repo": "comfyanonymous/ComfyUI",
+    "version": "0.37.4",
+    "commit": "8ff6dc384ba5c410266b40e137799e049459d4f2"
+   },
+   "venv": {
+    "requirements": "install/requirements-frozen/qwen21-venv.txt",
+    "index": "https://download.pytorch.org/whl/cu126",
+    "fallback": "requirements.txt",
+    "size_gb": 5.5
+   }
+  }
+ },
+ "nodes": {
+  "farm:ComfyUI-GGUF": {
+   "tree": "farm",
+   "dir": "ComfyUI-GGUF",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "city96/ComfyUI-GGUF",
+    "commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a"
+   },
+   "version": "2.0.0"
+  },
+  "farm:ComfyUI_IPAdapter_plus": {
+   "tree": "farm",
+   "dir": "ComfyUI_IPAdapter_plus",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "cubiq/ComfyUI_IPAdapter_plus",
+    "commit": "a0f451a5113cf9becb0847b92884cb10cbdec0ef"
+   },
+   "version": "2.0.0"
+  },
+  "farm:ComfyUI-Impact-Pack": {
+   "tree": "farm",
+   "dir": "ComfyUI-Impact-Pack",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "ltdrdata/ComfyUI-Impact-Pack",
+    "commit": "429d0159ad429e64d2b3916e6e7be9c22d025c3c"
+   },
+   "version": "8.28.3"
+  },
+  "farm:ComfyUI-Frame-Interpolation": {
+   "tree": "farm",
+   "dir": "ComfyUI-Frame-Interpolation",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "Fannovel16/ComfyUI-Frame-Interpolation",
+    "commit": "26545cc2dd95bc3d27f056016300673bdeee78f5"
+   },
+   "version": "1.0.11"
+  },
+  "farm:ComfyUI-SeedVR2_VideoUpscaler": {
+   "tree": "farm",
+   "dir": "ComfyUI-SeedVR2_VideoUpscaler",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "numz/ComfyUI-SeedVR2_VideoUpscaler",
+    "commit": "4490bd1f482e026674543386bb2a4d176da245b9"
+   },
+   "version": "2.5.24"
+  },
+  "farm:ComfyUI-VideoHelperSuite": {
+   "tree": "farm",
+   "dir": "ComfyUI-VideoHelperSuite",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "Kosinkadink/ComfyUI-VideoHelperSuite",
+    "commit": "4ee72c065db22c9d96c2427954dc69e7b908444b"
+   },
+   "version": "1.7.9"
+  },
+  "farm:ComfyUI-KJNodes": {
+   "tree": "farm",
+   "dir": "ComfyUI-KJNodes",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "kijai/ComfyUI-KJNodes",
+    "commit": "8692bc8ef8beaaeee80fd52ba80477dc9e61547b"
+   },
+   "version": "1.4.9"
+  },
+  "farm:ComfyUI-WanVideoWrapper": {
+   "tree": "farm",
+   "dir": "ComfyUI-WanVideoWrapper",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "kijai/ComfyUI-WanVideoWrapper",
+    "commit": "088128b224242e110d3906c6750e9a3a348a659b"
+   },
+   "version": "1.4.7"
+  },
+  "ltx:ComfyUI-LTX2.5-MSR": {
+   "tree": "ltx",
+   "dir": "ComfyUI-LTX2.5-MSR",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "liconstudio/ComfyUI-LTX2.5-MSR",
+    "commit": "98941179a82223a0a62219550272b2823b3e3a9c"
+   }
+  },
+  "ltx:Comfyui_Minimax_h3_latent_Upscaler": {
+   "tree": "ltx",
+   "dir": "Comfyui_Minimax_h3_latent_Upscaler",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler",
+    "commit": "40316cf008b2fd8663263270669eb4da23f89d2c"
+   }
+  },
+  "qwen:ComfyUI-GGUF": {
+   "tree": "qwen",
+   "dir": "ComfyUI-GGUF",
+   "marker": "__init__.py",
+   "source": {
+    "type": "git",
+    "repo": "city96/ComfyUI-GGUF",
+    "commit": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a"
+   }
+  }
+ },
+ "components": {
+  "ltx25": {
+   "title": "LTX-2.5 video (recommended)",
+   "default": true,
+   "trees": [
+    "ltx"
+   ],
+   "nodes": [
+    "ltx:ComfyUI-LTX2.5-MSR",
+    "ltx:Comfyui_Minimax_h3_latent_Upscaler"
+   ],
+   "summary": "The default video model: every LTX-2.5 tier, cast references, seamless chains, sound.",
+   "models": [
+    "ltx25_transformer_w4a8",
+    "ltx25_text_encoder_gemma4",
+    "ltx25_vae_conv",
+    "ltx25_audio_vae",
+    "ltx25_upscaler_spatial",
+    "ltx25_upscaler_temporal",
+    "ltx25_lora_msr_v1",
+    "ltx25_lora_cq_enhancer"
+   ],
+   "licenses": [
+    "LTX-2.5 (transformer, text encoder, VAEs, upscalers): LTX-2 Community License, a paid license above $10M annual revenue (https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2)",
+    "LTX-2.5 LoRAs: Licon MSR V1 is Apache-2.0; the CQ enhancer declares no license on its repo"
+   ]
+  },
+  "h3": {
+   "title": "MiniMax H3 video (bring your own weights)",
+   "trees": [
+    "ltx"
+   ],
+   "nodes": [
+    "ltx:ComfyUI-LTX2.5-MSR",
+    "ltx:Comfyui_Minimax_h3_latent_Upscaler"
+   ],
+   "summary": "All 11 H3 tiers and the H3 seamless chains. Installs the runtime and checks your files; the weights are not downloaded (see the MiniMax H3 license).",
+   "manual": [
+    "h3_text_encoder_qwen3vl_32b_w4a8",
+    "h3_video_vae_fp16",
+    "h3_audio_vae_fp32",
+    "h3_dit_ref2va_w4a8",
+    "h3_dit_fl2va_w4a8",
+    "h3_dit_singularity",
+    "h3_upscaler_3d",
+    "h3_lora_larryvrh_v4_ema",
+    "h3_lora_lightx2v_turbo4",
+    "h3_lora_pdd8"
+   ],
+   "licenses": [
+    "MiniMax H3: MiniMax H3 Community License, which grants no use in the EU, the UK, South Korea or the USA (https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)"
+   ]
+  },
+  "qwen21": {
+   "title": "Qwen-Image 2.1 images (recommended)",
+   "default": true,
+   "trees": [
+    "qwen"
+   ],
+   "nodes": [
+    "qwen:ComfyUI-GGUF"
+   ],
+   "summary": "Cast portraits and opening frames: quality and fast (8-step) modes, reference images, a 2K upscale.",
+   "models": [
+    "qwen21_dit_base_q5km",
+    "qwen21_text_encoder",
+    "qwen21_vae",
+    "qwen21_upscaler_4x",
+    "qwen21_lora_8step"
+   ],
+   "licenses": [
+    "Qwen-Image 2.1 and the 8-step LoRA: Qwen Research License, non-commercial use only (https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE)",
+    "4x-UltraSharp by Kim2091: CC BY-NC-SA 4.0, non-commercial (https://openmodeldb.info/models/4x-UltraSharp)"
+   ]
+  },
+  "post": {
+   "title": "Post-processing (recommended)",
+   "default": true,
+   "trees": [
+    "farm"
+   ],
+   "nodes": [
+    "farm:ComfyUI-VideoHelperSuite",
+    "farm:ComfyUI-Frame-Interpolation",
+    "farm:ComfyUI-Impact-Pack"
+   ],
+   "summary": "Frame interpolation (RIFE), 4x upscale (Real-ESRGAN) and face detection. The face fix itself also needs Wan 2.2.",
+   "models": [
+    "esrgan_x4plus",
+    "rife47",
+    "face_yolov8m_pt",
+    "face_yolov8m_onnx"
+   ],
+   "licenses": [
+    "Real-ESRGAN x4plus: BSD-3-Clause (https://github.com/xinntao/Real-ESRGAN)",
+    "RIFE 4.7: MIT; face_yolov8m: an Ultralytics YOLOv8 model, AGPL-3.0 (https://huggingface.co/Bingsu/adetailer)"
+   ]
+  },
+  "seedvr2": {
+   "title": "SeedVR2 video upscaler",
+   "trees": [
+    "farm"
+   ],
+   "nodes": [
+    "farm:ComfyUI-VideoHelperSuite",
+    "farm:ComfyUI-SeedVR2_VideoUpscaler"
+   ],
+   "summary": "The optional SeedVR2 3B upscale for post (tiers.upscale: seedvr2). Slower than Real-ESRGAN; off by default.",
+   "models": [
+    "seedvr2_dit",
+    "seedvr2_vae"
+   ],
+   "licenses": [
+    "SeedVR2 3B: Apache-2.0 (https://huggingface.co/ByteDance-Seed/SeedVR2-3B)"
+   ]
+  },
+  "zimage": {
+   "title": "Z-Image Turbo images",
+   "trees": [
+    "farm"
+   ],
+   "nodes": [
+    "farm:ComfyUI-GGUF"
+   ],
+   "summary": "A fast 8-step image model (no reference images, no LoRAs).",
+   "models": [
+    "zimage_unet",
+    "zimage_text_encoder",
+    "zimage_vae"
+   ],
+   "licenses": [
+    "Z-Image Turbo and its text encoder and VAE: Apache-2.0 (https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)"
+   ]
+  },
+  "cyberrealistic": {
+   "title": "CyberRealistic XL images (SDXL)",
+   "trees": [
+    "farm"
+   ],
+   "nodes": [
+    "farm:ComfyUI_IPAdapter_plus"
+   ],
+   "summary": "A native SDXL checkpoint with LoRAs and reference images (IP-Adapter).",
+   "models": [
+    "cyberrealistic_ckpt",
+    "sdxl_ipadapter",
+    "sdxl_clip_vision"
+   ],
+   "licenses": [
+    "CyberRealistic XL: CreativeML OpenRAIL-M, use restrictions apply (https://huggingface.co/cyberdelia/CyberRealisticXL)",
+    "IP-Adapter and its CLIP-ViT-H image encoder: Apache-2.0 (https://huggingface.co/h94/IP-Adapter)"
+   ]
+  },
+  "realvis": {
+   "title": "RealVisXL V5 images (SDXL; bring your own weights)",
+   "trees": [
+    "farm"
+   ],
+   "nodes": [
+    "farm:ComfyUI-GGUF",
+    "farm:ComfyUI_IPAdapter_plus"
+   ],
+   "summary": "Installs the runtime, IP-Adapter and the hires upscaler; the four RealVisXL files are not downloaded (I have no public copy to check them against).",
+   "models": [
+    "sdxl_ipadapter",
+    "sdxl_clip_vision",
+    "esrgan_x4"
+   ],
+   "manual": [
+    "realvis_unet",
+    "realvis_clip_l",
+    "realvis_clip_g",
+    "realvis_vae"
+   ],
+   "licenses": [
+    "RealVisXL V5: openrail++, use restrictions apply (https://huggingface.co/SG161222/RealVisXL_V5.0)",
+    "IP-Adapter and its CLIP-ViT-H image encoder: Apache-2.0 (https://huggingface.co/h94/IP-Adapter)",
+    "Real-ESRGAN x4plus: BSD-3-Clause (https://github.com/xinntao/Real-ESRGAN)"
+   ]
+  },
+  "wan22": {
+   "title": "Wan 2.2 video (legacy)",
+   "trees": [
+    "farm"
+   ],
+   "nodes": [
+    "farm:ComfyUI-GGUF",
+    "farm:ComfyUI-KJNodes",
+    "farm:ComfyUI-WanVideoWrapper",
+    "farm:ComfyUI-VideoHelperSuite",
+    "farm:ComfyUI-Impact-Pack"
+   ],
+   "summary": "The first video model, kept for old projects, the post face fix and the V2V refine. Not recommended for new work.",
+   "models": [
+    "wan22_unet",
+    "wan22_text_encoder",
+    "wan22_vae",
+    "wan22_turbo_lora"
+   ],
+   "licenses": [
+    "Wan 2.2 TI2V-5B, umt5-xxl and the Wan 2.2 VAE: Apache-2.0 (https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B); the Turbo LoRA declares no license on its repo"
+   ]
+  }
+ },
+ "models": {
+  "ltx25_transformer_w4a8": {
+   "path": "models/diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+   "size": 12520292200,
+   "sha256": "19ee13bf3a156f11b62ede47449fba8e02f775549d22598e1ffa9d874acf46a3",
+   "sources": [
+    {
+     "hf": "Winnougan/ltx-2.5-w4a8-convrot-int4-convrot-Winnougan-Blessing",
+     "file": "diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "ltx25_text_encoder_gemma4": {
+   "path": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+   "size": 10604323186,
+   "sha256": "720a028bed0b776a31ceacbdfcf52edb54a9a4ab203c9a3b148299d147d0b4d5",
+   "sources": [
+    {
+     "hf": "Winnougan/ltx-2.5-w4a8-convrot-int4-convrot-Winnougan-Blessing",
+     "file": "text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "ltx25_vae_conv": {
+   "path": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "size": 1452269922,
+   "sha256": "685b06ee3d9b2039647698fc4ea33175112462fc374e2777312c907897dfce8d",
+   "sources": [
+    {
+     "hf": "lxxxy6/LTX-2.5",
+     "file": "ltx-2.5-video-vae-conv-bf16.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "ltx25_audio_vae": {
+   "path": "models/checkpoints/ltx-2.5-audio-vae-bf16.safetensors",
+   "size": 364866540,
+   "sha256": "c52733d37f6a7fb7949c3dc0fb468c6cb2169e4d836983a73babb9f0d54837a5",
+   "sources": [
+    {
+     "hf": "lxxxy6/LTX-2.5",
+     "file": "ltx-2.5-audio-vae-bf16.safetensors"
+    },
+    {
+     "hf": "yuvraj108c/LTX-2.5",
+     "file": "ltx-2.5-audio-vae-bf16.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "ltx25_upscaler_spatial": {
+   "path": "models/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "size": 995778752,
+   "sha256": "eb5a71fe4068ee87ccdb1c3aa635e547ca76bd2d30ae20ae889f2c325c0677e8",
+   "sources": [
+    {
+     "hf": "yuvraj108c/LTX-2.5",
+     "file": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "ltx25_upscaler_temporal": {
+   "path": "models/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+   "size": 261944000,
+   "sha256": "2bc3300f2b3c3c1834d72164fbf13a3b9fd73e5a741e8a2c3f4035f89a75c3fe",
+   "sources": [
+    {
+     "hf": "yuvraj108c/LTX-2.5",
+     "file": "ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors"
+    },
+    {
+     "hf": "lxxxy6/LTX-2.5",
+     "file": "ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "ltx25_lora_msr_v1": {
+   "path": "models/loras/LTX-2.5-Licon-MSR-V1.safetensors",
+   "size": 1308840536,
+   "sha256": "d45cedd720e5819ccbe200a4b0ae01f7ae0e0d2966d700a24ebd4c7739515d4f",
+   "sources": [
+    {
+     "hf": "LiconStudio/LTX-2.5-Multiple-Subject-Reference",
+     "file": "LTX-2.5-Licon-MSR-V1.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "ltx25_lora_cq_enhancer": {
+   "path": "models/loras/ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors",
+   "size": 1323282248,
+   "sha256": "cbd721d4e462832977f0d23a533fdf998016b63608820424f993a2ed9e21aa10",
+   "sources": [
+    {
+     "hf": "CQdesign/LTX-2.5-CQ-Video-and-Image-Enhancer-LoRAs",
+     "file": "ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors"
+    },
+    {
+     "hf": "uknow8162818/LTX-2.5-CQ-Video-and-Image-Enhancer-LoRAs",
+     "file": "ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors"
+    },
+    {
+     "hf": "Ash4Life/LTX-2.5-CQ-Video-and-Image-Enhancer-LoRAs",
+     "file": "ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors"
+    },
+    {
+     "hf": "Kaarunya2005/LTX-2.5-CQ-Video-and-Image-Enhancer-LoRAs",
+     "file": "ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "qwen21_dit_base_q5km": {
+   "path": "models/diffusion_models/qwen_image_2.1_Q5_K_M.gguf",
+   "size": 5007397024,
+   "sha256": "97bc32c2c3d94b0dd88c8ccf41d7ac75897726424960b8236624f860cef5ad3b",
+   "sources": [
+    {
+     "hf": "Abiray/Qwen-Image-2.1-GGUF",
+     "file": "qwen_image_2.1_Q5_K_M.gguf"
+    }
+   ]
+  },
+  "qwen21_text_encoder": {
+   "path": "models/text_encoders/qwen3vl_8b_int8_convrot.safetensors",
+   "size": 9350798360,
+   "sha256": "8bfd0f6e12abf2d2d697ecc888e5e90b0d6741d6708f05799f53afa560452e8f",
+   "sources": [
+    {
+     "hf": "Comfy-Org/Qwen-Image-2.1",
+     "file": "text_encoders/qwen3vl_8b_int8_convrot.safetensors"
+    }
+   ]
+  },
+  "qwen21_vae": {
+   "path": "models/vae/qwen_image_2.1_vae_bf16_compact.safetensors",
+   "size": 675509688,
+   "sha256": "bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9",
+   "sources": [
+    {
+     "hf": "Comfy-Org/Qwen-Image-2.1",
+     "file": "vae/qwen_image_2.1_vae_bf16.safetensors"
+    }
+   ]
+  },
+  "qwen21_upscaler_4x": {
+   "path": "models/upscale_models/4x-UltraSharp.pth",
+   "size": 66961958,
+   "sha256": "a5812231fc936b42af08a5edba784195495d303d5b3248c24489ef0c4021fe01",
+   "sources": [
+    {
+     "hf": "lokCX/4x-Ultrasharp",
+     "file": "4x-UltraSharp.pth"
+    }
+   ]
+  },
+  "qwen21_lora_8step": {
+   "path": "models/loras/p_qwen_image_2.1_8step_v0.1.safetensors",
+   "size": 335606104,
+   "sha256": "f0865d68b02511a3a0ed232d9d1aa99cac3a94166f574b38bcbab1a7a297bb15",
+   "sources": [
+    {
+     "hf": "PrunaAI/Pruna-Q-Image-2.1",
+     "file": "p_q_image_2.1_8step_v0.1.safetensors"
+    },
+    {
+     "hf": "ameno-tech/Pruna-Qwen-Image-2.1",
+     "file": "p_qwen_image_2.1_8step_v0.1.safetensors"
+    }
+   ]
+  },
+  "h3_text_encoder_qwen3vl_32b_w4a8": {
+   "path": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "size": 15697532972,
+   "sha256": "808e3b351e71e3dd2444e2cdd6accc701e5b40254ede13d481936e6332c7a0e2",
+   "manual": true,
+   "needed_by": "every MiniMax H3 tier",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/koongrizzly/MiniMax_H3_int4_W4A8_ConvRot_Pruned"
+  },
+  "h3_video_vae_fp16": {
+   "path": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "size": 5207808496,
+   "sha256": "7c1f131492e7eddacaac9069a61b81bdd39de5cc96561e677c5eab1cdce5e522",
+   "manual": true,
+   "needed_by": "every MiniMax H3 tier",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/Comfy-Org/MiniMax-H3"
+  },
+  "h3_audio_vae_fp32": {
+   "path": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "size": 605254808,
+   "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48",
+   "manual": true,
+   "needed_by": "every MiniMax H3 tier",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/Comfy-Org/MiniMax-H3"
+  },
+  "h3_dit_ref2va_w4a8": {
+   "path": "models/diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+   "size": 12540857840,
+   "sha256": "16be87247dff1f49c7141d6bcde4c0465fc254128e2de60e34aebc744a8177df",
+   "manual": true,
+   "needed_by": "the ref2va tiers: hero, hero v2, base25, larry6, turbo4 and the PDD-8 draft",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/koongrizzly/MiniMax_H3_int4_W4A8_ConvRot_Pruned"
+  },
+  "h3_dit_fl2va_w4a8": {
+   "path": "models/diffusion_models/minimax_h3_fl2va_pruned-w4a8_convrot_pruned.safetensors",
+   "size": 12540857840,
+   "sha256": "8b624de0ab7554bb507c4486093d4c93e0bf2eb2a40c2382f26eb0af7cd97407",
+   "manual": true,
+   "needed_by": "the fl2va draft tiers: 768p, 544p and 544p/25",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/koongrizzly/MiniMax_H3_int4_W4A8_ConvRot_Pruned"
+  },
+  "h3_dit_singularity": {
+   "path": "models/diffusion_models/Minimax-h3_Singularity_ref2va_v1.3_Pruned_w4a8.safetensors",
+   "size": 11767930768,
+   "sha256": "2a319b6fafbd646c123ac12a28b1908c7468b148a8c03164172b2f72370264ec",
+   "manual": true,
+   "needed_by": "the two Singularity tiers",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/WarmBloodAban/Minimax-h3_Singularity"
+  },
+  "h3_upscaler_3d": {
+   "path": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+   "size": 690592992,
+   "sha256": "4f57821f5837f32f7142b67d815606dbd7550f194e5c769f7d6c3f83b146a5e6",
+   "manual": true,
+   "needed_by": "the 1080p tiers, and the 1080p refine of every H3 seamless chain",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/LBH-123-AI/Minimax_h3_latent_Upscaler"
+  },
+  "h3_lora_larryvrh_v4_ema": {
+   "path": "models/loras/minimax_h3_turbo_v4_step600_ema.safetensors",
+   "size": 779849816,
+   "sha256": "5f3a626cd72c93a8b9318d6760c510bc5092d2ab13aaba1f932c5bab07a416d3",
+   "manual": true,
+   "needed_by": "the larry6 1080p tier",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/larryvrh/MiniMax-H3-Turbo-Lora"
+  },
+  "h3_lora_lightx2v_turbo4": {
+   "path": "models/loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+   "size": 1956193000,
+   "sha256": "5b9ab5ade15d0775676d01a907268a69a1468dc6033b3b0d3ded5502f3ebb84c",
+   "manual": true,
+   "needed_by": "the turbo4 1080p tier",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/RunningHubAI/rh-minimax-h3-ref2v-turbo-4step-v0.1-comfyui-bf16.safetensors-lora"
+  },
+  "h3_lora_pdd8": {
+   "path": "models/loras/MiniMax-H3-Ref2VA-Acc-8Step.safetensors",
+   "size": 1372450680,
+   "sha256": "111c82e669f6e20e628228172edf39395f1a9fc3ad049793895e542c0f55b18c",
+   "manual": true,
+   "needed_by": "the PDD-8 draft tier",
+   "extra_roots_ok": true,
+   "published_at": "https://huggingface.co/alibaba-pai/MiniMax-H3-Acc-LoRAs"
+  },
+  "zimage_unet": {
+   "path": "models/diffusion_models/z_image_turbo-Q4_K_M.gguf",
+   "size": 4981532736,
+   "sha256": "6440eca9c7086f0e60fd794d5fc48c0cbd6607278820811a80bb55f78c16213d",
+   "sources": [
+    {
+     "hf": "vantagewithai/Z-Image-Turbo-GGUF",
+     "file": "z_image_turbo-Q4_K_M.gguf"
+    },
+    {
+     "hf": "AaryanK/Z-Image-Turbo-GGUF",
+     "file": "z_image_turbo-Q4_K_M.gguf"
+    }
+   ]
+  },
+  "zimage_text_encoder": {
+   "path": "models/text_encoders/qwen_3_4b.safetensors",
+   "size": 8044982048,
+   "sha256": "6c671498573ac2f7a5501502ccce8d2b08ea6ca2f661c458e708f36b36edfc5a",
+   "sources": [
+    {
+     "hf": "Comfy-Org/Z-Image-Turbo",
+     "file": "split_files/text_encoders/qwen_3_4b.safetensors"
+    },
+    {
+     "hf": "unsloth/Z-Image-Turbo-ComfyUI",
+     "file": "split_files/text_encoders/qwen_3_4b.safetensors"
+    }
+   ]
+  },
+  "zimage_vae": {
+   "path": "models/vae/z_image_ae.safetensors",
+   "size": 335304388,
+   "sha256": "afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38",
+   "sources": [
+    {
+     "hf": "Comfy-Org/Z-Image-Turbo",
+     "file": "split_files/vae/ae.safetensors"
+    },
+    {
+     "hf": "Comfy-Org/Lumina_Image_2.0_Repackaged",
+     "file": "split_files/vae/ae.safetensors"
+    },
+    {
+     "hf": "unsloth/Z-Image-Turbo-ComfyUI",
+     "file": "split_files/vae/ae.safetensors"
+    }
+   ]
+  },
+  "cyberrealistic_ckpt": {
+   "path": "models/checkpoints/cyberrealisticXL_v100_fp16.safetensors",
+   "size": 6938041288,
+   "sha256": "fd5e870b5bbce4bddeb64f4bb8e49c57f84ab793c0262a503f0123be435e667d",
+   "sources": [
+    {
+     "hf": "cyberdelia/CyberRealisticXL",
+     "file": "CyberRealisticXLPlay_V10.0_FP16.safetensors"
+    }
+   ]
+  },
+  "sdxl_ipadapter": {
+   "path": "models/ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors",
+   "size": 847517512,
+   "sha256": "3f5062b8400c94b7159665b21ba5c62acdcd7682262743d7f2aefedef00e6581",
+   "sources": [
+    {
+     "hf": "h94/IP-Adapter",
+     "file": "sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors"
+    }
+   ]
+  },
+  "sdxl_clip_vision": {
+   "path": "models/clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+   "size": 2528373448,
+   "sha256": "6ca9667da1ca9e0b0f75e46bb030f7e011f44f86cbfb8d5a36590fcd7507b030",
+   "sources": [
+    {
+     "hf": "h94/IP-Adapter",
+     "file": "models/image_encoder/model.safetensors"
+    }
+   ]
+  },
+  "realvis_unet": {
+   "path": "models/diffusion_models/RealVisXL_V5.0-Q5_K_M.gguf",
+   "size": null,
+   "sha256": null,
+   "manual": true,
+   "needed_by": "RealVisXL V5: its UNet as a Q5_K_M GGUF",
+   "published_at": "https://huggingface.co/SG161222/RealVisXL_V5.0"
+  },
+  "realvis_clip_l": {
+   "path": "models/clip/clip_l.safetensors",
+   "size": null,
+   "sha256": null,
+   "manual": true,
+   "needed_by": "RealVisXL V5: the SDXL CLIP-L text encoder"
+  },
+  "realvis_clip_g": {
+   "path": "models/clip/clip_g.safetensors",
+   "size": null,
+   "sha256": null,
+   "manual": true,
+   "needed_by": "RealVisXL V5: the SDXL CLIP-G text encoder"
+  },
+  "realvis_vae": {
+   "path": "models/vae/xlVAEC_c91.safetensors",
+   "size": null,
+   "sha256": null,
+   "manual": true,
+   "needed_by": "RealVisXL V5: an SDXL VAE"
+  },
+  "esrgan_x4": {
+   "path": "models/upscale_models/RealESRGAN_x4.pth",
+   "size": 67040989,
+   "sha256": "4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1",
+   "sources": [
+    {
+     "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+    },
+    {
+     "hf": "lllyasviel/Annotators",
+     "file": "RealESRGAN_x4plus.pth"
+    },
+    {
+     "hf": "licyk/sd-upscaler-models",
+     "file": "RealESRGAN/RealESRGAN_x4plus.pth"
+    }
+   ]
+  },
+  "esrgan_x4plus": {
+   "path": "models/upscale_models/RealESRGAN_x4plus.pth",
+   "size": 67040989,
+   "sha256": "4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1",
+   "sources": [
+    {
+     "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+    },
+    {
+     "hf": "lllyasviel/Annotators",
+     "file": "RealESRGAN_x4plus.pth"
+    },
+    {
+     "hf": "licyk/sd-upscaler-models",
+     "file": "RealESRGAN/RealESRGAN_x4plus.pth"
+    },
+    {
+     "hf": "uwg/upscaler",
+     "file": "Face_Restore/FaceFusion/real_esrgan_x4plus.pth"
+    }
+   ]
+  },
+  "rife47": {
+   "path": "ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation/ckpts/rife/rife47.pth",
+   "size": 21344827,
+   "sha256": "6a8a825ab2750558bdd20dcced386fd82b7222c7ba58c11d3b611d9c44f1be63",
+   "sources": [
+    {
+     "url": "https://github.com/Fannovel16/ComfyUI-Frame-Interpolation/releases/download/models/rife47.pth"
+    },
+    {
+     "hf": "marduk191/rife",
+     "file": "rife47.pth"
+    },
+    {
+     "hf": "MachineDelusions/RIFE",
+     "file": "rife47.pth"
+    },
+    {
+     "hf": "jasonot/mycomfyui",
+     "file": "rife47.pth"
+    },
+    {
+     "hf": "dci05049/rife47.pth",
+     "file": "rife47.pth"
+    }
+   ]
+  },
+  "face_yolov8m_pt": {
+   "path": "ComfyUI/models/ultralytics/bbox/face_yolov8m.pt",
+   "size": 52026019,
+   "sha256": "717923c19b3f4bbf5250b728f1fa6b2cb72a33aed1d236ea9caf0e21ad943e5f",
+   "sources": [
+    {
+     "hf": "Bingsu/adetailer",
+     "file": "face_yolov8m.pt"
+    },
+    {
+     "hf": "Runware/adetailer",
+     "file": "face_yolov8m.pt"
+    },
+    {
+     "hf": "JCTN/adetailer",
+     "file": "face_yolov8m.pt"
+    },
+    {
+     "hf": "GeraldoZulimar/face_yolov8m",
+     "file": "face_yolov8m.pt"
+    },
+    {
+     "hf": "DeepBeepMeep/MiniMax-H3",
+     "file": "buffalo_l/face_yolov8m.pt"
+    }
+   ]
+  },
+  "face_yolov8m_onnx": {
+   "path": "ComfyUI/models/onnx/bbox/face_yolov8m.onnx",
+   "size": null,
+   "sha256": null,
+   "derive": {
+    "from": "face_yolov8m_pt",
+    "export": {
+     "format": "onnx",
+     "imgsz": 640,
+     "opset": 12,
+     "simplify": true,
+     "dynamic": false,
+     "nms": false,
+     "batch": 1
+    },
+    "expect": {
+     "input": [
+      1,
+      3,
+      640,
+      640
+     ],
+     "output": [
+      1,
+      5,
+      8400
+     ]
+    }
+   },
+   "note": "no public copy of the .onnx exists; the installer exports it from face_yolov8m.pt with Ultralytics (tool/requirements.txt) on the CPU. The export embeds its own metadata, so the bytes differ from my copy; the input and output shapes are those of my copy"
+  },
+  "seedvr2_dit": {
+   "path": "ComfyUI/models/SEEDVR2/seedvr2_ema_3b-Q8_0.gguf",
+   "size": 3660613984,
+   "sha256": "be0d60083a2051a265eb4b77f28edf494e6db67ffc250216f32b72292e5cbd96",
+   "sources": [
+    {
+     "hf": "AInVFX/SeedVR2_comfyUI",
+     "file": "seedvr2_ema_3b-Q8_0.gguf"
+    },
+    {
+     "hf": "cmeka/SeedVR2-GGUF",
+     "file": "seedvr2_ema_3b-Q8_0.gguf"
+    }
+   ]
+  },
+  "seedvr2_vae": {
+   "path": "ComfyUI/models/SEEDVR2/ema_vae_fp16.safetensors",
+   "size": 501324814,
+   "sha256": "20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1",
+   "sources": [
+    {
+     "hf": "numz/SeedVR2_comfyUI",
+     "file": "ema_vae_fp16.safetensors"
+    },
+    {
+     "hf": "Comfy-Org/SeedVR2",
+     "file": "vae/ema_vae_fp16.safetensors"
+    },
+    {
+     "hf": "Comfy-Org/SeedVR2",
+     "file": "vae/seedvr2_ema_vae_fp16.safetensors"
+    }
+   ]
+  },
+  "wan22_unet": {
+   "path": "models/diffusion_models/Wan2.2-TI2V-5B-Q4_K_M.gguf",
+   "size": 3433116000,
+   "sha256": "95b19697b7f98e65b0a543640e9ca7b4dfec32e2a6e3731e8e10708be52655e2",
+   "sources": [
+    {
+     "hf": "QuantStack/Wan2.2-TI2V-5B-GGUF",
+     "file": "Wan2.2-TI2V-5B-Q4_K_M.gguf"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "wan22_text_encoder": {
+   "path": "models/text_encoders/umt5-xxl-encoder-Q4_K_M.gguf",
+   "size": 3655145312,
+   "sha256": "17cf97a5bbbc60a646d6105b832b6f657ce904a8a1ad970e4b59df0c67584a40",
+   "sources": [
+    {
+     "hf": "city96/umt5-xxl-encoder-gguf",
+     "file": "umt5-xxl-encoder-Q4_K_M.gguf"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "wan22_vae": {
+   "path": "models/vae/wan2.2_vae.safetensors",
+   "size": 1409400960,
+   "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156",
+   "sources": [
+    {
+     "hf": "Comfy-Org/Wan-2.2",
+     "file": "split_files/vae/wan2.2_vae.safetensors"
+    },
+    {
+     "hf": "QuantStack/Wan2.2-TI2V-5B-GGUF",
+     "file": "VAE/Wan2.2_VAE.safetensors"
+    }
+   ],
+   "extra_roots_ok": true
+  },
+  "wan22_turbo_lora": {
+   "path": "models/loras/Wan22_TI2V_5B_Turbo_lora_rank_64_fp16.safetensors",
+   "size": 332348584,
+   "sha256": "0ace5244e3d1256f884662c261b017249796cf5b95f05d5ed93cc02a478967b8",
+   "sources": [
+    {
+     "hf": "Kijai/WanVideo_comfy",
+     "file": "LoRAs/Wan22-Turbo/Wan22_TI2V_5B_Turbo_lora_rank_64_fp16.safetensors"
+    }
+   ]
+  }
+ },
+ "tools": {
+  "ffmpeg": {
+   "version": "9.0 essentials (gyan.dev)",
+   "size": 111167378,
+   "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0/ffmpeg-9.0-essentials_build.zip",
+   "sha256": "e6b54767a6065919048f1a098eb27211ca4e12b4348a05d88777a5855d0b6e71"
+  }
+ }
+}

@@ -1,0 +1,41 @@
+# Model weights: never commit (the full stack is ~110 GB)
+*.safetensors
+*.bin
+*.pt
+*.gguf
+*.ckpt
+*.pth
+*.onnx
+*.h5
+
+# Local model storage and run records
+models/
+runs/
+output/
+outputs/
+
+# Archives and packages (never source)
+*.rar
+*.zip
+*.7z
+*.tar.gz
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# Environment and editors
+.env
+.idea/
+.vscode/
+*.code-workspace
+Thumbs.db
+Desktop.ini
+.DS_Store

@@ -1,0 +1,99 @@
+{
+  "schema": "videolab.profiles/2",
+  "notes": [
+    "Profiles select assets from configs/models.manifest.json for `python videolab.py download --profile <name>`.",
+    "approx_bytes_exact_sum is the exact byte sum of the assets a profile actually downloads (repo recorded and downloadable != false), verified 2026-09-30. Rounded GB/GiB values derive from it. BYOW/manual assets are reported separately where relevant and are never included in this sum.",
+    "No profile downloads MiniMax H3 weights. h3-byow validates user-supplied copies only and requires --acknowledge-license.",
+    "Gated assets need HF_TOKEN; none of the listed download sources are gated.",
+    "`--check-sources` re-verifies every recorded repository and digest pin without downloading."
+  ],
+  "profiles": {
+    "smoke": {
+      "description": "LTX 2.5 W4A8 core: transformer, Gemma4 text encoder, conv VAE, spatial upscaler, MSR reference LoRA, and CQ enhancer LoRA. Enough for the two-stage 1080p pipeline.",
+      "assets": [
+        "ltx25_transformer_w4a8",
+        "ltx25_text_encoder_gemma4",
+        "ltx25_vae_conv",
+        "ltx25_upscaler_spatial",
+        "ltx25_lora_msr_v1",
+        "ltx25_lora_cq_enhancer"
+      ],
+      "approx_bytes_exact_sum": 28204786844,
+      "approx_size_gb": 28.20,
+      "approx_gib": 26.27
+    },
+    "standard": {
+      "description": "smoke plus the Qwen-Image-2.1 quality stack with the adopted Q5_K_M quant (digest pinned to the served file; the lab never recorded a digest for this quant).",
+      "assets": [
+        "ltx25_transformer_w4a8",
+        "ltx25_text_encoder_gemma4",
+        "ltx25_vae_conv",
+        "ltx25_upscaler_spatial",
+        "qwen21_dit_base_q5km",
+        "qwen21_text_encoder",
+        "qwen21_vae",
+        "qwen21_upscaler_4x"
+      ],
+      "approx_bytes_exact_sum": 40673331090,
+      "approx_size_gb": 40.67,
+      "approx_gib": 37.88
+    },
+    "full": {
+      "description": "standard plus the LTX support assets (diffusion VAE, temporal upscaler, audio VAE, MSR V2) and the Qwen extras (Q4 base, turbo DiT, prompt enhancer). The downloadable size is approx_bytes_exact_sum; the MiniMax H3 entries are listed for completeness only, are never downloaded, and their bytes are reported separately as byow_bytes_exact_sum. Both previously documented-only H3 assets now carry measured on-disk sizes (int8 VAE 2.81 GB, 3D upscaler 0.69 GB) and are included in byow_bytes_exact_sum.",
+      "assets": [
+        "ltx25_transformer_w4a8",
+        "ltx25_text_encoder_gemma4",
+        "ltx25_vae_conv",
+        "ltx25_vae_bf16_diffusion",
+        "ltx25_upscaler_spatial",
+        "ltx25_upscaler_temporal",
+        "ltx25_audio_vae",
+        "ltx25_lora_msr_v1",
+        "ltx25_lora_msr_v2",
+        "ltx25_lora_cq_enhancer",
+        "qwen21_dit_base_q4",
+        "qwen21_dit_base_q5km",
+        "qwen21_text_encoder",
+        "qwen21_vae",
+        "qwen21_upscaler_4x",
+        "qwen21_dit_turbo_q4",
+        "qwen21_prompt_enhancer",
+        "h3_dit_ref2va_w4a8",
+        "h3_dit_fl2va_w4a8",
+        "h3_text_encoder_qwen3vl_32b_w4a8",
+        "h3_video_vae_fp16",
+        "h3_audio_vae_fp32",
+        "h3_video_vae_int8_convrot",
+        "h3_upscaler_3d",
+        "h3_lora_larryvrh_v4_ema",
+        "h3_lora_lightx2v_turbo4"
+      ],
+      "approx_bytes_exact_sum": 65469342148,
+      "approx_size_gb": 65.47,
+      "approx_gib": 60.97,
+      "byow_bytes_exact_sum": 52830012948,
+      "byow_size_gb": 52.83,
+      "byow_size_gib": 49.20,
+      "byow_primary_bytes_exact_sum": 49328354772,
+      "byow_auxiliary_bytes_exact_sum": 3501658176,
+      "byow_note": "MiniMax H3 assets are bring-your-own-weights: no profile downloads them and their bytes are excluded from approx_bytes_exact_sum. Explicit arithmetic derivation: 49,328,354,772 bytes of primary weights (ref2va 12,540,857,840 + fl2va 12,540,857,840 + text encoder 15,697,532,972 + video VAE 5,207,808,496 + audio VAE 605,254,808 + larryvrh LoRA 779,849,816 + lightx2v LoRA 1,956,193,000) plus 3,501,658,176 bytes of auxiliary assets measured on disk (int8 VAE 2,811,065,184 + 3D upscaler 690,592,992) = 52,830,012,948 bytes = 52.83 GB (49.20 GiB). H3 BYOW plus the downloadable set totals 118.30 GB / 110.17 GiB.",
+      "not_counted": "none: both previously documented-only H3 assets now carry measured size_bytes and are included in byow_bytes_exact_sum"
+    },
+    "h3-byow": {
+      "description": "Bring-your-own-weights. Performs no downloads. Validates locally present H3 files against recorded sizes, and with --verify-hashes checks digests where a pin exists (the larryvrh and lightx2v LoRAs have served-file digest pins). Requires the operator to acknowledge the MiniMax H3 Community License territorial restrictions on the command line.",
+      "assets": [
+        "h3_dit_ref2va_w4a8",
+        "h3_dit_fl2va_w4a8",
+        "h3_text_encoder_qwen3vl_32b_w4a8",
+        "h3_video_vae_fp16",
+        "h3_audio_vae_fp32",
+        "h3_video_vae_int8_convrot",
+        "h3_upscaler_3d",
+        "h3_lora_larryvrh_v4_ema",
+        "h3_lora_lightx2v_turbo4"
+      ],
+      "downloads": false,
+      "requires_acknowledge_license": true
+    }
+  }
+}

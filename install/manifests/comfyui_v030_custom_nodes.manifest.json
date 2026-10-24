@@ -1,0 +1,4206 @@
+{
+ "_comment": "SHA-256 provenance snapshot of the production ComfyUI v0.30 custom_nodes (third-party packs installed without .git; exact versions reconstructible from this file).",
+ "generated": "2026-10-03 04:27:56",
+ "files": {
+  "example_node.py.example": {
+   "size": 5281,
+   "sha256": "0894a8dd117629e216c77779883fb03be74356d9b5e5f1bf37a8b9cee9e7998b"
+  },
+  "websocket_image_save.py": {
+   "size": 1348,
+   "sha256": "0b66b69eb7dab007d55bf63c5bd0f1343dcfbc2f5a350983f906ba2cd3dd5d23"
+  },
+  "ComfyUI-Florence2/.gitattributes": {
+   "size": 68,
+   "sha256": "d8fb0de4792538f93822b2c0d235604921299d5e54a3d6ec7a6cb34536e8bf1e"
+  },
+  "ComfyUI-Florence2/.gitignore": {
+   "size": 94,
+   "sha256": "4b002b8537ab09526526f5747f56f8e8493a247a06a8eee6e5d4f9fd03d6853b"
+  },
+  "ComfyUI-Florence2/LICENSE": {
+   "size": 1093,
+   "sha256": "b7669c1d44b8c017f232f2fa235111798ad529e4158d098cd2a6f0fa9ea3b08b"
+  },
+  "ComfyUI-Florence2/nodes.py": {
+   "size": 32516,
+   "sha256": "7d4140f0d993987118578e5cfab8b62e528a684298aa4ba8d6cadf585e83e950"
+  },
+  "ComfyUI-Florence2/pyproject.toml": {
+   "size": 454,
+   "sha256": "18b250907dace641bc3dd2ef8a942553b87081edfb03dc151b758b7d70b19267"
+  },
+  "ComfyUI-Florence2/README.md": {
+   "size": 3058,
+   "sha256": "0c6c65b8c3a14e5e8d9dae81aa4b06a6a38591ff983d1b9a00b5f5c65c127c00"
+  },
+  "ComfyUI-Florence2/requirements.txt": {
+   "size": 40,
+   "sha256": "562f56db7a12f46cffafb85d09028b39a74e98d67a8e73b171a54c444cec2e5e"
+  },
+  "ComfyUI-Florence2/__init__.py": {
+   "size": 133,
+   "sha256": "58772e6c888bcfd68ab9fe6fc4667ae40be2d02bc496ec61df399b5d2b7069e5"
+  },
+  "ComfyUI-Florence2/.github/workflows/publish.yaml": {
+   "size": 669,
+   "sha256": "481d52ec598d240da9a1444c5b4c23f23c04879bdeacdecdf962f645f795e54e"
+  },
+  "ComfyUI-Florence2/model/config.py": {
+   "size": 6262,
+   "sha256": "0dcef9efe0dcace4bd26386fa319d444a7ef41b83344dbbbfb8a1519d5bc5024"
+  },
+  "ComfyUI-Florence2/model/davit.py": {
+   "size": 10360,
+   "sha256": "d69467ba264a9e2d35ce1973ab59001720020f0731d4268e1288570008eec0a2"
+  },
+  "ComfyUI-Florence2/model/model.py": {
+   "size": 31281,
+   "sha256": "a650ff37a10fd14a5720a03674245b63ff1c790f7b1afe20b1a892c263395c25"
+  },
+  "ComfyUI-Florence2/model/processing.py": {
+   "size": 19394,
+   "sha256": "3da7f30e51ef4ec2d0e9ffd43274b4fd6487b57f70e78afa6c0c1fdfd1eb2330"
+  },
+  "ComfyUI-Florence2/model/tokenizer.py": {
+   "size": 2677,
+   "sha256": "b0f217d65a0ef9a2c1feb94ad792c14671de06c41e59e581606d439ec16bf09f"
+  },
+  "ComfyUI-Florence2/model/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-Frame-Interpolation/.gitignore": {
+   "size": 31,
+   "sha256": "115f443aad0581b38dc94bdf9263ed6f8c2ba98d9e4d9619055bc367ab90196a"
+  },
+  "ComfyUI-Frame-Interpolation/All_in_one_v1_3.png": {
+   "size": 1462273,
+   "sha256": "90735b644e0c35634642b65f2a8041a9a4da380d27b9bcc4d3bbef47869bd92a"
+  },
+  "ComfyUI-Frame-Interpolation/config.yaml": {
+   "size": 129,
+   "sha256": "a1dcb713dbfe9b8d55534366706b7fb360b12c04fc2f4df820de8f64f791223a"
+  },
+  "ComfyUI-Frame-Interpolation/example.png": {
+   "size": 182103,
+   "sha256": "9a5e9310bfba63b109990b326402d42477688682858bc64f146ef546e6662ead"
+  },
+  "ComfyUI-Frame-Interpolation/install-taichi.bat": {
+   "size": 209,
+   "sha256": "b664489fc371e72e2a8269f6100c22371be7f91b06b7b965c84137f1c92e2f95"
+  },
+  "ComfyUI-Frame-Interpolation/install.bat": {
+   "size": 360,
+   "sha256": "71988460dcf69df1156e303b216319cc6439ee96a111542fe471e8b7c60a6578"
+  },
+  "ComfyUI-Frame-Interpolation/install.py": {
+   "size": 2150,
+   "sha256": "37ead122afe5d73bb98cebef69cbdbc2fafa76fff6a7df9dcc457a4539f684f7"
+  },
+  "ComfyUI-Frame-Interpolation/interpolation_schedule.png": {
+   "size": 378153,
+   "sha256": "c6999ee4a5fd6222b7b05adb8afa4994053bfe8e0f9c6b5cccf25992638b586c"
+  },
+  "ComfyUI-Frame-Interpolation/LICENSE": {
+   "size": 1086,
+   "sha256": "1f63f4c38cf7712271a12395286ab063714b2f3e8c105fe22205a7a15544a8b6"
+  },
+  "ComfyUI-Frame-Interpolation/other_nodes.py": {
+   "size": 4390,
+   "sha256": "ad519dbcaf1a0ebb3f7ae7359772148008bf5ec01eefd0fc8ee9715cb0014e37"
+  },
+  "ComfyUI-Frame-Interpolation/pyproject.toml": {
+   "size": 371,
+   "sha256": "b7176da50d18f16c5d18dd3c9275d250e05fbc0708da573698ff67b2fa787898"
+  },
+  "ComfyUI-Frame-Interpolation/README.md": {
+   "size": 7928,
+   "sha256": "0ed4e5adb6987f50b11cae7369b4550680265fabad09d276c26fe81084d485ab"
+  },
+  "ComfyUI-Frame-Interpolation/requirements-no-cupy.txt": {
+   "size": 85,
+   "sha256": "2976d7155d8c97c87594bacebdad21c0206eb91814920cdc2d41fc6bc8dc501c"
+  },
+  "ComfyUI-Frame-Interpolation/requirements-with-cupy.txt": {
+   "size": 97,
+   "sha256": "1c09663ec4edc7370f6f98bb247f02221ec086a2b73b84fd3f457f76373eb915"
+  },
+  "ComfyUI-Frame-Interpolation/test.py": {
+   "size": 1719,
+   "sha256": "d6e1071d96c5b98897a30be8a603994e98ca05652f03a1920bb3de15380687fe"
+  },
+  "ComfyUI-Frame-Interpolation/test_vfi_schedule.gif": {
+   "size": 8409697,
+   "sha256": null
+  },
+  "ComfyUI-Frame-Interpolation/vfi_utils.py": {
+   "size": 18352,
+   "sha256": "0e07c4e86e4eb852dcdbd22804c232399ec306d587fb37a4f580c93d1bf7ff83"
+  },
+  "ComfyUI-Frame-Interpolation/__init__.py": {
+   "size": 1688,
+   "sha256": "8b6e96290383380f7c7e05141b9d081cc3c3daadf21df492f25a5072f47fae71"
+  },
+  "ComfyUI-Frame-Interpolation/.github/workflows/publish.yml": {
+   "size": 674,
+   "sha256": "87ff6cf82a8df9aeeb69b142b9f7ca386b9f263c6aa33f6a13b7fed9ca1e38ba"
+  },
+  "ComfyUI-Frame-Interpolation/ckpts/rife/rife426.pth": {
+   "size": 24620531,
+   "sha256": null
+  },
+  "ComfyUI-Frame-Interpolation/ckpts/rife/rife47.pth": {
+   "size": 21344827,
+   "sha256": null
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/anime0.png": {
+   "size": 340936,
+   "sha256": "734039ac77a89cf8d52fed8989bd4335392a1d246b099979d1c58a145c629ace"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/anime1.png": {
+   "size": 329357,
+   "sha256": "dd24bdafe9a0cfc82eada33c40962e9977ed5b6711ae6d89bf28b07cbded712a"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/bocchi0.jpg": {
+   "size": 129774,
+   "sha256": "c607fae213b83d4c15fa10d6939b612f7f2242afd0b8716b203ace51774f6718"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/bocchi1.jpg": {
+   "size": 139543,
+   "sha256": "f03f067142490d4353d3f5af8bd51b0f9f4bdd3d2094dde6a28f4fec062fbe16"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/real0.png": {
+   "size": 1230238,
+   "sha256": "4792023ccf17c8231c6eb5ee40de528d515e2f8c419b3949985411a122a4de4f"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/real1.png": {
+   "size": 1213845,
+   "sha256": "37c8e6ec527c81895e5a66ea49cdd18b85045f9fed6fdfb75b45f438649235bf"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/violet0.png": {
+   "size": 888543,
+   "sha256": "c6844899b551801ee22d4f57993ab66fd4b6fbe00eab916d6b987bdf083eadfe"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/violet1.png": {
+   "size": 951287,
+   "sha256": "66ee9a9a486f57eb80ba5d41140eaca4ca46f0d946a3cff93eabb0ee3b1e29d0"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/rick/00003.png": {
+   "size": 456245,
+   "sha256": "98f5dba7557ba55d13f494425d340ca84af8b56e35f929fab5df39e54015e265"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/rick/00004.png": {
+   "size": 354894,
+   "sha256": "61bcf7933b192d84870b80910f7f983371c642d5c7100b34e8cc6dbd01cba7e6"
+  },
+  "ComfyUI-Frame-Interpolation/demo_frames/rick/00005.png": {
+   "size": 357224,
+   "sha256": "f795d06e93ad4f9c19db578e9378a48b6008cc3df81fb2cd9fbbd5ed91bd8cf7"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/amt/amt_arch.py": {
+   "size": 60618,
+   "sha256": "5c641631bd656c343f1032148fbfce2f704555ef613f9ab1fcd79882a36bf419"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/amt/__init__.py": {
+   "size": 3202,
+   "sha256": "c939dcc63d0d9b50c9e0ebba35c14deb0040e91cde091afe156ab871eb8fc820"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/atm/attention.py": {
+   "size": 22367,
+   "sha256": "6d8180441440f6c42e9306d4fc32c78de00b9a0b30772f1e0be97a31d84b86b3"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/atm/flow_warp.py": {
+   "size": 1894,
+   "sha256": "fff0aa2db13ccbdeb9a8e07340630aafd26cfe9c435cf133080b34afb264e3e0"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/atm/network_base.py": {
+   "size": 29956,
+   "sha256": "5658b2f190051187389aa2805f32adc0312e38b63ec1f8d2a28c6eb7719aa55b"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/atm/network_lite.py": {
+   "size": 29823,
+   "sha256": "97b4e58419645053af46ccef165bfb57f9c56a87a6dec32662b84e742c952283"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/atm/__init__.py": {
+   "size": 7036,
+   "sha256": "b68c1f0344b8a451af7c06aaf563a7237c2873f8a86445ea44521e7ef0e43d30"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/cain/cain_arch.py": {
+   "size": 1987,
+   "sha256": "1bbe20c3f07a28747c2d79307850310d20645369979bb3dbb6d534d7716166d3"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/cain/cain_encdec_arch.py": {
+   "size": 3005,
+   "sha256": "933bcc7bdb822776cec2d25fad5e2258092fcaa51720a2a4dae301dddf5f76ce"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/cain/cain_noca_arch.py": {
+   "size": 1922,
+   "sha256": "46398fbb6286c87af865b61b7f237b73f3b19cdcaa5f722d07c8b402d60cfeca"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/cain/common.py": {
+   "size": 12331,
+   "sha256": "90239c049c548e6b87a7cec642da03afe6d96cf9f61cc0dd53795b4cb8bf0a1a"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/cain/__init__.py": {
+   "size": 2426,
+   "sha256": "ffbc9b56e4be385dc6a76e2d5bdca6d89bc57dd2a35828652c55512cef3a7fad"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/eisai/eisai_arch.py": {
+   "size": 82967,
+   "sha256": "b6b1a0692fa5adf55883aa48f6a3d7ff96149743771542929997ecf759080d60"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/eisai/__init__.py": {
+   "size": 3228,
+   "sha256": "cba02074c87638fde419a702d4fe29e0cdeecdd72dc7f3150dbf761dfdd496cb"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/film/film_arch.py": {
+   "size": 32375,
+   "sha256": "b8c3d666d7380bdfcab5e656625229ce6e4f9f536e3e676cb96f6ac7115158a6"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/film/__init__.py": {
+   "size": 4758,
+   "sha256": "d47ecb74e0d5035fc568d3eede7fe8326cf91bf35f1e2b51cb6bcded3081ec41"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/flavr/flavr_arch.py": {
+   "size": 7223,
+   "sha256": "d5f07319de75bcbb66c73388329d72e911f28580b50039aabbe678e3d993a1c4"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/flavr/resnet_3D.py": {
+   "size": 9521,
+   "sha256": "0367fb5f8a763dc6c28290ba75c3bf93d502bf510570119084bd49e5047d7f0d"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/flavr/__init__.py": {
+   "size": 5103,
+   "sha256": "c27b67f1f678459a3acc11307679fcdc6b1eac7cc3d3524410f4da4c2066a194"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/gmfss_fortuna/GMFSS_Fortuna.py": {
+   "size": 623,
+   "sha256": "234b3aa1f46fa74cbee8704a8464eec7c9aa4105cc33ef63d34656cbecb7669f"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/gmfss_fortuna/GMFSS_Fortuna_arch.py": {
+   "size": 60403,
+   "sha256": "d8f677fd621968504ba4a37c7a5d0dcb7cb1b4d6947a7c0fc0abd723dbd9333a"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/gmfss_fortuna/GMFSS_Fortuna_union.py": {
+   "size": 617,
+   "sha256": "64b5d6ff8b2f99e0365d863437a956796a8e61162eceafb90110f57e07aae583"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/gmfss_fortuna/GMFSS_Fortuna_union_arch.py": {
+   "size": 60672,
+   "sha256": "7673c7a254970f3d6b40e580736396314d738a21c35646aa39d5273a5c39e9df"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/gmfss_fortuna/__init__.py": {
+   "size": 5593,
+   "sha256": "1448e7a2aa16afa81bd6ef2902cee87f0d8d459b6b8c718f252e0e51bd845d6d"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ifrnet/IFRNet_L_arch.py": {
+   "size": 9495,
+   "sha256": "188bf35079f7f7fa4b69ddd4563eb3d7eb86a242809056dd6df2a8bff60da324"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ifrnet/IFRNet_S_arch.py": {
+   "size": 9482,
+   "sha256": "eafe326f66b4eb3b31badf6e10287caa97850592285f60c7c876340c1eeb3597"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ifrnet/__init__.py": {
+   "size": 2418,
+   "sha256": "409d2f5458c66d4c80efce0b9c2a42694c23a7e06314affc00a2766f6e2a73d8"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ifunet/IFUNet_arch.py": {
+   "size": 27074,
+   "sha256": "6075351ee1245bdd73780511868e07f858087fdf710f92dd6523970d1fbfd245"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ifunet/__init__.py": {
+   "size": 2453,
+   "sha256": "5161cdbaa5a797c75e9fd8108093fde90f81b4c2b4c3dd7011b924eb5b7e3544"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/m2m/M2M_arch.py": {
+   "size": 34577,
+   "sha256": "fd9324bd8781f766e5a300fcfe9d7ffa7345a66307e4ec7c95b3d66c417f6185"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/m2m/__init__.py": {
+   "size": 2294,
+   "sha256": "e50b9e38b900bd4ce9c6ffa0a8d27314cba9b9fa6f2c63fd696264747a9ec040"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/momo/flow.py": {
+   "size": 3486,
+   "sha256": "2261c31c5790b41059cf040b4d0346b95d7e5973b0c29a4b74dce16e5e7fc99d"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/momo/momo.py": {
+   "size": 8837,
+   "sha256": "d1e529d0c99d14206bbbb12b4938189f81c19064c15eff61af2c104ae036d252"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/momo/synthesis.py": {
+   "size": 8808,
+   "sha256": "8c4ff162219238823b635ca97926bad9b7feb301de21d5c3585d6b885ad699e4"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/momo/unet.py": {
+   "size": 17800,
+   "sha256": "f131e0afca4a2580273f1f29d3bcfaeda12b5eb765ec304145bc7ace96c98f74"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/momo/__init__.py": {
+   "size": 6662,
+   "sha256": "d7631f1a63b395c6cfd0636dd127008c0c370d81bc911b149ae3a1fca03086ba"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/__init__.py": {
+   "size": 969,
+   "sha256": "b25cdb28cad61fb454a114729c38c5ae52e666498fe3e854d37ae4372a6f1a53"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/cupy_ops/adacof.py": {
+   "size": 18190,
+   "sha256": "33282720ab46a73f663c8b6b9208db8067c8d82869f2f8510cec7173e3dc31bf"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/cupy_ops/batch_edt.py": {
+   "size": 3344,
+   "sha256": "d23f887cbf70a3424e10afc4f528091e4040633b4a2bb1f2fdd841ce70f57bc9"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/cupy_ops/correlation.py": {
+   "size": 15096,
+   "sha256": "1a43f084667f2d79a31363239a9c2637afcbea48c6f66e7abe5f696e27c19a00"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/cupy_ops/costvol.py": {
+   "size": 12527,
+   "sha256": "6de555686f68b54bdc0152101ff20b227fd32631c674a7549faefabe2647ffdc"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/cupy_ops/sepconv.py": {
+   "size": 13172,
+   "sha256": "6e9784a7f2a2726e6e2b69e22c769439a49303b0b063127b296721fa561e985d"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/cupy_ops/softsplat.py": {
+   "size": 17638,
+   "sha256": "d8d2f1aea919e82f36fe2b4776de19ee069b65f09e755b45c023acc1e72dd90c"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/cupy_ops/utils.py": {
+   "size": 7552,
+   "sha256": "ded4715792e48d51ed34c187d2e3aafcb38a9e9c0aaddad4b469b51d6fe66a02"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/cupy_ops/__init__.py": {
+   "size": 452,
+   "sha256": "2eb36027667fba754807538e6a544dedc86f8923f43e0fa7230aad7846c9e807"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/adacof.py": {
+   "size": 197,
+   "sha256": "27ab36ee2c20603c8ce87bca3bc4f871e9028736009dc7895707bad0868210ed"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/batch_edt.py": {
+   "size": 64,
+   "sha256": "d207f4a1c1a7c5fd384635ce3cc99faacb568ca79761ae65516067606eebe1bc"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/correlation.py": {
+   "size": 463,
+   "sha256": "aa1fd23ec0299a29b95b39b24e924f5b0612278c422b4563419ea1be7b9210a5"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/costvol.py": {
+   "size": 1128,
+   "sha256": "c6c8b85d5e9a5c4a0625c2c1f5e4f79e86476f32c5225eb416c67c909c90eed3"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/raw_softsplat.py": {
+   "size": 5417,
+   "sha256": "601f3aa5003a792f734e4e9deb291a5759acd6f9eae4f93751c448de36df2788"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/sepconv.py": {
+   "size": 1449,
+   "sha256": "1fdd1b082aa66b08e540960cbc516928bcc6736a635d62929fd15631fbf4acaf"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/utils.py": {
+   "size": 509,
+   "sha256": "dbe6d51b1fbb2a056e2c2cd3f7d3f338fe0a69bc56d1af9e0dd6947a2ff31f76"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/worker_process.py": {
+   "size": 977,
+   "sha256": "1126271bd19bbf4f1e2ac65c8d8f3a405cdc7598fe25751626fa1a2156100f4e"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/ops/taichi_ops/__init__.py": {
+   "size": 4474,
+   "sha256": "2470227e20b98ff81027838c748743309a04325c6d53002e7c0f5d1796909bf2"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/rife/rife_arch.py": {
+   "size": 26527,
+   "sha256": "1bdd8bc4e5147c5ba075e2c9c37dcd0058c4ef093913dbddb6ed5d33bf99789d"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/rife/__init__.py": {
+   "size": 12379,
+   "sha256": "21b5e9d4209e87985fa016138228b5a106593ecf73363e208403adb43e3c562b"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/sepconv/sepconv_enhanced.py": {
+   "size": 24031,
+   "sha256": "e8f39e0ddf57ad35c0a9c4c5998a38e27f5f1a8652953c0258fda5dd96f4ce00"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/sepconv/__init__.py": {
+   "size": 2138,
+   "sha256": "d509a02e69c5191016972ee586e518859d13f03cb280ba544a75a94ce516fcd7"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/stmfnet/stmfnet_arch.py": {
+   "size": 101006,
+   "sha256": "6312a9218be03f936905611733db8ebdc4f14bf7582ca835f561db2c07d3ab15"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/stmfnet/__init__.py": {
+   "size": 4607,
+   "sha256": "586db71b8f49f392e92a8e805e978536cea24dc064710862ae7ea3f8c685cb0f"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/xvfi/xvfi_arch.py": {
+   "size": 17896,
+   "sha256": "1091023bcd7a81f95158f03b2776eace7265e5945bbeec39971ecc57308c113c"
+  },
+  "ComfyUI-Frame-Interpolation/vfi_models/xvfi/__init__.py": {
+   "size": 4460,
+   "sha256": "ed208224a4b6cc550085a090cf57477845957ade9d41d97f3036cd192a94b3a1"
+  },
+  "ComfyUI-GGUF/.gitignore": {
+   "size": 3351,
+   "sha256": "6fbf041853cbfbb9b3c5cc3cd515dddb73f264213aaded533f1cd49a88274983"
+  },
+  "ComfyUI-GGUF/dequant.py": {
+   "size": 12338,
+   "sha256": "215369438d96c372c09eb8701eec3c3b0348084c96dd3ea83872601ebed42017"
+  },
+  "ComfyUI-GGUF/LICENSE": {
+   "size": 11558,
+   "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+  },
+  "ComfyUI-GGUF/loader.py": {
+   "size": 21152,
+   "sha256": "ffff39d209ce22654e67378b80c6a3ca3d349cf8f00ec267085bd16e194730c2"
+  },
+  "ComfyUI-GGUF/nodes.py": {
+   "size": 13649,
+   "sha256": "16be3b08b13de6279fc432addc628320019fcb24963cbc6b52b248de8f06316e"
+  },
+  "ComfyUI-GGUF/ops.py": {
+   "size": 12201,
+   "sha256": "b927e24a7b00c181e9511900fb5afde45464793cf460e1d39a5e736ba093ce64"
+  },
+  "ComfyUI-GGUF/pyproject.toml": {
+   "size": 419,
+   "sha256": "05df17550e375d558e28f099f8ebf7b833835a97d47bf1a071b49a37a7a5b3fa"
+  },
+  "ComfyUI-GGUF/README.md": {
+   "size": 3274,
+   "sha256": "bd01d40c83547b43552e4d1457e369a8ca50c67a933e7037f1422071e1fc410e"
+  },
+  "ComfyUI-GGUF/requirements.txt": {
+   "size": 71,
+   "sha256": "7f044de2d008cd7a4db54c27efc206327517bca4eb3e0f0835cf769b98d9de6c"
+  },
+  "ComfyUI-GGUF/__init__.py": {
+   "size": 309,
+   "sha256": "6d64d9ffa5e0e0107805cef67a2e3b1329d4cc613505f5cba8e8c08b2131580a"
+  },
+  "ComfyUI-GGUF/tools/convert.py": {
+   "size": 13466,
+   "sha256": "a55249b9eadd1f92ff32583784e31d52eafbdf059410a8abe0495e5e8cf6140d"
+  },
+  "ComfyUI-GGUF/tools/fix_5d_tensors.py": {
+   "size": 2786,
+   "sha256": "a9368a0a5695903e48c53ed7f817384a86493347d602daa62a773483396a8d49"
+  },
+  "ComfyUI-GGUF/tools/fix_lines_ending.py": {
+   "size": 1018,
+   "sha256": "f12b56c7a64413cc12570448f84f59587bab6b3bc57276cff7e61ca8fb5c5cc0"
+  },
+  "ComfyUI-GGUF/tools/lcpp.patch": {
+   "size": 21729,
+   "sha256": "60532cb65970e061987d2a916088e24c9a3196ce47a68d72d26d3ae403efa2ef"
+  },
+  "ComfyUI-GGUF/tools/README.md": {
+   "size": 3348,
+   "sha256": "bb973b16eb55c6ac09f796839e28359c1825b4dd341ea8be22c7480e30827497"
+  },
+  "ComfyUI-GGUF/tools/read_tensors.py": {
+   "size": 509,
+   "sha256": "8edead4f867f3573518b9620157129f086a824c9a941f26adcf52db9b589098a"
+  },
+  "ComfyUI-Impact-Pack/.gitignore": {
+   "size": 133,
+   "sha256": "76f0fc069b0f742c7e5f0e784aa8dbca9043ab9e5c322d8c09ef2fd053e60b81"
+  },
+  "ComfyUI-Impact-Pack/.gitmodules": {
+   "size": 99,
+   "sha256": "aa5192e055f85c7c72fa625d6255c203d560890916e862a6e52025dfd5dd1a83"
+  },
+  "ComfyUI-Impact-Pack/install.py": {
+   "size": 4087,
+   "sha256": "a03eeafcc6801e6ac12d5f7b670f622a7b30e77235d5e35dee927f2167b0bf00"
+  },
+  "ComfyUI-Impact-Pack/latent.png": {
+   "size": 2814,
+   "sha256": "1faf0cc926b0d65c8ab93e7485aea816283eb22fdeefe9682c206948c1de2043"
+  },
+  "ComfyUI-Impact-Pack/LICENSE.txt": {
+   "size": 35823,
+   "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+  },
+  "ComfyUI-Impact-Pack/node_list.json": {
+   "size": 150,
+   "sha256": "5a4e817f09ef688fa9d041550b2427c84bf6eda94126e25b09b7248ee011150a"
+  },
+  "ComfyUI-Impact-Pack/pyproject.toml": {
+   "size": 771,
+   "sha256": "0f4d967b57c3ccf6b693e65f250a757bcc09082d185f96a6a02ba9129df72b88"
+  },
+  "ComfyUI-Impact-Pack/README.md": {
+   "size": 52047,
+   "sha256": "683a156c4418cc8f0caf9573d0833f9f0be43ae766747a9ef92e5b77c2e83e38"
+  },
+  "ComfyUI-Impact-Pack/requirements.txt": {
+   "size": 156,
+   "sha256": "e7234b16c4bfcd8c31a113a5e3b01fd4e0aa966f756fcf95cc88cf57462efa31"
+  },
+  "ComfyUI-Impact-Pack/ruff.toml": {
+   "size": 71,
+   "sha256": "15dabc010c705f039f67bbc9fb4f9d89d231ea4b5223da3fa4c5a306e0bbe4d9"
+  },
+  "ComfyUI-Impact-Pack/__init__.py": {
+   "size": 22407,
+   "sha256": "7304312fecb9e2ce53bcad557fe28522538e21526ba1d219323ebff6c3ae18c9"
+  },
+  "ComfyUI-Impact-Pack/.github/workflows/publish.yml": {
+   "size": 672,
+   "sha256": "6ff05b59d02424da6c908f99f11278e64023f36adf40e4429341ee0e51982f93"
+  },
+  "ComfyUI-Impact-Pack/custom_wildcards/put_wildcards_here": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-Impact-Pack/docs/E2E_TEST_STRATEGY.md": {
+   "size": 19554,
+   "sha256": "4508100a06e617febeb9b6d8df26896df07daea7f5e8167b87c1e29c0cfd1ad4"
+  },
+  "ComfyUI-Impact-Pack/docs/wildcards/README.md": {
+   "size": 1264,
+   "sha256": "d6004a3ce7bc91621bdbded734212bb1e30295f309978e1f705e4f5376f786ed"
+  },
+  "ComfyUI-Impact-Pack/docs/wildcards/SUMMARY.md": {
+   "size": 4576,
+   "sha256": "945e86d2bab911b314b8fcd47a46c3436149a6436712a0082e14992a4c94376c"
+  },
+  "ComfyUI-Impact-Pack/docs/wildcards/WILDCARD_SYSTEM_DESIGN.md": {
+   "size": 25740,
+   "sha256": "1979c385c8c3f6c5e171a232dd2d6e28c173a297674f9e9c4547cf007d40542f"
+  },
+  "ComfyUI-Impact-Pack/docs/wildcards/WILDCARD_SYSTEM_PRD.md": {
+   "size": 15515,
+   "sha256": "b1d651e482ba706808d4766184e62ba5dd678385b439240b967f5c2552400586"
+  },
+  "ComfyUI-Impact-Pack/docs/wildcards/WILDCARD_TESTING_GUIDE.md": {
+   "size": 10288,
+   "sha256": "cd61a8fd187547ed6fb6bb125b0def7eb098b2cdd2acc620da57645063e6fa47"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/1-FaceDetailer.jpg": {
+   "size": 64932,
+   "sha256": "c1a4ed7a9079d45a01a52043d9672d2646fdd28b88eac958e51dc2b38aa438c0"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/1-FaceDetailer.json": {
+   "size": 22415,
+   "sha256": "1dd618b9e8d8d50526c1d59eaedb7f9c43f6e2f3c761523fe1f2de39061ebe5a"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/2-MaskDetailer.jpg": {
+   "size": 114261,
+   "sha256": "1abd1823bed26d5e8c92707c0369d41b4f7c6a0629e70c3fa92fcc914585dc8a"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/2-MaskDetailer.json": {
+   "size": 12553,
+   "sha256": "d90370d63e36ead93cd5b801d7c6deaf33c5372a3c0c644f9e63cc8b283301af"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/3-SEGSDetailer.jpg": {
+   "size": 42824,
+   "sha256": "9f4aed9e96b46408fba0ed644ce1a86ffa7ca3cfd373c2849a2cc1fc5f243175"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/3-SEGSDetailer.json": {
+   "size": 20428,
+   "sha256": "fbe00bbe681b9cc10b09779f6cf3cd7b2e63946c659a386783545d5ef811bb50"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/4-MakeTileSEGS-Upscale.jpg": {
+   "size": 108834,
+   "sha256": "b1d3d9a3563821ba82a6277610e83ec2fe20473679ebb25c70c811a252e06ecd"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/4-MakeTileSEGS-Upscale.json": {
+   "size": 33562,
+   "sha256": "93ac4ac77f3f47ec9ed8cee95d0cc4d5d020fa9015c1086a57c93e887b2c5210"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/5-PreviewDetailerHookProvider.jpg": {
+   "size": 68539,
+   "sha256": "f37a67d0b42e4d94950a4d27de403b022d684824571021c702196a2989bf8349"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/5-PreviewDetailerHookProvider.json": {
+   "size": 31530,
+   "sha256": "9ef467bd5973e22311aa1de1127da270f6030b011c70dfdaa0357b65439039fb"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/5-prompt-per-tile.jpg": {
+   "size": 130918,
+   "sha256": "232bde22503e087e47c391bb91bbcc830c9882889ac715c1ec139667ea3d2c03"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/5-prompt-per-tile.json": {
+   "size": 22733,
+   "sha256": "2bc9df94bf5c96771f93077734e03c62581ba87b1f301975b370515bbe553c16"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/6-DetailerWildcard.jpg": {
+   "size": 538538,
+   "sha256": "f80a2add23387329e86abfb00382d1efd818df33a8fa19c93cdf75a478a491df"
+  },
+  "ComfyUI-Impact-Pack/example_workflows/6-DetailerWildcard.json": {
+   "size": 22318,
+   "sha256": "3e928bcdbb55bd22a4623a8bda44a94a0bfffd1e65e8dd2a5914079bfd0f4957"
+  },
+  "ComfyUI-Impact-Pack/js/common.js": {
+   "size": 8090,
+   "sha256": "a9034bb101c37402e7fff1e1029d4d0767a411f3500cfb63ca6119443f5e9d05"
+  },
+  "ComfyUI-Impact-Pack/js/impact-image-util.js": {
+   "size": 5928,
+   "sha256": "17a37ebd01f5080fd47b4d32ebfa200430503f467a984696dbc7b1be537bdb84"
+  },
+  "ComfyUI-Impact-Pack/js/impact-pack.js": {
+   "size": 29823,
+   "sha256": "1163a83ab0ffba23aaa1ffc2a9ace195caadff3fb16ec098b0eabf7494b35f78"
+  },
+  "ComfyUI-Impact-Pack/js/impact-sam-editor.js": {
+   "size": 19863,
+   "sha256": "fdc061010d8c00505af3a3fc95db12ae01f2ffa0bc8a2162dc05f6c17a64a7fd"
+  },
+  "ComfyUI-Impact-Pack/js/impact-segs-picker.js": {
+   "size": 5906,
+   "sha256": "e397cc9ebd236e9fc4ade6c249aaa379ce0a35964d16b9e9ab7d3038fd7b0940"
+  },
+  "ComfyUI-Impact-Pack/js/mask-rect-area-advanced.js": {
+   "size": 17097,
+   "sha256": "a80e52fcdfe700c179fc4b8ad24d93224dd3eb00b4ce76b08985e36b66d70a43"
+  },
+  "ComfyUI-Impact-Pack/js/mask-rect-area.js": {
+   "size": 18336,
+   "sha256": "505bd8bfe7bd5aa8ed05352af9d463a44ba1fb3bceff2045beda83f9654bacbc"
+  },
+  "ComfyUI-Impact-Pack/locales/ko/nodeDefs.json": {
+   "size": 71993,
+   "sha256": "1864dadf25b0c9d1902c8141a0a1924263fb8b9005743c65820c8cc2ff653aa4"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/additional_dependencies.py": {
+   "size": 436,
+   "sha256": "68b707017f8637118dde0eafc91c05fa39a82adcf4a77b44bfecc7798edd3310"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/animatediff_nodes.py": {
+   "size": 11605,
+   "sha256": "10fea3e0e179a6d87ecce2ff56f0ef8b6e717a977593beb68300d6ee5e1a3527"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/bridge_nodes.py": {
+   "size": 22998,
+   "sha256": "9e88b6ea3b4b56a3a2991e9a4be9f12666bff56d4b0728dea50a2915f7fa753c"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/config.py": {
+   "size": 3442,
+   "sha256": "66680dcd5ce4466bf8251c53b5fcb438a90ce0df6999b71592158ddbf7b472ff"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/core.py": {
+   "size": 101962,
+   "sha256": "1c1c001438b2d0507fd5f35df966bcd3ff11a7e833aaf1f3ef7f865a1c39b7ac"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/defs.py": {
+   "size": 1319,
+   "sha256": "9ea540b08c5fa5fd76b6990e4dfdf4943b9a07e97c701247b6466a9fdfcc5999"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/detectors.py": {
+   "size": 29767,
+   "sha256": "ec0d42d40be2b7971ebf932c6e874fb385e77c07a784cf019a2ddca4eaefea50"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/hf_nodes.py": {
+   "size": 5620,
+   "sha256": "b8da0c6514a2c49850eaa35bb2ab5502f955f40fdb329e200f35daf4ac76ad6b"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/hooks.py": {
+   "size": 21606,
+   "sha256": "76db4f7507c1852ae21a349fb681d267905a2fa0f0539e5f74882cef4466f742"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/hook_nodes.py": {
+   "size": 4310,
+   "sha256": "89fe14ec1a012024124ac40127e9264be0664d193df4f4c8a19f5deafdd323db"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/impact_onnx.py": {
+   "size": 5642,
+   "sha256": "9f06c7c599939bae7d2d91c9823a81e8c2101aceec1f7b89de4558716c2485e9"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/impact_pack.py": {
+   "size": 132402,
+   "sha256": "53552ac51c53275738e6e06b1fce1bc54434a048feec75a54676593ca5d59623"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/impact_sampling.py": {
+   "size": 16849,
+   "sha256": "7ded9c132e7dc9693e42468fd517b874d69e00afa336be8decfb5c88ec6956ce"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/impact_server.py": {
+   "size": 24384,
+   "sha256": "fff5151bf668c31b11257e69b9532227af799cd6134a719403cf8bef020906db"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/logics.py": {
+   "size": 23275,
+   "sha256": "ef17f9baa723bf6f34095f77534c4ea1b2cbba5560d3b3414681ab734fe244e5"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/pipe.py": {
+   "size": 17669,
+   "sha256": "50bf6027a8b8dd78485cb1885c1e45a7d29241b8e3d9b8d42e30a3b0a94e0947"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/segs_nodes.py": {
+   "size": 79516,
+   "sha256": "778b326cac51990945c953838071a7a4d1a8f61fc0620f881ae6be32186ab8bc"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/segs_upscaler.py": {
+   "size": 5876,
+   "sha256": "984abf1d969dbc9aa1cb42cacc9e3408487e08c0a1bfdac0a357159b5e6e8976"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/special_samplers.py": {
+   "size": 39995,
+   "sha256": "5bc1236fa038d3719a55a99d4003b5f180c8defdb9711ae9234254725f9ec293"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/utils.py": {
+   "size": 22794,
+   "sha256": "6dba6d86a29b94146734e6abac64a9665e41be9773d5942d65e4eba076b47376"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/util_nodes.py": {
+   "size": 25261,
+   "sha256": "8cd5aaa4e85ddb6ebb70867ea865a448d783e044aca721a3176dc677624ccd65"
+  },
+  "ComfyUI-Impact-Pack/modules/impact/wildcards.py": {
+   "size": 49081,
+   "sha256": "b5e4af4172e88c58885ee81a9b1b148beff6d9966d4b480f6f9f2531a4d495a4"
+  },
+  "ComfyUI-Impact-Pack/modules/thirdparty/noise_nodes.py": {
+   "size": 3511,
+   "sha256": "a7b0a360d9e77abc81cc23fa2eb91fec996ea5e61836f451c6261f76366ff56b"
+  },
+  "ComfyUI-Impact-Pack/notebook/comfyui_colab_impact_pack.ipynb": {
+   "size": 5607,
+   "sha256": "dbcdb3688bfaef8abbf26edff106c58b0dde7812d0e43e2eeed7ef3c9f4b5237"
+  },
+  "ComfyUI-Impact-Pack/tests/e2e_dd_compat.py": {
+   "size": 9623,
+   "sha256": "0622582c39c00873bf41927780ecdb80ac5f99f2d943bae5ae72146f7062bd37"
+  },
+  "ComfyUI-Impact-Pack/tests/README.md": {
+   "size": 4389,
+   "sha256": "786bd0b1c4091426b7115de366d2438e793dd9ed01d3f78cddd08df4b09605e0"
+  },
+  "ComfyUI-Impact-Pack/tests/restart_test_server.sh": {
+   "size": 1954,
+   "sha256": "52f4c897a69f87daee514df199319819fc92fca241f08db1fc1a159589bb9cd3"
+  },
+  "ComfyUI-Impact-Pack/tests/RUN_ALL_TESTS.md": {
+   "size": 1610,
+   "sha256": "35545a65f1e4a3a90790443cd72d9554c37781dd48ec36fa51314d5af14d6686"
+  },
+  "ComfyUI-Impact-Pack/tests/test_config_quotes.sh": {
+   "size": 4487,
+   "sha256": "482bc5df963a07fd65692cdd44669896cf6a35f72d4422bf7d1dd8652b7629b2"
+  },
+  "ComfyUI-Impact-Pack/tests/test_deep_nesting.sh": {
+   "size": 8447,
+   "sha256": "092ca005e710eeaf3e5528a04c31ee0f500fa1726d7f55d608ba0219955ae5a3"
+  },
+  "ComfyUI-Impact-Pack/tests/test_dynamic_prompts_full.sh": {
+   "size": 8241,
+   "sha256": "ca0534f35aefa74b9cf6cab1c4e408d8a73fa7bdf727d7ed3299a0b269d4038e"
+  },
+  "ComfyUI-Impact-Pack/tests/test_edge_cases.sh": {
+   "size": 6174,
+   "sha256": "980dc042ec8e96ac620f70bc9d8f9d2b662e486706b98965a3b3be325b5135e2"
+  },
+  "ComfyUI-Impact-Pack/tests/test_encoding.sh": {
+   "size": 5712,
+   "sha256": "a140138bd7485f3c0ac515bb6f521336e6c631f3e50cd9ab0c92c208e1286c28"
+  },
+  "ComfyUI-Impact-Pack/tests/test_error_handling.sh": {
+   "size": 5721,
+   "sha256": "bec94c12d37fe53c880a6739f3814c1fee6b85271c6ce8a85cbccb32bbab0dd5"
+  },
+  "ComfyUI-Impact-Pack/tests/test_ondemand_loading.sh": {
+   "size": 7178,
+   "sha256": "ace99d3a8d0ba25a4e8650ac2741635f1759639667d28a9e10dc07a82813d7c2"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/find_deep_transitive.py": {
+   "size": 6041,
+   "sha256": "023f23337782b5f5cff1d2b09d1c31b224e1128aa9718af581f9988b287bbaf7"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/find_transitive_wildcards.sh": {
+   "size": 3894,
+   "sha256": "2a7b8ae390f0074daa66b151286e198ec771d12313970fc681141e5b5543fd8e"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/README.md": {
+   "size": 22224,
+   "sha256": "2bdebe2f5e5dc6b1b73986e18bb6d41282985dbaf87623a78c00f13e15966fe8"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/run_quick_test.sh": {
+   "size": 3030,
+   "sha256": "bd795be832e5699bbb86b14e8fa0f05e69f47119d94a7ad8a4467fd5199b8747"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_lazy_load_api.sh": {
+   "size": 7378,
+   "sha256": "b2fc6cfb98d6673c147c50694439deebf0f9700a11690a715345c57e4eec7537"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_lazy_load_verification.py": {
+   "size": 7949,
+   "sha256": "a3619d904357a9375aa2b96ba20116b98e084592783931b0422372d2c536a43d"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_progressive_loading.py": {
+   "size": 9608,
+   "sha256": "536df68e166834dba3ce957642a2c83cbbf344543cd9c71ef67a5c312abcb336"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_progressive_ondemand.sh": {
+   "size": 9789,
+   "sha256": "197821bebcef73df791a3146351f3e8a95b7081bb37c3759f46ea59bda174c52"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_sequential_loading.sh": {
+   "size": 9112,
+   "sha256": "cad753a0e903c0bef19ff4e6407f1e2f58274a44866a0d1582b430532e4668eb"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_versatile_prompts.sh": {
+   "size": 7994,
+   "sha256": "72455628f13569f0ca1ee21ae03d934d16850daa57b995f389f943f957b68029"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_wildcard_consistency.sh": {
+   "size": 7096,
+   "sha256": "1be2e246879f029e8e69f23470c38edadf1905c283a0dc60dd49d1b477749496"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_wildcard_final.py": {
+   "size": 4911,
+   "sha256": "1865c81d593edeb314389a32e00e313b321858a0623de23462c84999973e4525"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/test_wildcard_lazy_loading.py": {
+   "size": 6349,
+   "sha256": "15a456eb52fd739cceb32cdcec1a309ee902683ea92c189b829ef3a1260926f9"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/verify_ondemand_mode.sh": {
+   "size": 2874,
+   "sha256": "2a3bea11a77dba471ebd9658d211562b1024aaaff57d4d6d0792ccafef0d4534"
+  },
+  "ComfyUI-Impact-Pack/tests/wildcards/samples/README.md": {
+   "size": 6595,
+   "sha256": "5b7e7f243efa276167a3a700da6066dd330dc21ae3345f02cc4680ba09dec6ee"
+  },
+  "ComfyUI-Impact-Pack/tests/workflows/advanced-sampler.json": {
+   "size": 17182,
+   "sha256": "f471cd5aadb3f5f90747603470fd88ff78bc7156b257a5fbf0db43e350ba39a8"
+  },
+  "ComfyUI-Impact-Pack/tests/workflows/detailer-pipe-test-sdxl.json": {
+   "size": 34994,
+   "sha256": "744e929db09d38c8c8b6109b8a1665763b162182d04be2fd063db1193062b2f9"
+  },
+  "ComfyUI-Impact-Pack/tests/workflows/detailer-pipe-test.json": {
+   "size": 63894,
+   "sha256": "cdbfe377fb3e7719647efaaece388861cd15ed1a0be267391972a627643eded6"
+  },
+  "ComfyUI-Impact-Pack/tests/workflows/impactwildcardprocessor_separate_tests.json": {
+   "size": 23061,
+   "sha256": "9ed458ba00674b02d0e479f88672b55294e3e79492b9306c8eaaf3c265ba700f"
+  },
+  "ComfyUI-Impact-Pack/tests/workflows/impactwildcardprocessor_yaml_tests.json": {
+   "size": 41914,
+   "sha256": "30741ef5abb771694c884f842cf2f9dfa33fa73cca828d94651ba54444c4ae8a"
+  },
+  "ComfyUI-Impact-Pack/tests/workflows/loop-test.json": {
+   "size": 19071,
+   "sha256": "88f47942d1e7724e9bd28679a1aef2829e997e3dec7aa6552e8b463ab7ca42d7"
+  },
+  "ComfyUI-Impact-Pack/tests/workflows/masks.json": {
+   "size": 10606,
+   "sha256": "79fde8f986e66c220083c83d7525b3c905d097fd0806c5ef3b64614a1683b629"
+  },
+  "ComfyUI-Impact-Pack/tests/workflows/regional_prompt.json": {
+   "size": 29839,
+   "sha256": "ad66e8478d7df9971b63b16202de4faa093011cb411de1b94c13abcd8f7e0917"
+  },
+  "ComfyUI-Impact-Pack/troubleshooting/black1.png": {
+   "size": 752880,
+   "sha256": "6e32fe1606d35a26ddf08d2a3ff24c8fcd62831b9ed11eeaa76468e27a2b5f0f"
+  },
+  "ComfyUI-Impact-Pack/troubleshooting/black2.png": {
+   "size": 709592,
+   "sha256": "829d72c3cc1034f72bbd0945e1a2aed69e1f38060126159c0b911c4c102e2fcc"
+  },
+  "ComfyUI-Impact-Pack/troubleshooting/TROUBLESHOOTING.md": {
+   "size": 2928,
+   "sha256": "7eb9d54482f7138137bd0d674dbfaeeabdfd5980e3d630d2f52df78e02fd4cc9"
+  },
+  "ComfyUI-Impact-Pack/wildcards/put_wildcards_here": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-Impact-Pack/wildcards/samples/flower.txt": {
+   "size": 75,
+   "sha256": "91f84fc5237e8f85b393944401a028083c4ee68ccfef87f46e570f3b1c31eda5"
+  },
+  "ComfyUI-Impact-Pack/wildcards/samples/jewel.txt": {
+   "size": 78,
+   "sha256": "a04a5b541764e4b46bb2397fb1d7598c859235ea1cb0fc7cf73e7aa6e2923f80"
+  },
+  "ComfyUI-KJNodes/.gitignore": {
+   "size": 143,
+   "sha256": "b018b318ccbd380cd9c3d0aeed88a8971c78c2e502a0656e2c9ae1bddfaa4229"
+  },
+  "ComfyUI-KJNodes/custom_dimensions_example.json": {
+   "size": 351,
+   "sha256": "144775b0e1ad8bab6c5a3fe011d6da486fe8584ab085941260d03bd8351754fc"
+  },
+  "ComfyUI-KJNodes/LICENSE": {
+   "size": 35823,
+   "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+  },
+  "ComfyUI-KJNodes/pyproject.toml": {
+   "size": 519,
+   "sha256": "f26fe5ab1d072fc59226421d2214a78947dc780305f560ccec044777c3a7883a"
+  },
+  "ComfyUI-KJNodes/README.md": {
+   "size": 4388,
+   "sha256": "3e6e31b6525eefa1a10038f54622008e5035e6f7f841ce3336daa2d6eb199ca6"
+  },
+  "ComfyUI-KJNodes/requirements.txt": {
+   "size": 72,
+   "sha256": "f1ec6534e41a26c5c118adfe07188e7c3dbb4beec39dd0d0ceb74c18009eae0c"
+  },
+  "ComfyUI-KJNodes/__init__.py": {
+   "size": 30784,
+   "sha256": "55186c1574c4627ab14d6eef058a30ff6203b7c644c77dc83fc0956db2026bec"
+  },
+  "ComfyUI-KJNodes/.github/workflows/publish.yml": {
+   "size": 669,
+   "sha256": "481d52ec598d240da9a1444c5b4c23f23c04879bdeacdecdf962f645f795e54e"
+  },
+  "ComfyUI-KJNodes/docs/images/2024-04-03_20_49_29-ComfyUI.png": {
+   "size": 176158,
+   "sha256": "85805d3c7ca8f5d281886ea0ad61f9a78edad755ef8014b3870f91b871807ac9"
+  },
+  "ComfyUI-KJNodes/docs/images/319121566-05f66385-7568-4b1f-8bbc-11053660b02f.png": {
+   "size": 94315,
+   "sha256": "ea8fbfbd58fa2ef96257cf310f108f65f5b84f44b0165c3fb320db10a86432ec"
+  },
+  "ComfyUI-KJNodes/docs/images/319121636-706b5081-9120-4a29-bd76-901691ada688.png": {
+   "size": 24783,
+   "sha256": "3533db6b4921fc56457e28c16fcd87e6e2a3944a92a793c1f894aea2afc3b41b"
+  },
+  "ComfyUI-KJNodes/example_workflows/leapfusion_hunyuuanvideo_i2v_native_testing.json": {
+   "size": 21583,
+   "sha256": "20be2fa9fb81bef131ba8bcc05150b61a922ab29dfbdc3597f6f82585f7cc480"
+  },
+  "ComfyUI-KJNodes/fonts/FreeMono.ttf": {
+   "size": 343980,
+   "sha256": "a7c692ad545c308b7b8fc2db770760c4a5d15ca50f12addf58c8f5360370e831"
+  },
+  "ComfyUI-KJNodes/fonts/FreeMonoBoldOblique.otf": {
+   "size": 237600,
+   "sha256": "96187651ee033d0d9791dc2beeebfba5d1f070ab410fce1a5c16483ca249c588"
+  },
+  "ComfyUI-KJNodes/fonts/TTNorms-Black.otf": {
+   "size": 152736,
+   "sha256": "710977e683bf0db6416d6d41b427e0363c914e6c503a5291fcb330f30b8448ea"
+  },
+  "ComfyUI-KJNodes/kjweb_async/marked.min.js": {
+   "size": 35424,
+   "sha256": "07b698941905efa00bfadd73e1568ede13fcf6426779ac3ad46a4db72311af19"
+  },
+  "ComfyUI-KJNodes/kjweb_async/purify.min.js": {
+   "size": 21349,
+   "sha256": "520f794529d09a12aec7dcd0f082413b61d19d161d1ed43d18a90622dd85b675"
+  },
+  "ComfyUI-KJNodes/nodes/audioscheduler_nodes.py": {
+   "size": 10958,
+   "sha256": "4d522d8b7b82f551c7d7a92ade462c38a2c9790864844f650d4539cc1b2b3ea0"
+  },
+  "ComfyUI-KJNodes/nodes/batchcrop_nodes.py": {
+   "size": 33194,
+   "sha256": "3b97588bd23b336377297aab1ef0bb9e7c12e981cf744920f921540c50391659"
+  },
+  "ComfyUI-KJNodes/nodes/context_windows_visualizer.py": {
+   "size": 9101,
+   "sha256": "c6bba8464aabf04502b44417ad6e2a9cc647c9a69a2f0a94776aadf31f35ff7f"
+  },
+  "ComfyUI-KJNodes/nodes/curve_nodes.py": {
+   "size": 72112,
+   "sha256": "68c674cd43bf6df47842c3bd507700ff19d99be094032d76009b55cc45e4ae95"
+  },
+  "ComfyUI-KJNodes/nodes/hdr_preview_node.py": {
+   "size": 6945,
+   "sha256": "5e9e0aab0df17c261325ccf8d94b6dbe77471728a43516f9726d1165e4dac94a"
+  },
+  "ComfyUI-KJNodes/nodes/ideogram4_nodes.py": {
+   "size": 22453,
+   "sha256": "b9d894618ab03f69d3487a3467f105ba9a27308d1e46901ba752529bd2edfeb9"
+  },
+  "ComfyUI-KJNodes/nodes/image_nodes.py": {
+   "size": 226952,
+   "sha256": "67c6cf115517ce2faf46275144fba984fe233a21c2dee8a6361c86bc55e79940"
+  },
+  "ComfyUI-KJNodes/nodes/image_transform_node.py": {
+   "size": 31532,
+   "sha256": "9f2ed6ad86804b85e4ec55d3b453a402bd201371ae1ac7732e8cb70497dd03fd"
+  },
+  "ComfyUI-KJNodes/nodes/lora_nodes.py": {
+   "size": 30519,
+   "sha256": "871075a13efcdebc43a25d6f837b61b0aa296250ca72f3e19bf7529bf1141608"
+  },
+  "ComfyUI-KJNodes/nodes/ltxv_nodes.py": {
+   "size": 123397,
+   "sha256": "2ffe3cf0407aa8a9d86f0c4f422616736628c9f22f7cd25cd1efc48e3406cf44"
+  },
+  "ComfyUI-KJNodes/nodes/mask_nodes.py": {
+   "size": 70591,
+   "sha256": "0ba0562cc1959a03ad6ae2b598a5654e434a841b6a9e4c6e35fac809f82992b1"
+  },
+  "ComfyUI-KJNodes/nodes/model_optimization_nodes.py": {
+   "size": 117769,
+   "sha256": "f15beac5028ed5a7498c96e7c1e8e73ddf68db9e972bbc4159008085b88446a6"
+  },
+  "ComfyUI-KJNodes/nodes/nodes.py": {
+   "size": 141511,
+   "sha256": "c44e4cf4bafe7e7b2233f3781bb926f108a17742c9a056408480d98c3f87c799"
+  },
+  "ComfyUI-KJNodes/nodes/preview_override_node.py": {
+   "size": 38042,
+   "sha256": "923dfbde593c98cfb6dacab24c5c534a2d4a8f9c24275d96c74175db963ee254"
+  },
+  "ComfyUI-KJNodes/nodes/sharpen_nodes.py": {
+   "size": 11464,
+   "sha256": "c75a4ae5e68840a5bf55a00bfd0f216f2d3181a02bc805224d85728e9d2f44dd"
+  },
+  "ComfyUI-KJNodes/nodes/tiny_vae.py": {
+   "size": 8853,
+   "sha256": "66f536933c759a469bb0383d25935a09440034df35b37596320d5db59d499b50"
+  },
+  "ComfyUI-KJNodes/nodes/triton_vae.py": {
+   "size": 39757,
+   "sha256": "be2b932419fe0b5d5705bae446867142411d0ce399623b4fc50862dbb24b95e0"
+  },
+  "ComfyUI-KJNodes/utility/fluid.py": {
+   "size": 2983,
+   "sha256": "1b9f5855064bfb91406ad87eaeeed2b8f782bd138bed1cd14f8d6d1a47541016"
+  },
+  "ComfyUI-KJNodes/utility/magictex.py": {
+   "size": 3211,
+   "sha256": "52662b45699d8da23bbdffed2a3f8fb0373c89735cb68a540942da9f366a2dba"
+  },
+  "ComfyUI-KJNodes/utility/numerical.py": {
+   "size": 930,
+   "sha256": "eb581bef136d06bf3682248cd15469fa619f61eb5327f7f158458541ef7537f8"
+  },
+  "ComfyUI-KJNodes/utility/utility.py": {
+   "size": 5702,
+   "sha256": "27b36a378efdd98222b2b2d34cc9129cccd5e00ec3e702e126e2ce8cd2250fd2"
+  },
+  "ComfyUI-KJNodes/web/js/appearance.js": {
+   "size": 888,
+   "sha256": "17cc3782721e49c01577f52efbe0892f1e9bad12eec95e42e79408303a7c154c"
+  },
+  "ComfyUI-KJNodes/web/js/canvas_background.js": {
+   "size": 16527,
+   "sha256": "eb72a4d791854f3162484836975cb19e54e15bd565122b3320258fd139e1b713"
+  },
+  "ComfyUI-KJNodes/web/js/contextmenu.js": {
+   "size": 6044,
+   "sha256": "7e303a97999a5c9fff0772437dc0b7063271ef06dbd9ba4412f94b91b234fbab"
+  },
+  "ComfyUI-KJNodes/web/js/context_windows_visualizer.js": {
+   "size": 38146,
+   "sha256": "0ce0ef06f4b2ebabecab3bd9fe69a69329ea13c601300af73991dcd11a3d8d00"
+  },
+  "ComfyUI-KJNodes/web/js/fast_preview.js": {
+   "size": 1443,
+   "sha256": "4eb67236cba5776d2cf0a08822d4d5d31b60563fbd2dda5339989075e8ac23ce"
+  },
+  "ComfyUI-KJNodes/web/js/fast_preview_batch.js": {
+   "size": 24296,
+   "sha256": "11cf0d7b7152fc3f78d463fbc25536c31b0eb340ff1ecc912f0aed218a98d93c"
+  },
+  "ComfyUI-KJNodes/web/js/fillconnect.js": {
+   "size": 6387,
+   "sha256": "427d206510908bb5a002e480c761895c438ccfcd82f75f93949119a2ad011e9e"
+  },
+  "ComfyUI-KJNodes/web/js/fix_node.js": {
+   "size": 3583,
+   "sha256": "a40f40865373ead4b76b0990f2effc3d887c6cafc7c0d6950d1c34e4c55af9c5"
+  },
+  "ComfyUI-KJNodes/web/js/hdr_preview.js": {
+   "size": 24812,
+   "sha256": "63083d5946cafcc32a99820eb3babb271087bf9b8d2e47a17aaad01791c43355"
+  },
+  "ComfyUI-KJNodes/web/js/help_popup.js": {
+   "size": 14981,
+   "sha256": "dfade8ecd88912c25b1f54dd458fbb49227af883b05f26ce3d60346cbd302d06"
+  },
+  "ComfyUI-KJNodes/web/js/ideogram4_prompt_builder.js": {
+   "size": 160069,
+   "sha256": "50279ebbe3b3ccc4b0717a36c6578e1401c8925e69b7f5bb19444a1edb1d20d7"
+  },
+  "ComfyUI-KJNodes/web/js/image_transform.js": {
+   "size": 98816,
+   "sha256": "bb843329fc514286c69370b58d5dab9ca40295f383ec11b7bd9382796df6d924"
+  },
+  "ComfyUI-KJNodes/web/js/jsnodes.js": {
+   "size": 15463,
+   "sha256": "5e07de412a51ec5b414de43296306761b10d1307b140cad5d95de8e2d91c40f1"
+  },
+  "ComfyUI-KJNodes/web/js/nodeswap.js": {
+   "size": 12938,
+   "sha256": "b62e50254ef88636d9d94c05b4c0dc92d385d9f2f8b5cb274aa6e2dbf0584183"
+  },
+  "ComfyUI-KJNodes/web/js/node_insert.js": {
+   "size": 14758,
+   "sha256": "605a82695710af0b2495e600a0ddfeb0ce2f853c1ace1997dcbde4e9a50a8ad5"
+  },
+  "ComfyUI-KJNodes/web/js/performance.js": {
+   "size": 9106,
+   "sha256": "4dea5ceab52fa0b398c6094d73a778e717c4b793d144b3254219b65d38b0de8a"
+  },
+  "ComfyUI-KJNodes/web/js/play_sound.js": {
+   "size": 4028,
+   "sha256": "807d34f262d07eaea6a07125f46eca712dfb4de6e7a8d06813c7624b75f234b9"
+  },
+  "ComfyUI-KJNodes/web/js/screencap_stream.js": {
+   "size": 17200,
+   "sha256": "51b977ec1c945352797b1e097ed6bd34d7d7d2dd0806ce62b23b685fe50a40b3"
+  },
+  "ComfyUI-KJNodes/web/js/setgetnodes.js": {
+   "size": 61005,
+   "sha256": "50f0d72c11520a7f23a0c9f314edb2071d0742d3caead20b09a23776744fedfb"
+  },
+  "ComfyUI-KJNodes/web/js/shake_to_disconnect.js": {
+   "size": 7277,
+   "sha256": "6a53a382ba9b8a240234ba2600a6a30572c059ca411e0ec8610eb133ee7a4d29"
+  },
+  "ComfyUI-KJNodes/web/js/utility.js": {
+   "size": 10827,
+   "sha256": "46602828a0bf22b9f32617bbff8de6be4134884d4edab7e01eb22b0328aaeb7d"
+  },
+  "ComfyUI-KJNodes/web/js/editors/editor_base.js": {
+   "size": 29422,
+   "sha256": "566a10e0abe0fb95866b98ab419edde25bf53cb2fea39ccbfbb79cbf43b3928c"
+  },
+  "ComfyUI-KJNodes/web/js/editors/interpolation.js": {
+   "size": 9533,
+   "sha256": "0e253a0f3aa2e657c41bed93f57b38ec3dad68a22c4e3c2a80ede812946a3981"
+  },
+  "ComfyUI-KJNodes/web/js/editors/point_editor_canvas.js": {
+   "size": 15306,
+   "sha256": "1283fb883186cd8a201f7fee9fe9a15eda16d32bf4b3015eaf9e2a5501d3232b"
+  },
+  "ComfyUI-KJNodes/web/js/editors/spline_editor_canvas.js": {
+   "size": 32502,
+   "sha256": "0e069a0337d21dee1ee33e46b421de902d3eb375ddc29997d3ed28e250f51c39"
+  },
+  "ComfyUI-KJNodes/web/js/preview_override/preview_override.css": {
+   "size": 4099,
+   "sha256": "138d6f4e865f7ad618245ff640941b42e3f1860cb9ad7dbffbd12ecfb57a3090"
+  },
+  "ComfyUI-KJNodes/web/js/preview_override/preview_override.js": {
+   "size": 43934,
+   "sha256": "10419133a7cce01d6170b9a748c25b5df806044aad81d6e971966bac8835e6e4"
+  },
+  "ComfyUI-Manager/.gitignore": {
+   "size": 266,
+   "sha256": "35c2b7854eaa69b40690600eaf03684f2c28df058498d972ad63868e1b01948d"
+  },
+  "ComfyUI-Manager/alter-list.json": {
+   "size": 12622,
+   "sha256": "9259c67d5fdd9fe0e975baa23712ed2d208b708d498da3d5d6bb6b3c1b3a08c5"
+  },
+  "ComfyUI-Manager/CHANGELOG.md": {
+   "size": 3031,
+   "sha256": "34ea05d815dc1cb6d7385c9a32160b091ec5c2e8230555ba23ab815d2be94a55"
+  },
+  "ComfyUI-Manager/channels.list.template": {
+   "size": 507,
+   "sha256": "140a8b2491a67ca94454ad65c8dad240b541b529625931709afa22ccbe307e25"
+  },
+  "ComfyUI-Manager/check.bat": {
+   "size": 1106,
+   "sha256": "91a8d15a04463dc010663c4359c3c6dbd77fa75e5bf7df612361b83598ced373"
+  },
+  "ComfyUI-Manager/check.sh": {
+   "size": 1182,
+   "sha256": "97c2828ff5d4daa93e0eba5220c1b8436e035cec3fd00b2c203d5128385618bb"
+  },
+  "ComfyUI-Manager/cm-cli.py": {
+   "size": 42544,
+   "sha256": "f02f201f94a73109f255238a80d88f35020b7e6db69da71a4803a7db4d32129b"
+  },
+  "ComfyUI-Manager/cm-cli.sh": {
+   "size": 34,
+   "sha256": "fb0caa3e903cce02790dd37a6d73e0aaec9a73fde26651814710da66448c15cb"
+  },
+  "ComfyUI-Manager/custom-node-list.json": {
+   "size": 3056528,
+   "sha256": "edcaa5c6e0ea1578c32634f6dda20d6a4f8b050c79c05cc4c09a96f9cfea981e"
+  },
+  "ComfyUI-Manager/extension-node-map.json": {
+   "size": 2481177,
+   "sha256": "7ccf2c9cbb792b8214a7c8e0192cf9979814d7aa7874f502414a53118f7d2268"
+  },
+  "ComfyUI-Manager/extras.json": {
+   "size": 790,
+   "sha256": "a7e8ca7a78f464647199311bc24ef4ce1420d9f7eb6acfc35020e7dedebbb903"
+  },
+  "ComfyUI-Manager/github-stats.json": {
+   "size": 1048327,
+   "sha256": "fccb86112e3ebf438f34a768cab60d2200d0a71a7da8743950df4e67df2121bc"
+  },
+  "ComfyUI-Manager/git_helper.py": {
+   "size": 17766,
+   "sha256": "f6b046003537502b9bc6eae0ac04641ec20c8f7d0361703093cd64d7c40aedf7"
+  },
+  "ComfyUI-Manager/json-checker.py": {
+   "size": 9249,
+   "sha256": "d2964ee91040cca2a70c05e97e3fa8f12b7e8c03439731ad27b9b7ce398faf5f"
+  },
+  "ComfyUI-Manager/LICENSE.txt": {
+   "size": 35823,
+   "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+  },
+  "ComfyUI-Manager/model-list.json": {
+   "size": 280515,
+   "sha256": "5c47e0a62e9f9a54c85253d911f293dc3526d61da6fc601fc97ffb9c7c7bb3c5"
+  },
+  "ComfyUI-Manager/openapi.yaml": {
+   "size": 31313,
+   "sha256": "493eaf33e7dc265ab88559900adb7bb9f7e25d51839768b16c25b3c0013b4dba"
+  },
+  "ComfyUI-Manager/pip_overrides.json.template": {
+   "size": 867,
+   "sha256": "c6eaffda6830e103433d8223e96ab27f248f9361e6f988b83d4bc5011a27548b"
+  },
+  "ComfyUI-Manager/pip_overrides.osx.template": {
+   "size": 867,
+   "sha256": "c6eaffda6830e103433d8223e96ab27f248f9361e6f988b83d4bc5011a27548b"
+  },
+  "ComfyUI-Manager/prestartup_script.py": {
+   "size": 31258,
+   "sha256": "04c738841edc5619768256643d45221837abf456da29adf52f56ac35db0e4158"
+  },
+  "ComfyUI-Manager/pyproject.toml": {
+   "size": 653,
+   "sha256": "64ce69608f88105fa460e3a23be0fb18ebe69ecc21b1e0afa03cbd300a193963"
+  },
+  "ComfyUI-Manager/README.md": {
+   "size": 26063,
+   "sha256": "0558d46a95c7e0a8695b132fee8861dec2318d6b4714998cfb785ced903cb139"
+  },
+  "ComfyUI-Manager/requirements.txt": {
+   "size": 115,
+   "sha256": "6929c10371dbbbb120270d986b713a96634c46d192f536ffc4ecb85d70e7b34a"
+  },
+  "ComfyUI-Manager/ruff.toml": {
+   "size": 369,
+   "sha256": "11546205b4cbd23fda12a5bacb6313cd71ed3b2d2ea83a61319a145cf5fe7f97"
+  },
+  "ComfyUI-Manager/scan.sh": {
+   "size": 229,
+   "sha256": "ec39a673a03594f6f29220d5df84cca8f611b9bbf4326177c999eff18cf3d0ca"
+  },
+  "ComfyUI-Manager/scanner.py": {
+   "size": 63585,
+   "sha256": "484e1bf0b6533bbaf19a5f94d82a8ab2c74f2811ccef01deb32a3da797809e3c"
+  },
+  "ComfyUI-Manager/__init__.py": {
+   "size": 705,
+   "sha256": "96664f14903314ba16d27db15d765671bb72412aa2791e713563d1d12aef9c2a"
+  },
+  "ComfyUI-Manager/.github/workflows/publish-to-pypi.yml": {
+   "size": 1589,
+   "sha256": "dec275f8de5ab3d4f5eaad55e3c6ae52d848c026f01bc40525b1e0dabf3e4aba"
+  },
+  "ComfyUI-Manager/.github/workflows/publish.yml": {
+   "size": 680,
+   "sha256": "b742a246a6b5f41b968f747a981474ef24b78f740f8bcef20c124c8205718432"
+  },
+  "ComfyUI-Manager/.github/workflows/ruff.yml": {
+   "size": 410,
+   "sha256": "d497f58d447e5cbb37fc8b23de5b3f3f515f67433f3a52a309642dc430ce7485"
+  },
+  "ComfyUI-Manager/components/.gitignore": {
+   "size": 16,
+   "sha256": "ad07cbdeecfb3582097408eeae323f634ba4e56150b3b904c11fa2588211b99a"
+  },
+  "ComfyUI-Manager/docs/README.md": {
+   "size": 1616,
+   "sha256": "893a46c8b417f7b6d94ce4d9f7e70b0414622d891cbec6a541d7d7472d86a81b"
+  },
+  "ComfyUI-Manager/docs/en/cm-cli.md": {
+   "size": 8692,
+   "sha256": "7a9504d038815d51f372dd7c59240bb206248b760649d0671582c86e824158fa"
+  },
+  "ComfyUI-Manager/docs/en/use_aria2.md": {
+   "size": 911,
+   "sha256": "c1e26da22e0febb07db792cd537ec4567254ec800064189547d3e3999e0926b3"
+  },
+  "ComfyUI-Manager/docs/en/v3.38-userdata-security-migration.md": {
+   "size": 7905,
+   "sha256": "aa34164b3978838635e471e98d07bc52a6e64d9a31d32138189d2c102c2d6b80"
+  },
+  "ComfyUI-Manager/docs/ko/cm-cli.md": {
+   "size": 9577,
+   "sha256": "82cced8df9601776127297274af8c423f41df353735e5aafd7e5ee99a626bd72"
+  },
+  "ComfyUI-Manager/glob/cm_global.py": {
+   "size": 2953,
+   "sha256": "93cc97567ca93a56160b2f7765f3ac6858c29890c3a622754aaea0e9246a3550"
+  },
+  "ComfyUI-Manager/glob/cnr_utils.py": {
+   "size": 8099,
+   "sha256": "1228f9af915696fddbe07ad4c1af4d8487465c4e5c9edefcec10fa8d1d61bbcb"
+  },
+  "ComfyUI-Manager/glob/git_utils.py": {
+   "size": 2587,
+   "sha256": "57c84d94a95d12314df3a31266875a5a4bcc9617260fcf0db391dde671b96920"
+  },
+  "ComfyUI-Manager/glob/manager_core.py": {
+   "size": 131798,
+   "sha256": "aca948636ca6da86f5b9848a2bc647986f84806a35b2874c735b5914fbd1066e"
+  },
+  "ComfyUI-Manager/glob/manager_downloader.py": {
+   "size": 5278,
+   "sha256": "f3472361d14ebb769bd9bf3a36f0df0414f91575fd0ba5f0cdb37ee14d87b563"
+  },
+  "ComfyUI-Manager/glob/manager_migration.py": {
+   "size": 12830,
+   "sha256": "35008f39cbc9a1bae4e7fb438d1b673b7e87903e7be667c2448b2f461f8a7c81"
+  },
+  "ComfyUI-Manager/glob/manager_server.py": {
+   "size": 81133,
+   "sha256": "1e449034014348d0e4f151a4eece82311d6832056c089e09e600ce059b2477e8"
+  },
+  "ComfyUI-Manager/glob/manager_util.py": {
+   "size": 23000,
+   "sha256": "40d87e134cdae96b0463c043ce6b78662d55ab0eb5a5006fdbf69f1b05b57a9c"
+  },
+  "ComfyUI-Manager/glob/node_package.py": {
+   "size": 1970,
+   "sha256": "2f99b9b49dd78f1d5dd71a433cca75d5d2f51b27cce9f4289e0768aafcebe289"
+  },
+  "ComfyUI-Manager/glob/README.md": {
+   "size": 2493,
+   "sha256": "197c71f4ccc53f86c4f4617369d3345fe68892f463ad85526438ffb39318b71a"
+  },
+  "ComfyUI-Manager/glob/security_check.py": {
+   "size": 7253,
+   "sha256": "55054ee809a0ffcfaefd7df607ef8f2f83cbd90430d86c1c791e595cd9525790"
+  },
+  "ComfyUI-Manager/glob/share_3rdparty.py": {
+   "size": 17654,
+   "sha256": "584b82aa9820e651183cbc639f49aca952a17828665577a95a80a0d3a9fc0baf"
+  },
+  "ComfyUI-Manager/js/cm-api.js": {
+   "size": 2220,
+   "sha256": "b142b3ec57305b94cf9bae4eb76988c4ef1b0a27d2d7412181408a5e6bcab77b"
+  },
+  "ComfyUI-Manager/js/comfyui-gui-builder.js": {
+   "size": 8392,
+   "sha256": "3d2ec8a7b98a98d7b44db723991725dad0c7a16c5c713bea0bd4680a6134fe77"
+  },
+  "ComfyUI-Manager/js/comfyui-manager.js": {
+   "size": 49856,
+   "sha256": "13fa02efd0a61e45cc7ab6d2f9d4db76f47a2974e888009baa63f55674e63f8e"
+  },
+  "ComfyUI-Manager/js/comfyui-share-common.js": {
+   "size": 36256,
+   "sha256": "dcfb98cb27f30fe956657cae9341355d5a204d6bfce9816b60eb4f890a279226"
+  },
+  "ComfyUI-Manager/js/comfyui-share-copus.js": {
+   "size": 33471,
+   "sha256": "b5e8cdd64a2bd328db5ccdbd5b8c5029f6f526ee39e4a3380dbbcd7da5280f7b"
+  },
+  "ComfyUI-Manager/js/comfyui-share-openart.js": {
+   "size": 21831,
+   "sha256": "bd08e391db437245cea90e681c6bd037cc8ec81a95f751821611775fbcc72a69"
+  },
+  "ComfyUI-Manager/js/comfyui-share-youml.js": {
+   "size": 16589,
+   "sha256": "20675ca2ed5a1d20f01eb89cd850f930987dfb0dc052195ddf3a449bbde09321"
+  },
+  "ComfyUI-Manager/js/common.js": {
+   "size": 32959,
+   "sha256": "b1cafbdabe2d90be4df791e0965511eff4dc0ae0170a33baff85eb4845e27f5e"
+  },
+  "ComfyUI-Manager/js/components-manager.js": {
+   "size": 20385,
+   "sha256": "295bf33ac761779f7849acd5f5ccb746cf672e87e115fd0aca634905ae44e5e3"
+  },
+  "ComfyUI-Manager/js/custom-nodes-manager.css": {
+   "size": 13324,
+   "sha256": "c3c6bad5974a7b7634a3975c54ee83ed0b9b0d9e43f24e3a7cd3e96f3db7c16e"
+  },
+  "ComfyUI-Manager/js/custom-nodes-manager.js": {
+   "size": 58244,
+   "sha256": "25cb2a8c69589830559b813e1b0efa208f87bb2da5fcf31a1864d3474c60de15"
+  },
+  "ComfyUI-Manager/js/model-manager.css": {
+   "size": 4850,
+   "sha256": "56a671c1e05b91cbfd2c5feb8479ecae07421491f093378c31b88e5c334eab2d"
+  },
+  "ComfyUI-Manager/js/model-manager.js": {
+   "size": 19284,
+   "sha256": "38c2e625be0a023ee5d78b52c59b814072bc3c4c2fb32a447c89d09d6a4db194"
+  },
+  "ComfyUI-Manager/js/node-usage-analyzer.css": {
+   "size": 12694,
+   "sha256": "2aaf2d447035d21773b8cde1d16dcf25b05c003c0200e4fa17c9df9435237a07"
+  },
+  "ComfyUI-Manager/js/node-usage-analyzer.js": {
+   "size": 19114,
+   "sha256": "04f961175edf1db969770be09684d01de3f1b344cf760ed0be6c6cb2a0a20d97"
+  },
+  "ComfyUI-Manager/js/node_fixer.js": {
+   "size": 4124,
+   "sha256": "e18dae77a373e4b717ec03580450e5e0238e554748d530246d8bb92f05062282"
+  },
+  "ComfyUI-Manager/js/popover-helper.js": {
+   "size": 18032,
+   "sha256": "806d511a5c51d66c91e901e22e30a8158bfad699a54f52c68e0a0ad77e1e1701"
+  },
+  "ComfyUI-Manager/js/README.md": {
+   "size": 2865,
+   "sha256": "cd377f5712dc8201dab34f35d373e0da7aa2570964ddb89230869efc8f946f8f"
+  },
+  "ComfyUI-Manager/js/snapshot.css": {
+   "size": 1433,
+   "sha256": "b93e29e33bf65973b97ed8505e6197f9d83a12d12a5d5ae25d86c0e32d786df4"
+  },
+  "ComfyUI-Manager/js/snapshot.js": {
+   "size": 8928,
+   "sha256": "f635edd094a19dc07dd816f2197e66771f6bdcac2ccfa1adc7bbbe53f23663c3"
+  },
+  "ComfyUI-Manager/js/turbogrid.esm.js": {
+   "size": 168783,
+   "sha256": "09046d9e11fd61a5c15754ea95a79c75508e0069039551a77d85bf3e536c0f78"
+  },
+  "ComfyUI-Manager/js/workflow-metadata.js": {
+   "size": 2759,
+   "sha256": "5c97dd6beec24bfc646434dc45e171f8c067aee18e199c304b39613011d32dbc"
+  },
+  "ComfyUI-Manager/misc/Impact.pack": {
+   "size": 12726,
+   "sha256": "c09b9c509b07030aad0631be5cbe4579c01641044dbbb7d5d6c86b05d6defc99"
+  },
+  "ComfyUI-Manager/node_db/README.md": {
+   "size": 3594,
+   "sha256": "57dff481a827154f33d07fdc0d79c21b592b787a0f6a37b9d3bc2dc325a1df82"
+  },
+  "ComfyUI-Manager/node_db/dev/custom-node-list.json": {
+   "size": 617340,
+   "sha256": "096200585083a7b59bb1c54fa3f561be835d64401c4dd6db93e8c83e8d3af2e8"
+  },
+  "ComfyUI-Manager/node_db/dev/extension-node-map.json": {
+   "size": 494142,
+   "sha256": "1513f599efe4daa35028118263736acfd1133b59083f9924b6e94381be2f0cb0"
+  },
+  "ComfyUI-Manager/node_db/dev/github-stats.json": {
+   "size": 219122,
+   "sha256": "71f390886f10824224a639d453e1f80743419f19b068aaaf29960af5a2c3f1d3"
+  },
+  "ComfyUI-Manager/node_db/dev/model-list.json": {
+   "size": 22,
+   "sha256": "7f9fc2997f5fc9f5a40bc2302e51ed9331c744cd56a88e709136d1762ff7be89"
+  },
+  "ComfyUI-Manager/node_db/dev/scan.sh": {
+   "size": 87,
+   "sha256": "42c4f6787e0692ca9c5b609e1d59a125b0566402bc3e6e75f6e8e6cc71a59477"
+  },
+  "ComfyUI-Manager/node_db/forked/custom-node-list.json": {
+   "size": 10674,
+   "sha256": "71bcba2c0f88faf4fe15014201ff0cd443b3bba8cd63b1e366ff494193d676f9"
+  },
+  "ComfyUI-Manager/node_db/forked/extension-node-map.json": {
+   "size": 2,
+   "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  "ComfyUI-Manager/node_db/forked/model-list.json": {
+   "size": 22,
+   "sha256": "7f9fc2997f5fc9f5a40bc2302e51ed9331c744cd56a88e709136d1762ff7be89"
+  },
+  "ComfyUI-Manager/node_db/forked/scan.sh": {
+   "size": 102,
+   "sha256": "5da8df324e4a461de0a7762885b0b036f6afa79ee40a7fb1eb82bacd1f9e7d73"
+  },
+  "ComfyUI-Manager/node_db/legacy/alter-list.json": {
+   "size": 2,
+   "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  "ComfyUI-Manager/node_db/legacy/custom-node-list.json": {
+   "size": 323865,
+   "sha256": "919ad0b1afad9bd6056396df68346ce9ab624816187d301586b09a6dc245d8b7"
+  },
+  "ComfyUI-Manager/node_db/legacy/extension-node-map.json": {
+   "size": 2,
+   "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  "ComfyUI-Manager/node_db/legacy/model-list.json": {
+   "size": 7118,
+   "sha256": "575c5ee52403f63f9a8969af62c92b1d2c0cbd6c14f3da81182a8ce299178bbb"
+  },
+  "ComfyUI-Manager/node_db/new/alter-list.json": {
+   "size": 25,
+   "sha256": "94df879836baa11aca89b1f26eb5ca70e270732609cc9e17fec0637af5405f6c"
+  },
+  "ComfyUI-Manager/node_db/new/custom-node-list.json": {
+   "size": 411421,
+   "sha256": "0b776d2d2f427b8422bc674cfdfc92cd3fd80792e8726a643557a3a3444ad102"
+  },
+  "ComfyUI-Manager/node_db/new/extension-node-map.json": {
+   "size": 2481177,
+   "sha256": "7ccf2c9cbb792b8214a7c8e0192cf9979814d7aa7874f502414a53118f7d2268"
+  },
+  "ComfyUI-Manager/node_db/new/model-list.json": {
+   "size": 33108,
+   "sha256": "1973d1a09ab70957ebdaf9ebda2ee596bedd849362ebb27b828df30b62f9f4fc"
+  },
+  "ComfyUI-Manager/node_db/tutorial/custom-node-list.json": {
+   "size": 17913,
+   "sha256": "73ee368734ce544b273089322557d5bf92652acbdb37b442bc73723b6272e3ac"
+  },
+  "ComfyUI-Manager/node_db/tutorial/extension-node-map.json": {
+   "size": 17806,
+   "sha256": "e6a9199a53d9bc7f0b69a5c99b63fbf61073dd882c0a4772f7ec4baed28f3b03"
+  },
+  "ComfyUI-Manager/node_db/tutorial/model-list.json": {
+   "size": 22,
+   "sha256": "7f9fc2997f5fc9f5a40bc2302e51ed9331c744cd56a88e709136d1762ff7be89"
+  },
+  "ComfyUI-Manager/node_db/tutorial/scan.sh": {
+   "size": 91,
+   "sha256": "601bca374fb53a2a3d798dce2ce84ab786665338c10087821b4dc1a3e11360e6"
+  },
+  "ComfyUI-Manager/notebooks/comfyui_colab_with_manager.ipynb": {
+   "size": 18995,
+   "sha256": "abc23bebc9fce77632ad9eee2589e2ad2f2fe48748b276cff4353f7ae3af033e"
+  },
+  "ComfyUI-Manager/scripts/colab-dependencies.py": {
+   "size": 1552,
+   "sha256": "a0aab1c79db9acae528beb6564693fe0c2003dbe1ddf43d52c6c7ffe9e6f8591"
+  },
+  "ComfyUI-Manager/scripts/install-comfyui-venv-linux.sh": {
+   "size": 828,
+   "sha256": "0681e813781f4d23271a4d5b528b4be70f4501f8bf438e559ab191f5115a664e"
+  },
+  "ComfyUI-Manager/scripts/install-comfyui-venv-win.bat": {
+   "size": 688,
+   "sha256": "5aec7add9c3e7f53785b6825e71d17c1d916afbe4dd30bfca99c7ae68888b923"
+  },
+  "ComfyUI-Manager/scripts/install-manager-for-portable-version.bat": {
+   "size": 315,
+   "sha256": "a3a6ef2edfd8a3468a3be2ef028f9585be59b65b21fe23382f463498501d3c6c"
+  },
+  "ComfyUI-Manager/snapshots/the_snapshot_files_are_located_here": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-Manager/tests/conftest.py": {
+   "size": 1909,
+   "sha256": "fe0939fb3c6e2bb86302fc18c78c37a059bc6c25ade4e36964fe6c86462a976b"
+  },
+  "ComfyUI-Manager/tests/test_csrf_content_type_helper.py": {
+   "size": 4336,
+   "sha256": "11786f5d650358967db1e8e76dedbbc787173060ec4f4368cd9c8e06b011fcd3"
+  },
+  "ComfyUI-Manager/tests/test_install_flags_config.py": {
+   "size": 9690,
+   "sha256": "69d8bf8f415591cd00fd49cfe409417227cdb641e7c7a6e8c348fd44ee1fd6f7"
+  },
+  "ComfyUI-Manager/tests/test_install_flags_gates.py": {
+   "size": 18497,
+   "sha256": "b459affdc1bbf54d7dc1445f6ea5bab6e8a9197efe5cc5bdf8fc1174a310e284"
+  },
+  "ComfyUI-Manager/tests/test_install_flags_structural.py": {
+   "size": 6276,
+   "sha256": "dcac34a1324b0b921ba13a459aa1bf3b854362b37c43afab944e3afd94abb27c"
+  },
+  "ComfyUI-Manager/tests/test_install_flag_predicate.py": {
+   "size": 6015,
+   "sha256": "8780f2727fa1a779c81b757ee47ed1f35ce3477560479d32d5c47103c411a3d0"
+  },
+  "ComfyUI-Manager/tests/e2e/test_e2e_install_flags.py": {
+   "size": 34177,
+   "sha256": "2a42a38a72cddc01099930995a5cb7e696c5bbe535c60e58a5f19295cbf6ca56"
+  },
+  "ComfyUI-Manager/tests/e2e/scripts/setup_e2e_env.sh": {
+   "size": 6557,
+   "sha256": "cd19b5bc9519d0871ea010eb669a452494cccf6d321782389da5ef0a3204383a"
+  },
+  "ComfyUI-Manager/tests/e2e/scripts/stage_flags.sh": {
+   "size": 2889,
+   "sha256": "c390bc6968e7acbd88445af091d2855762586d7ec79c108ed4ccd79e0e1aa1cc"
+  },
+  "ComfyUI-Manager/tests/e2e/scripts/start_comfyui.sh": {
+   "size": 5687,
+   "sha256": "c8a9dba66e0d48670e10ea8c35691cc92d49c3dfddb1d9af8ecc2f3528797275"
+  },
+  "ComfyUI-Manager/tests/e2e/scripts/stop_comfyui.sh": {
+   "size": 3749,
+   "sha256": "dca716a4266cf454d17b8484ce169c5181f60c092bb4cb58a06b8386e1790029"
+  },
+  "ComfyUI-MultiGPU/.gitignore": {
+   "size": 66,
+   "sha256": "42c3fced676030e4c85df2063db64a39b0e27e2ce908157cc758bbbaee9f8b21"
+  },
+  "ComfyUI-MultiGPU/checkpoint_multigpu.py": {
+   "size": 17869,
+   "sha256": "a8bb7566afdf4212c1938b88d6f233bfca6300d7f8d2bbe5b6ab15b99a383e2b"
+  },
+  "ComfyUI-MultiGPU/clip_dynamic_load_list_guard.py": {
+   "size": 5190,
+   "sha256": "3e0728491deb12286cc8da6776f229e8120a3b3e61bddbeb8b7ba980207b9679"
+  },
+  "ComfyUI-MultiGPU/device_utils.py": {
+   "size": 12485,
+   "sha256": "7c5331a856add9292cfa02d9fd0306db019a0de04bf4580dc7f24d39ea869c94"
+  },
+  "ComfyUI-MultiGPU/distorch_2.py": {
+   "size": 42955,
+   "sha256": "7dedade64add5198325ed3e050c2b52b947cc0c8d1d6db1067be75cc15dee638"
+  },
+  "ComfyUI-MultiGPU/LICENSE": {
+   "size": 35821,
+   "sha256": "81cbae84a29ce7e770bf2bc7b178e50bda0ce8de6067aba661b0bc7b05b562f8"
+  },
+  "ComfyUI-MultiGPU/model_management_mgpu.py": {
+   "size": 7753,
+   "sha256": "4de63d52fccb9e2dda516fd76308b518ec295e17bc4ad72a3d1490b1ad448e27"
+  },
+  "ComfyUI-MultiGPU/nodes.py": {
+   "size": 18387,
+   "sha256": "eca302c1e46a26b036daf00693a45fbf084559c87c3736178b42cea75adb794d"
+  },
+  "ComfyUI-MultiGPU/p2p_registry.py": {
+   "size": 2451,
+   "sha256": "b2048a882e686a32a3c23a7d92bb9fe8a2a7572fb8ddf5c62bf93117d4579afc"
+  },
+  "ComfyUI-MultiGPU/pyproject.toml": {
+   "size": 2851,
+   "sha256": "ce2b9dcf5eb213a90d6fffbe72e9a81222ec9362ebcdb1c6746acccabbb32dd8"
+  },
+  "ComfyUI-MultiGPU/README.md": {
+   "size": 21211,
+   "sha256": "ece21d47887df9e2be12c2358ed151e6aadc4241a7883cd61fd4b84de1522699"
+  },
+  "ComfyUI-MultiGPU/wanvideo.py": {
+   "size": 44199,
+   "sha256": "d1043d05df3f7cdc58993572efc0880c43a42e773e02408d6ddb96de08b66a22"
+  },
+  "ComfyUI-MultiGPU/wrappers.py": {
+   "size": 27215,
+   "sha256": "4f014cbdfaf6413b38aef66e7467739c0376ea6e7df97afd2dd48f896b68e563"
+  },
+  "ComfyUI-MultiGPU/__init__.py": {
+   "size": 38506,
+   "sha256": "e1def7eb982c3acdc612f34a677820066055d2ec4630adc2d1b0a58798363cb7"
+  },
+  "ComfyUI-MultiGPU/.github/workflows/publish_action.yml": {
+   "size": 536,
+   "sha256": "3f1c5009d94433717a309296d7d8e3438d0d578741587ceea4bcba701485ff4c"
+  },
+  "ComfyUI-MultiGPU/assets/distorch2_0.gif": {
+   "size": 1449778,
+   "sha256": "7bf75284bd6f9eb04a0ed841a3785d92762955274557db4926521eb659124b62"
+  },
+  "ComfyUI-MultiGPU/assets/distorch2_0.png": {
+   "size": 55799,
+   "sha256": "985ab59b6e3f5121657f21949fab308267563ab73915227de331d12569775dcb"
+  },
+  "ComfyUI-MultiGPU/assets/distorch_average.png": {
+   "size": 83029,
+   "sha256": "a394bf1980f675c7956dc9146ae4bf35fdc346d638a31be84ee277d316e7565f"
+  },
+  "ComfyUI-MultiGPU/assets/distorch_node.png": {
+   "size": 78607,
+   "sha256": "d8b2921363ae46e645cd866d289565199dd7c284afb1e0de04fd6c5138ea191f"
+  },
+  "ComfyUI-MultiGPU/assets/flux1_dev_Q8_0_benchmark.png": {
+   "size": 755565,
+   "sha256": "fc2f2373294325cbc1a21673918a5fdfbc74c83f8424e943030f4f52dcfdf28a"
+  },
+  "ComfyUI-MultiGPU/assets/flux1_kontext_dev_benchmark.png": {
+   "size": 786920,
+   "sha256": "d8665a9a63244e889a1e851cf42d8334d08e979dbc0f4d36c052ae2ea9aa586a"
+  },
+  "ComfyUI-MultiGPU/assets/multigpu_icon.gif": {
+   "size": 9836140,
+   "sha256": null
+  },
+  "ComfyUI-MultiGPU/assets/multigpu_icon.png": {
+   "size": 284736,
+   "sha256": "a2ee4b36a0a3cbe2aaf9559fb67c5406afa29fdb7d90c955a13fac52dad99744"
+  },
+  "ComfyUI-MultiGPU/assets/multigpu_icon.webp": {
+   "size": 776870,
+   "sha256": "7bb68f2f2b5e72f0ed382cb75ef081f81b3cd679b5916b57a441e7a5ed7f864c"
+  },
+  "ComfyUI-MultiGPU/assets/qwen_image_fp16_benchmark.png": {
+   "size": 559774,
+   "sha256": "062a9da2b4d1733787b1e050c6f8f6f22de3509a22bb329e412fe3dbd48d0868"
+  },
+  "ComfyUI-MultiGPU/assets/qwen_image_fp8_benchmark.png": {
+   "size": 748904,
+   "sha256": "7d79009f31fdd9cb282552f7053b08dc62961cfd1e3bb1705126d672dceced2f"
+  },
+  "ComfyUI-MultiGPU/assets/wan2_2_benchmark_v2.png": {
+   "size": 637984,
+   "sha256": "01e0c65d1df2b998ab4ff91b6f7a770bcb4432cd5471cfaf564f0d5a0349e67e"
+  },
+  "ComfyUI-MultiGPU/assets/wan2_2_qwen_combo_benchmark.png": {
+   "size": 1687113,
+   "sha256": "73cd81c9c2a591020f49b3749998314d06601c6d71001d33fb1dd749922b4b09"
+  },
+  "ComfyUI-MultiGPU/assets/test_images/example_inpaint_MultiGPU.png": {
+   "size": 950086,
+   "sha256": "7ccac663e2d3af2df1c005c14cda30182f396fcef7e4adb391cf89bc8022a4a1"
+  },
+  "ComfyUI-MultiGPU/ci/extract_allocation.py": {
+   "size": 2223,
+   "sha256": "ff0d620e2defa192502af746024b07401f1347ce1dd14c0049e9cfa13247c7a6"
+  },
+  "ComfyUI-MultiGPU/ci/run_workflows.py": {
+   "size": 8235,
+   "sha256": "19616f615027351af95593020903955bc64ae9e7c998d66d8003930dc57e295c"
+  },
+  "ComfyUI-MultiGPU/ci/smoke_test.sh": {
+   "size": 907,
+   "sha256": "747ea033dd717f4bd56704534d80b086caed856fa26dccb2d38ba70417223d51"
+  },
+  "ComfyUI-MultiGPU/ci/summarize_log.py": {
+   "size": 2188,
+   "sha256": "39280121c99092918e380addfa89ee439305adab448c73ed0b8bba610fd38014"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/ComfyUI-Florence2 detailed_caption to flux_api.json": {
+   "size": 4549,
+   "sha256": "9f595eda411f6f4eb40e17e7acf38b903988c9685093c7f64c2ae1d34d1f6e97"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/ComfyUI-GGUF flux unet dual_clip loaders_api.json": {
+   "size": 3933,
+   "sha256": "97d40ef45666a0232be4355c6429adefadfbcc87b4df4d133cc6cdb134faebbf"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/ComfyUI-GGUF qwen_image unet distorch2 cliploader_api.json": {
+   "size": 3268,
+   "sha256": "fb0e19bd20454f4b645a98baa48c28709ab1216039c12800b13c8b3e376f469b"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/ComfyUI-WanVideoWrapper wanvideo2_2 I2V A14B GGUF_API.json": {
+   "size": 9272,
+   "sha256": "de212e7ea654bc97d76e6c69db2fd102c71626c005882eb5847228055f48b994"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/ComfyUI-WanVideoWrapper wanvideo_1_3B control_lora_api.json": {
+   "size": 6107,
+   "sha256": "7ca6fb194f559fe342c1fb823e4b34563403d85b6f1c6bde9adc36b93b8979a3"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/ComfyUI-WanVideoWrapper wanvideo_T2V_API.json": {
+   "size": 6558,
+   "sha256": "8638ce50252e0352deec06e4067e013324590ea2fe4a12c2d7601c6e3888a7ef"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/flux unet dual_clip vae loaders_api.json": {
+   "size": 3963,
+   "sha256": "8302dc946e91fe24f2b11c246c32b48b2e646305eefbccd5b6b12c88c7dfd845"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/ltxvideo checkpointloadersimple distorch2_api.json": {
+   "size": 5230,
+   "sha256": "e632a6fe95f1bf493fdbfdb5a84e1cdf8a170c25aec2a96f292ce96bef6d15c2"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/mochi checkpointloaderadvanced distorch2_api.json": {
+   "size": 2940,
+   "sha256": "cf144f19241518f528e792c23fbc432fa70ca58abb9c208b3296b577d6e33842"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/qwen_image unet clip distorch2_api.json": {
+   "size": 3452,
+   "sha256": "0d4e5dfc790fdc479107ff61490c1b79329adc2d4c1e89cb1ba894c6d62d5e38"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/sd15 checkpoint loader simple_api.json": {
+   "size": 2242,
+   "sha256": "420aa86281847031cebaa4adea2e868875015e59fe19aaf99425e956001cc7e5"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/sdxl checkpoint loader advanced_api.json": {
+   "size": 2330,
+   "sha256": "a78304d3f4cad16019bcf7c668b5eb3c994bf49ff189562dce36c6e6e26efed3"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/wan2_2 distorch2 double_unet no_cpu_api.json": {
+   "size": 5537,
+   "sha256": "0a89a6342915ba3aceb86f00e53fd8b53b6fe0a1a58074a5b8814a313450cdb6"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/wan2_2 t2i lightx2v lora distorch2_api.json": {
+   "size": 5154,
+   "sha256": "91e48f60484ead3723151c7f80ec6f15ed96ca5911a82560dc2cc9e23ed3ce5c"
+  },
+  "ComfyUI-MultiGPU/ci/example_workflows_api/wan2_2 t2v lightx2v lora distorch2_api.json": {
+   "size": 5268,
+   "sha256": "b90df173958ba9497c1cc3137949ed12789b97e8808fadaa8d948fbe0e0eb57f"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-Florence2 detailed_caption to flux.jpg": {
+   "size": 262165,
+   "sha256": "3848466a3390023fca25e958e63f7305d20a2017e37167024aee6fe4787163af"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-Florence2 detailed_caption to flux.json": {
+   "size": 23158,
+   "sha256": "11658fbb37a512d7938afc9089c2f9b6a8c3bfbe5542d628ecafb3856c660cdc"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-GGUF flux unet dual_clip loaders.jpg": {
+   "size": 236370,
+   "sha256": "8428bb1f3effb1f50e4ffdba9920d566e88c5be4c689cd676eb0af98b35165bc"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-GGUF flux unet dual_clip loaders.json": {
+   "size": 18170,
+   "sha256": "2b6dec54fd66eee3961b61cb31da3f96f4c7d097b0f79013ca39de22b5dbaee8"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-GGUF qwen_image unet distorch2 cliploader.jpg": {
+   "size": 252351,
+   "sha256": "a474ce379e6a43a8466038a0685304e43a1ac877a84f4ddc595cac21aa116992"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-GGUF qwen_image unet distorch2 cliploader.json": {
+   "size": 12618,
+   "sha256": "560c90dfe37b2dee19684bea98e20e106e5f21089cee92ae057ca4ba04f52218"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-starter_multigpu.jpg": {
+   "size": 244575,
+   "sha256": "ce91d3167acec94efbe7605caa280759533a36fc053a2c40455dbd1565d2825b"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-starter_multigpu.json": {
+   "size": 16425,
+   "sha256": "f0912f3385e07faba40b27fb20640d5724114aca4ff49b755aeeba84541fc21e"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-WanVideoWrapper wanvideo2_2 I2V A14B GGUF.jpg": {
+   "size": 71613,
+   "sha256": "08720aa172b5a0a91e3a28d3c77b4b2617652695690794065135dcd01ae7a32e"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-WanVideoWrapper wanvideo2_2 I2V A14B GGUF.json": {
+   "size": 44536,
+   "sha256": "4f2a9ad16aff7c2b46820ba76b62e2866dced68e69ebc1e9f63fce20515890af"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-WanVideoWrapper wanvideo_1_3B control_lora.jpg": {
+   "size": 102982,
+   "sha256": "c0ff75497902efe86c93a285158b461b45ff861a7cd18c1ddd2c1ffa1e175221"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-WanVideoWrapper wanvideo_1_3B control_lora.json": {
+   "size": 27960,
+   "sha256": "1dc5b13e0ca55c23f0cac816a93d0a0095f1e90822d583574d4f7b6378e6aff4"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-WanVideoWrapper wanvideo_1_3B control_lora.webm": {
+   "size": 654798,
+   "sha256": "1763d1298fd2bd75d45c29791225676315f73ae97badbf2a33bde893a4664756"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-WanVideoWrapper wanvideo_T2V.jpg": {
+   "size": 81757,
+   "sha256": "5010b6585d4955c01f825d2fb08071cd69754880ea9f59daf609d7b87b9f3363"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ComfyUI-WanVideoWrapper wanvideo_T2V.json": {
+   "size": 25940,
+   "sha256": "1350adc4dd2ef408b3f3977566eee0a4641990c355cea2e98fc297cacb786433"
+  },
+  "ComfyUI-MultiGPU/example_workflows/flux unet dual_clip vae loaders.jpg": {
+   "size": 251070,
+   "sha256": "31be096a7f0ef540120463c14e96ae7bfe19686bdceb6de26c4f768e8574e7a1"
+  },
+  "ComfyUI-MultiGPU/example_workflows/flux unet dual_clip vae loaders.json": {
+   "size": 17942,
+   "sha256": "be90ddd2142935e9373f082937c5db0440f70047c8667d4301d745a3f83ea10d"
+  },
+  "ComfyUI-MultiGPU/example_workflows/hunyuanvideo distorch DEPRECATED.jpg": {
+   "size": 131974,
+   "sha256": "394635066c973acd67b13dd84df2e8037f2c18ae39a6fef6deb3e3cdfa7d2763"
+  },
+  "ComfyUI-MultiGPU/example_workflows/hunyuanvideo distorch DEPRECATED.json": {
+   "size": 17820,
+   "sha256": "7d7b2eb0a94975923d98161185cc874625a88deafef4792cda856c7c1f713195"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ltxvideo checkpointloadersimple distorch2.jpg": {
+   "size": 221029,
+   "sha256": "fba1caea5e6aa4782a1fd38f597c204d01039c713f9df5e59ce4903e49ad9ca9"
+  },
+  "ComfyUI-MultiGPU/example_workflows/ltxvideo checkpointloadersimple distorch2.json": {
+   "size": 17759,
+   "sha256": "39901c9a38a4b9f2456ff119a0bc957950bbb19d8a789493ba8e96f5c8a07859"
+  },
+  "ComfyUI-MultiGPU/example_workflows/mochi checkpointloaderadvanced distorch2.jpg": {
+   "size": 95109,
+   "sha256": "f16267160e545eb64f349d06737d13216a1b489eb927ffeee04a779533e71841"
+  },
+  "ComfyUI-MultiGPU/example_workflows/mochi checkpointloaderadvanced distorch2.json": {
+   "size": 9921,
+   "sha256": "307202e4bccd0e25a9ef84e21c3fc2ad8e949e6ec262e148511fba54ab7ef8ff"
+  },
+  "ComfyUI-MultiGPU/example_workflows/qwen_image unet clip distorch2.jpg": {
+   "size": 267207,
+   "sha256": "db6b4e52ac8ccd3b8cc0212b1cee516f1c5178bce169dc626835b4ab29282855"
+  },
+  "ComfyUI-MultiGPU/example_workflows/qwen_image unet clip distorch2.json": {
+   "size": 13107,
+   "sha256": "9d773cf7c8e7893612ed4213d5b84efad4a86555162dbb2524955f9936b85c48"
+  },
+  "ComfyUI-MultiGPU/example_workflows/qwen_image_edit_2509 unet clip distorch2.jpg": {
+   "size": 134803,
+   "sha256": "70e75e5080cecf83c8c3eed30bc38773c29834e1fb77dd5d14cbd8422ec5f67b"
+  },
+  "ComfyUI-MultiGPU/example_workflows/qwen_image_edit_2509 unet clip distorch2.json": {
+   "size": 15474,
+   "sha256": "80cf5844342c0b31884ce27a61577b5f59a05ce75b4407ec6d6a77e83a10b0b4"
+  },
+  "ComfyUI-MultiGPU/example_workflows/sd15 checkpoint loader simple.jpg": {
+   "size": 201671,
+   "sha256": "df39e57b5a73858f9826166033eb5a0613b55c8212e46d7fff0becd68c433252"
+  },
+  "ComfyUI-MultiGPU/example_workflows/sd15 checkpoint loader simple.json": {
+   "size": 9499,
+   "sha256": "42048bf6256abc3f6a45653567124e8b62f1fed9ea2a4b52eec854064b38aaa3"
+  },
+  "ComfyUI-MultiGPU/example_workflows/sdxl checkpoint loader advanced.jpg": {
+   "size": 286431,
+   "sha256": "feb52c926ff552e0ac498c1d2cb9f3447314757ac565155a5023c7b5ed8c66af"
+  },
+  "ComfyUI-MultiGPU/example_workflows/sdxl checkpoint loader advanced.json": {
+   "size": 9611,
+   "sha256": "a01114047c2ee01ec0d45d6fa2042a593d3c4d4c9618179b7e631bfd4fb84d77"
+  },
+  "ComfyUI-MultiGPU/example_workflows/wan2_2 distorch2 double_unet no_cpu.jpg": {
+   "size": 162057,
+   "sha256": "19c02eef949b72e85c962f3fa0affa1f2919f11f999fed9c294cca69b2a6d5a3"
+  },
+  "ComfyUI-MultiGPU/example_workflows/wan2_2 distorch2 double_unet no_cpu.json": {
+   "size": 18037,
+   "sha256": "1019a69a9f1de7110d1cc98a2dec3892e6b009b270ab7e61e188d54a58ce161f"
+  },
+  "ComfyUI-MultiGPU/example_workflows/wan2_2 t2i lightx2v lora distorch2.jpg": {
+   "size": 506215,
+   "sha256": "a38548d1195409091f5ac77cb439a545b9757034c0407b06a087b3fdb7c29140"
+  },
+  "ComfyUI-MultiGPU/example_workflows/wan2_2 t2i lightx2v lora distorch2.json": {
+   "size": 18587,
+   "sha256": "b1e681760b485f3b7d860dbc1914401cb4790dbc2c7a29bcfa7f96e2867a3412"
+  },
+  "ComfyUI-MultiGPU/example_workflows/wan2_2 t2v lightx2v lora distorch2.jpg": {
+   "size": 179732,
+   "sha256": "5ee248b1834c0b6b190e3a29c5cd09ca04852ece6db2c4e64dbc5f85b77a50a5"
+  },
+  "ComfyUI-MultiGPU/example_workflows/wan2_2 t2v lightx2v lora distorch2.json": {
+   "size": 21716,
+   "sha256": "bafa1b8a8ea203039ecca13076d974b7799254268f670a55d6fc643bbff873de"
+  },
+  "ComfyUI-MultiGPU/web/docs/CheckpointLoaderAdvancedDisTorch2MultiGPU.md": {
+   "size": 3987,
+   "sha256": "b5e49e20c862f96fda65084a952b6c552b3518245acda91846909aa4c866d2f8"
+  },
+  "ComfyUI-MultiGPU/web/docs/CheckpointLoaderAdvancedMultiGPU.md": {
+   "size": 1383,
+   "sha256": "33645ffb70985fc7f6ff574656b15a3cbd6b335dc0fd56958827870c6200d5d1"
+  },
+  "ComfyUI-MultiGPU/web/docs/CheckpointLoaderNF4MultiGPU.md": {
+   "size": 657,
+   "sha256": "39e587c344c866516f6c0d91ea9b34d9e2d3fd8d77cbf5942ee41992747f77f2"
+  },
+  "ComfyUI-MultiGPU/web/docs/CheckpointLoaderSimpleDisTorch2MultiGPU.md": {
+   "size": 3327,
+   "sha256": "71045cd2215c443f44ddb12151e678a4a11303c6dc609bd77a208955af2cafbf"
+  },
+  "ComfyUI-MultiGPU/web/docs/CheckpointLoaderSimpleMultiGPU.md": {
+   "size": 1173,
+   "sha256": "8272eb56a87b4c410f6667eb66402b43d41f5405e81b5c93082da8651cb0cb2a"
+  },
+  "ComfyUI-MultiGPU/web/docs/CLIPLoaderDisTorch2MultiGPU.md": {
+   "size": 3247,
+   "sha256": "d2392b00840bac3f7530cc30a1cf82fa3d82ceb38e50d3c64695784a73af7246"
+  },
+  "ComfyUI-MultiGPU/web/docs/CLIPLoaderGGUFDisTorch2MultiGPU.md": {
+   "size": 3331,
+   "sha256": "adbce5440fb614bb625c5210b68f6dcc53c6057c8a594d2f0405dbed0ba2c9f5"
+  },
+  "ComfyUI-MultiGPU/web/docs/CLIPLoaderGGUFDisTorchMultiGPU.md": {
+   "size": 368,
+   "sha256": "dd48fd051463ae1ce80554c05291a6b1315a4adc8b3683be8d7eda95cb5a5ba0"
+  },
+  "ComfyUI-MultiGPU/web/docs/CLIPLoaderGGUFMultiGPU.md": {
+   "size": 1161,
+   "sha256": "ca88479bc7c8cdbae83514599269c16a847393f82e83548e31a36087c265cb97"
+  },
+  "ComfyUI-MultiGPU/web/docs/CLIPLoaderMultiGPU.md": {
+   "size": 1068,
+   "sha256": "7841e3f6d40d14e830574d093d1330e0adb51f8431d98e33ba0256d4f18b793a"
+  },
+  "ComfyUI-MultiGPU/web/docs/CLIPVisionLoaderDisTorch2MultiGPU.md": {
+   "size": 3154,
+   "sha256": "257048d8d342716bb636497e47e866d54a4a05223e11d96e9b19d1cff7d0aff6"
+  },
+  "ComfyUI-MultiGPU/web/docs/CLIPVisionLoaderMultiGPU.md": {
+   "size": 1010,
+   "sha256": "5e70ffa2f222397eb8416307801b5368156c6d08c840831082a1d1699a2aa8c8"
+  },
+  "ComfyUI-MultiGPU/web/docs/ControlNetLoaderDisTorch2MultiGPU.md": {
+   "size": 3164,
+   "sha256": "6f416b41a099d27b75641efeb14d50ffe86f912eb6955e8e5a47a976b77ce373"
+  },
+  "ComfyUI-MultiGPU/web/docs/ControlNetLoaderMultiGPU.md": {
+   "size": 987,
+   "sha256": "e1542f1cb5d56dc90a0821ee92420d58ac10486d7b0c0d085de03902d4ee4ad4"
+  },
+  "ComfyUI-MultiGPU/web/docs/DiffControlNetLoaderDisTorch2MultiGPU.md": {
+   "size": 3102,
+   "sha256": "84c052b020ed63387306ecc8a6f1dc8a5d5e3c8aed6737b7d3f973c0973f0990"
+  },
+  "ComfyUI-MultiGPU/web/docs/DiffControlNetLoaderMultiGPU.md": {
+   "size": 925,
+   "sha256": "97de603df3c9fb0a60731217d2c455320e9ae3d14b260f4dcd9fff1d17aa35f3"
+  },
+  "ComfyUI-MultiGPU/web/docs/DiffusersLoaderDisTorch2MultiGPU.md": {
+   "size": 3079,
+   "sha256": "9e879ea49749056520ef70b17a3073d7f5a01abe6dacd6aae6335fd09ae50335"
+  },
+  "ComfyUI-MultiGPU/web/docs/DiffusersLoaderMultiGPU.md": {
+   "size": 915,
+   "sha256": "6cb5c7e5e4703c66850a98809c1a3a2333994e14d88e91da1b9a9c7c2a502735"
+  },
+  "ComfyUI-MultiGPU/web/docs/DownloadAndLoadFlorence2ModelMultiGPU.md": {
+   "size": 837,
+   "sha256": "ae5512b326c9619d7b4658ecd9fa9b24c96017d37b3b781ff8dbfa87651e2ab5"
+  },
+  "ComfyUI-MultiGPU/web/docs/DownloadAndLoadWav2VecModelMultiGPU.md": {
+   "size": 853,
+   "sha256": "28274ebb3771bf7666d72bac897038975e7f17d2d696f399364835b2e4c1f35f"
+  },
+  "ComfyUI-MultiGPU/web/docs/DualCLIPLoaderDisTorch2MultiGPU.md": {
+   "size": 3328,
+   "sha256": "8f98588a0ab13b4e1afacaf0723a44dd5f8d0231904184dfb396f7ca9dc8900b"
+  },
+  "ComfyUI-MultiGPU/web/docs/DualCLIPLoaderGGUFDisTorch2MultiGPU.md": {
+   "size": 3453,
+   "sha256": "5f325ca1380de34197b1edd1f8de36b968c777381286a915e3e9357e864a0d45"
+  },
+  "ComfyUI-MultiGPU/web/docs/DualCLIPLoaderGGUFDisTorchMultiGPU.md": {
+   "size": 382,
+   "sha256": "327107b74fcb565fcfd986e71fe70a6330ea1a5b070e1a76c2c34f0145cf68f4"
+  },
+  "ComfyUI-MultiGPU/web/docs/DualCLIPLoaderGGUFMultiGPU.md": {
+   "size": 1283,
+   "sha256": "2db4060b200141a65e202c11597e2aaae77b8e4e7a621c507582a7a7c8589a7a"
+  },
+  "ComfyUI-MultiGPU/web/docs/DualCLIPLoaderMultiGPU.md": {
+   "size": 1149,
+   "sha256": "24cc82a529f04b255902186aa7027abbf195a840aadcff7f4496799f1fcc10d4"
+  },
+  "ComfyUI-MultiGPU/web/docs/FantasyTalkingModelLoaderMultiGPU.md": {
+   "size": 719,
+   "sha256": "c74daa8936b3eee69c4145a82265639da5ecc0b17a240282e9694834681eb3c7"
+  },
+  "ComfyUI-MultiGPU/web/docs/Florence2ModelLoaderMultiGPU.md": {
+   "size": 911,
+   "sha256": "47175726753d25d99028260ac7b4db88743fc035e7bf8778c1f6afe32e4b685c"
+  },
+  "ComfyUI-MultiGPU/web/docs/LoadFluxControlNetMultiGPU.md": {
+   "size": 652,
+   "sha256": "8211891733b80b862a06c398bc71039334f1bb66d6593eb66a795c4891c25ba7"
+  },
+  "ComfyUI-MultiGPU/web/docs/LoadWanVideoClipTextEncoderMultiGPU.md": {
+   "size": 993,
+   "sha256": "d6294fe571378da37e8bc0fefcc0774c16870ca7bfdc2833c52e4c4151bc1e4d"
+  },
+  "ComfyUI-MultiGPU/web/docs/LoadWanVideoT5TextEncoderMultiGPU.md": {
+   "size": 1053,
+   "sha256": "c21e648f2b0d9443bcb45c172663ce3d9192be95b5f9f4f2e166e1c4d6b5959a"
+  },
+  "ComfyUI-MultiGPU/web/docs/LTXVLoaderMultiGPU.md": {
+   "size": 637,
+   "sha256": "5309d3113425a36b9299348ba9a458336206ace1695c9b66355768ba7a8cdee7"
+  },
+  "ComfyUI-MultiGPU/web/docs/MMAudioFeatureUtilsLoaderMultiGPU.md": {
+   "size": 1130,
+   "sha256": "51d428124be518ccf05d3b6164168e9b56d663edbe9ef7dec64a312eedb7b207"
+  },
+  "ComfyUI-MultiGPU/web/docs/MMAudioModelLoaderMultiGPU.md": {
+   "size": 826,
+   "sha256": "36acc573913f80fcf0cb842b8a48acaac561879d9eb2469bd2b18e328e97ac46"
+  },
+  "ComfyUI-MultiGPU/web/docs/MMAudioSamplerMultiGPU.md": {
+   "size": 1435,
+   "sha256": "7b51b82868b287e6f15092277131eaa471417f9590627994768e2008e59af8e8"
+  },
+  "ComfyUI-MultiGPU/web/docs/PulidEvaClipLoaderMultiGPU.md": {
+   "size": 491,
+   "sha256": "9667493fc036f525a61960f618c5ffef54564d1873ebae65903654b03f266d07"
+  },
+  "ComfyUI-MultiGPU/web/docs/PulidInsightFaceLoaderMultiGPU.md": {
+   "size": 708,
+   "sha256": "ef0e69bfe939205725983f42ffbc69eac9b17e730276c40d19efaf3cc597eef2"
+  },
+  "ComfyUI-MultiGPU/web/docs/PulidModelLoaderMultiGPU.md": {
+   "size": 645,
+   "sha256": "7119a0eb259e6d3ecb31d231cc8002b97ffaea6f6388bfee37cc9f26164aa50d"
+  },
+  "ComfyUI-MultiGPU/web/docs/QuadrupleCLIPLoaderDisTorch2MultiGPU.md": {
+   "size": 3415,
+   "sha256": "f291878545969019fa590c5475aff8cf2e3cb8baf8ca0ad28a71ea0876863f24"
+  },
+  "ComfyUI-MultiGPU/web/docs/QuadrupleCLIPLoaderGGUFDisTorch2MultiGPU.md": {
+   "size": 3622,
+   "sha256": "36b654a73720422c022c51bb95881cae7e8f3bb8ab385904a48b1ee952788aa5"
+  },
+  "ComfyUI-MultiGPU/web/docs/QuadrupleCLIPLoaderGGUFDisTorchMultiGPU.md": {
+   "size": 376,
+   "sha256": "5d5962d8335fc67cba83ce20dac743f83f28fe1200c1f4205e5c26a7ca27243f"
+  },
+  "ComfyUI-MultiGPU/web/docs/QuadrupleCLIPLoaderGGUFMultiGPU.md": {
+   "size": 1452,
+   "sha256": "1f12a8e9d33c86ae86f27e2ac39a7556b6a28deb35aa99b6c0a28c5d4b5ffc30"
+  },
+  "ComfyUI-MultiGPU/web/docs/QuadrupleCLIPLoaderMultiGPU.md": {
+   "size": 1236,
+   "sha256": "3e0c4d2002a9c7d1c9a33406370b348013fe99c9584935467321010bc5a01b20"
+  },
+  "ComfyUI-MultiGPU/web/docs/TripleCLIPLoaderDisTorch2MultiGPU.md": {
+   "size": 3348,
+   "sha256": "993cf3944fbb3e02478e404a23a4aaac764e2dbb0eb4f50071df41de5832a707"
+  },
+  "ComfyUI-MultiGPU/web/docs/TripleCLIPLoaderGGUFDisTorch2MultiGPU.md": {
+   "size": 3514,
+   "sha256": "5a2c27b1e95012b8ff9c05d8863aefcc0eecf383ee608a3abd30ba954a318f87"
+  },
+  "ComfyUI-MultiGPU/web/docs/TripleCLIPLoaderGGUFDisTorchMultiGPU.md": {
+   "size": 359,
+   "sha256": "aaa00a3be9333c3cb070dc64846aa7573103b0adfca4394441d29a10b97789ea"
+  },
+  "ComfyUI-MultiGPU/web/docs/TripleCLIPLoaderGGUFMultiGPU.md": {
+   "size": 1344,
+   "sha256": "9eaaa985e4a640e358d79b2d0f98870e2f71c328d986dcf457434bc6e1b9664b"
+  },
+  "ComfyUI-MultiGPU/web/docs/TripleCLIPLoaderMultiGPU.md": {
+   "size": 1169,
+   "sha256": "1da8fcf2438e600118ca92de987a463ce660d2a01814106bfe509fa0b9bc3d50"
+  },
+  "ComfyUI-MultiGPU/web/docs/UNETLoaderDisTorch2MultiGPU.md": {
+   "size": 3096,
+   "sha256": "0b09d6101ea9490cd52cc2f6a56b38edf25d1631b2a6d33b1894ec247cb8b423"
+  },
+  "ComfyUI-MultiGPU/web/docs/UnetLoaderGGUFAdvancedDisTorch2MultiGPU.md": {
+   "size": 3602,
+   "sha256": "449dc1baed4416b37d3d03efc5fb158cfaddd0d16e4ec23ea0d63e32a989f0fc"
+  },
+  "ComfyUI-MultiGPU/web/docs/UnetLoaderGGUFAdvancedDisTorchMultiGPU.md": {
+   "size": 430,
+   "sha256": "50f0e552a5beea76b45b9d01437ce373df4ca7930b515e30d189e38cd19eb243"
+  },
+  "ComfyUI-MultiGPU/web/docs/UnetLoaderGGUFAdvancedMultiGPU.md": {
+   "size": 1434,
+   "sha256": "6137b36cb92d74f253a6ae78ded1ff0b33ac438ae6049cde0dee71fd0dd0da72"
+  },
+  "ComfyUI-MultiGPU/web/docs/UnetLoaderGGUFDisTorch2MultiGPU.md": {
+   "size": 3135,
+   "sha256": "01e8e2afaf09abe0cc51da636af3525b78bf9f45e6636ae9261be50edaf3a34f"
+  },
+  "ComfyUI-MultiGPU/web/docs/UnetLoaderGGUFDisTorchMultiGPU.md": {
+   "size": 471,
+   "sha256": "637def569783390a767b8ec2ffb835a45508becf0f1af829dc726bd3dbbcc0b0"
+  },
+  "ComfyUI-MultiGPU/web/docs/UnetLoaderGGUFMultiGPU.md": {
+   "size": 981,
+   "sha256": "4a15cf51fecc3afee41795d3d8f0cb450944dea5a636ce5156892d60830b1d1a"
+  },
+  "ComfyUI-MultiGPU/web/docs/UNetLoaderLP.md": {
+   "size": 731,
+   "sha256": "7cf9a140038b5ad0513422d8cf4c30115cdd40e8d40c0ce2022727326f592472"
+  },
+  "ComfyUI-MultiGPU/web/docs/UNETLoaderMultiGPU.md": {
+   "size": 962,
+   "sha256": "69e5205be3f2e0e57da01848618d907b5a195e517384c2d5ea1b02738fb7b445"
+  },
+  "ComfyUI-MultiGPU/web/docs/VAELoaderDisTorch2MultiGPU.md": {
+   "size": 3111,
+   "sha256": "39e739c6f9ed57815a78038bcfe867ca8b3928b699507989105e6400dfc99a66"
+  },
+  "ComfyUI-MultiGPU/web/docs/VAELoaderMultiGPU.md": {
+   "size": 963,
+   "sha256": "d97aa4384de15f9225a8210448a529999cf98f4f3ccd0c7f13ad2b77f2bed7e7"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoBlockSwapMultiGPU.md": {
+   "size": 795,
+   "sha256": "82e27cbe82cdc57de84c32481d80e97a0d9d176efbbdbcbe6662cd256dcf997b"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoClipVisionEncodeMultiGPU.md": {
+   "size": 1506,
+   "sha256": "61ae1264ce9107d1ca28130b727e7b9643441df91344b2285717bd4c041738fc"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoControlnetLoaderMultiGPU.md": {
+   "size": 895,
+   "sha256": "668d939d61a83c38ec1463cf388e69f947ad30da1cdbad1abdbf2ed3254d216b"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoDecodeMultiGPU.md": {
+   "size": 1115,
+   "sha256": "2f9c4c44ae77d455e5d4f105107f0631b859dc2c91ec38fdee1620c250f4e76d"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoEncodeMultiGPU.md": {
+   "size": 1221,
+   "sha256": "e09371867a4d20acb923f021693b1368d802b94d50571f29a8224caf3cedf08a"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoImageToVideoEncodeMultiGPU.md": {
+   "size": 2011,
+   "sha256": "f87fabe0e2fb89013d4a6bfdb732a9598039db8c860e41da5c38dd0294e9c338"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoModelLoaderMultiGPU.md": {
+   "size": 2466,
+   "sha256": "e77d86e1caf29e38a4e8e772975bcd4cf5c052934059dac135d6b759483c2138"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoSamplerMultiGPU.md": {
+   "size": 3104,
+   "sha256": "e7a957ae249db006e7523151fb7585f52e1a492de82871bb049253648b76a130"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoTextEncodeCachedMultiGPU.md": {
+   "size": 1554,
+   "sha256": "26d4c356788f16eb1bf79d00d900d71250fc2d9dfbbcec07e54c6736b0cc7623"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoTextEncodeMultiGPU.md": {
+   "size": 1365,
+   "sha256": "325b7207d5e7a4c7578c2ef9e872ec7de69b6a24f068fc71340c8ffb2575f51e"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoTextEncodeSingleMultiGPU.md": {
+   "size": 1104,
+   "sha256": "7ce7a4e928a56c356ac585b47ab1e70287cea00adca1638664562713ab15f264"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoTinyVAELoaderMultiGPU.md": {
+   "size": 1000,
+   "sha256": "8db4148dbde53ac5cd3f1f8fe2d50d0d350a14ee62062d6cb9cbe0989911f404"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoUni3C_ControlnetLoaderMultiGPU.md": {
+   "size": 1139,
+   "sha256": "880e879fa47efdde51b606ea8fe093c50fd432798373ea67c540a9ff686e86de"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoVACEEncodeMultiGPU.md": {
+   "size": 1440,
+   "sha256": "ac2f73c82a9c4323eb8d113e7ee3ce5318dd3abc170ddb0208d78cdba6799b49"
+  },
+  "ComfyUI-MultiGPU/web/docs/WanVideoVAELoaderMultiGPU.md": {
+   "size": 888,
+   "sha256": "deb72f756d0f057b1f4474e424be3e4bd9cb502f4a113459373eaa15c9aa87bc"
+  },
+  "ComfyUI-MultiGPU/web/docs/Wav2VecModelLoaderMultiGPU.md": {
+   "size": 764,
+   "sha256": "981704b021480348157e8230db83312cc58276e673b8997d4a42bab92f1e843d"
+  },
+  "ComfyUI-PuLID/encoders.py": {
+   "size": 2105,
+   "sha256": "9d0492c537b0753ecfc8e3566486b21a0a9b59f33f2e3aaf4898e27c87f3d29e"
+  },
+  "ComfyUI-PuLID/encoders_transformer.py": {
+   "size": 4680,
+   "sha256": "6d65236c3ad2d3ac1286223a0182d9f3008ea13178b58095005e1f297fce6bd0"
+  },
+  "ComfyUI-PuLID/pulid.py": {
+   "size": 23861,
+   "sha256": "e69fad737a82cfca6417ef5fb9b1f61a8c617bd55e0a4a01becb4dbffc3dc05e"
+  },
+  "ComfyUI-PuLID/README.md": {
+   "size": 7569,
+   "sha256": "3913952e6b931e17abb4c72fa35ca8f308f4f20f90030308e394bf535876b6c0"
+  },
+  "ComfyUI-PuLID/requirements.txt": {
+   "size": 124,
+   "sha256": "ad2e839862a61ff73d981e5f45778cc94811dba23f6590b9d8583eef9eb9d7e6"
+  },
+  "ComfyUI-PuLID/__init__.py": {
+   "size": 135,
+   "sha256": "5b2dc8979200e5db016c42ccaaa36eebd647bf2acf777d2a9f0907a36e170427"
+  },
+  "ComfyUI-PuLID/eva_clip/bpe_simple_vocab_16e6.txt.gz": {
+   "size": 1356917,
+   "sha256": "924691ac288e54409236115652ad4aa250f48203de50a9e4722a6ecd48d6804a"
+  },
+  "ComfyUI-PuLID/eva_clip/constants.py": {
+   "size": 118,
+   "sha256": "3ca8ebaa471da492bf3109a74ec676a318712079fd02523ecb66a9f3b0674754"
+  },
+  "ComfyUI-PuLID/eva_clip/eva_vit_model.py": {
+   "size": 23671,
+   "sha256": "5dbbea628f7c5f298a942b71e39f45b2cba5c055506c5b69f8b44b558ec3a5e4"
+  },
+  "ComfyUI-PuLID/eva_clip/factory.py": {
+   "size": 21184,
+   "sha256": "156477d8adbaaa8920421ffaa58eeab3dc8e1027185ad47fa8a2fc3deca392f2"
+  },
+  "ComfyUI-PuLID/eva_clip/hf_configs.py": {
+   "size": 1985,
+   "sha256": "5d49f71be3d3b341d98ae2813142cacecbf8db091615dce33f8a141dcd2bbfaf"
+  },
+  "ComfyUI-PuLID/eva_clip/hf_model.py": {
+   "size": 10819,
+   "sha256": "b1e36cf7d8343b66cedb21f195d00fa90f8051ac8c08c35e386cf059c79eebc9"
+  },
+  "ComfyUI-PuLID/eva_clip/loss.py": {
+   "size": 5999,
+   "sha256": "9d5fa6548b8ae3b3889dfaca49129136002a3cc5d3ec5c77ec3e329b17baa5b7"
+  },
+  "ComfyUI-PuLID/eva_clip/model.py": {
+   "size": 17129,
+   "sha256": "dbd5095f6a1158ccf2d46975b763ea7fd70172892eb9fb48f139e11197317628"
+  },
+  "ComfyUI-PuLID/eva_clip/modified_resnet.py": {
+   "size": 7207,
+   "sha256": "c526d316e120b93fca2d0cc2f928c6cf1f3e3feae7ba4913db5d7e6ee036ef68"
+  },
+  "ComfyUI-PuLID/eva_clip/openai.py": {
+   "size": 5590,
+   "sha256": "6ff98884e627fe6f9c22b29a34459ef1feb5b2f2148335a1a22be7699945cea1"
+  },
+  "ComfyUI-PuLID/eva_clip/pretrained.py": {
+   "size": 12123,
+   "sha256": "f4fca9f2cc77577e2cb386c3d2049e688d6f81374ecd5f1d61261b77e2623128"
+  },
+  "ComfyUI-PuLID/eva_clip/rope.py": {
+   "size": 5504,
+   "sha256": "a001af33bc20576c1746d92c8891951b90fb186a59e0793cb9f8ba43ae767a20"
+  },
+  "ComfyUI-PuLID/eva_clip/timm_model.py": {
+   "size": 5032,
+   "sha256": "c6fb693393652fa8ccabdc5339d0ee59463e3806bccf6c1b5327d3f6f920cf2c"
+  },
+  "ComfyUI-PuLID/eva_clip/tokenizer.py": {
+   "size": 7326,
+   "sha256": "26f9ee84331c02900a00f81b50e28b5f24957c8b4238227d65ae816a1b96d5aa"
+  },
+  "ComfyUI-PuLID/eva_clip/transform.py": {
+   "size": 3485,
+   "sha256": "455cc06072c282b19a2d427e5b8628b404e554bfb9f7a037b9d7535695779f85"
+  },
+  "ComfyUI-PuLID/eva_clip/transformer.py": {
+   "size": 27467,
+   "sha256": "4e357adefd6578d0acfab6ac5a991297a600bee39c3d51b27581e314aca0a4c3"
+  },
+  "ComfyUI-PuLID/eva_clip/utils.py": {
+   "size": 14979,
+   "sha256": "0541663e1428a6435aecb8d5eb0ff0385ccc5f747eb42245621bed2ce1e21af5"
+  },
+  "ComfyUI-PuLID/eva_clip/__init__.py": {
+   "size": 821,
+   "sha256": "41cd98b651f403db7be94ebac57d920bae7115826130b734fc0d7cf9809917ba"
+  },
+  "ComfyUI-PuLID/eva_clip/model_configs/EVA01-CLIP-B-16.json": {
+   "size": 416,
+   "sha256": "ce1a09026ee5e28b3dba74c6aa26bf675ed114a20a006a3c01089d950a6b5720"
+  },
+  "ComfyUI-PuLID/eva_clip/model_configs/EVA01-CLIP-g-14-plus.json": {
+   "size": 547,
+   "sha256": "2c13da1c9799e6b80ad4d6d405e35ac99e597db8916c9d8a59dddcbae59b0abd"
+  },
+  "ComfyUI-PuLID/eva_clip/model_configs/EVA01-CLIP-g-14.json": {
+   "size": 548,
+   "sha256": "94f50b3da4a212aa36598ed1a93a407b600959842fbefa84d71c7a6d4fda99e7"
+  },
+  "ComfyUI-PuLID/eva_clip/model_configs/EVA02-CLIP-B-16.json": {
+   "size": 679,
+   "sha256": "238c53f020da325bc0712f4a84f122ee79f0369488f55d1535974a47d4c109fc"
+  },
+  "ComfyUI-PuLID/eva_clip/model_configs/EVA02-CLIP-bigE-14-plus.json": {
+   "size": 589,
+   "sha256": "4aa048a95e9b5325941465d463f9385b945eb4752619dfb0b561e980909a8716"
+  },
+  "ComfyUI-PuLID/eva_clip/model_configs/EVA02-CLIP-bigE-14.json": {
+   "size": 587,
+   "sha256": "7ed5ba2f11535ff5558b227ebdf1c6b4ab66b7cd4bf23cdf1fe6b9f3171df9f3"
+  },
+  "ComfyUI-PuLID/eva_clip/model_configs/EVA02-CLIP-L-14-336.json": {
+   "size": 682,
+   "sha256": "adc2dd53718bfb76a3d8ddf91433aea36277b09840da51341843118d1c8c0de7"
+  },
+  "ComfyUI-PuLID/eva_clip/model_configs/EVA02-CLIP-L-14.json": {
+   "size": 678,
+   "sha256": "0c36c7c373e40f242f990f6e3b81391d854bbbd29ac4ff07163c10bfcffc90fb"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/.gitignore": {
+   "size": 463,
+   "sha256": "c9cd9d36a6d1fb7410a610111534f61b2183c051450ed8fa6293213e6649bfe3"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/CONTRIBUTING.md": {
+   "size": 1693,
+   "sha256": "5b5a3fe28b3ffb1b46c3de923d32cd571ee276f514dbe933047f811d3b044188"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/inference_cli.py": {
+   "size": 77370,
+   "sha256": "906ef894c7fe9fba7bded45d3be4192e7aa991dd7e5f93509cef9c378235e0a1"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/LICENSE": {
+   "size": 11535,
+   "sha256": "fa62fea050d25dbb5915b80cbb0a27b43317fe3c3fc614c0142b7d7429b24a3c"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/neg_emb.pt": {
+   "size": 656540,
+   "sha256": "6a43e5800ef2354f1c156d27535834da055cbec8248298b8923492bba2076581"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/pos_emb.pt": {
+   "size": 595100,
+   "sha256": "fa07a14844314772266b66c3b95deb0027696d8fe7065721263db5176f45d799"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/pyproject.toml": {
+   "size": 1184,
+   "sha256": "d58460c6c1b81734e11b8ba1dc0def972673d6cdd1b373e95434f09954920f9f"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/README.md": {
+   "size": 58872,
+   "sha256": "b63fafb99193d02e2400d5baa0f6c79bdd9cc5666d2fc1228af80d57dbce716b"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/requirements.txt": {
+   "size": 175,
+   "sha256": "7c13e635984ec3825af0b0452d07d1ad6a66e698cbe55e49eda452fc68920af3"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/__init__.py": {
+   "size": 281,
+   "sha256": "6c31442b5bf54d7f5e27f45eef99038a6eac0a6039560bb6933a989f2872397a"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/.github/FUNDING.yml": {
+   "size": 30,
+   "sha256": "97188dbd655ddd3f7f441c026f25d1679f4f7d49354f1e1a62baaffae3c407bf"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/.github/workflows/publish.yml": {
+   "size": 711,
+   "sha256": "b70950d8294dcbbb8107b99396b90b1560bcd46decbc506568f5b3eb488f9341"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/configs_3b/main.yaml": {
+   "size": 2036,
+   "sha256": "1b251c0679ef1abf6eef6224bcf44c0c0847dde63b535e771a3d8387333a0c36"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/configs_7b/main.yaml": {
+   "size": 1917,
+   "sha256": "a5a7e83d37cffe7676319577839349baac3236783e60e0c700382da506e444d7"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/demo_01.jpg": {
+   "size": 453418,
+   "sha256": "356496e9421e5af83c40916cc45a44122f935b770dd5b7c62f8ca6c2f3065b5a"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/demo_02.jpg": {
+   "size": 152095,
+   "sha256": "50bcd1fac36961f979c01fea565dc6c55babcc16c0ef5b8bb1b4c8dfbd75edaf"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/dit_model_loader.png": {
+   "size": 57640,
+   "sha256": "1be9e0c8bed4ec2061d9e29b2028ce50be872ec6200b61792b5d5efc2ad26f4a"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/seedvr_logo.png": {
+   "size": 83890,
+   "sha256": "0a5ea8ce41c66dcc438059ebf6d98506183f65a505e62f3ab0cb0a910885d732"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/torch_compile_settings.png": {
+   "size": 46261,
+   "sha256": "99b263fae4a39ae8353db2cd6a1d4f39788c8b74b2f71be18703f8b9f9c3d661"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/usage_01.png": {
+   "size": 1366882,
+   "sha256": "927198f9c5119df8d4b126a8ec4cd367a8b0ab2f471f755636843ecac5ebcfff"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/usage_02.png": {
+   "size": 686123,
+   "sha256": "73266574b70c31fc06cc990e6229471ddba373ea5e808f92a1214c422bfacc37"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/vae_model_loader.png": {
+   "size": 76798,
+   "sha256": "3dc9e2095313b0a47f890ea63e50b736097d6e6bf0add29d3f62714865882240"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/docs/video_upscaler.png": {
+   "size": 79658,
+   "sha256": "604a18b3b94a0f7435a4fe5cfce1caf98ba1e3a1a5e581c612b5e56dde4f8ed5"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/SeedVR2_4K_image_upscale.jpg": {
+   "size": 31789,
+   "sha256": "b4c3bf85ed91e75e6e81d51a0db3363b458be7a0da46a40c952cb5889907b7e3"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/SeedVR2_4K_image_upscale.json": {
+   "size": 9537,
+   "sha256": "54303c0888256d4061089c9c9452be2f45748a53a8dd73b3cd48404393ab1816"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/SeedVR2_HD_video_upscale.jpg": {
+   "size": 14843,
+   "sha256": "813e9225c2bf4a7a7c7efa6d1f97d8fba3c0d8348066d5a9c882477ee55219f4"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/SeedVR2_HD_video_upscale.json": {
+   "size": 10908,
+   "sha256": "7321f2ba8fac394a90c19a2adcbe1a9d2f02c40c59ee25de96bc5db54921823d"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/SeedVR2_simple_image_upscale.jpg": {
+   "size": 9470,
+   "sha256": "9ee7bb7c7e1e0f60972b2937def12b8e15c245833504688d5f78f119e380dee0"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/SeedVR2_simple_image_upscale.json": {
+   "size": 9529,
+   "sha256": "dd90ded1258fd8e0a9a26441a30d6969399491e748699e26125ea069eaffbfc4"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/example_inputs/Eyes_212x120.mp4": {
+   "size": 20528,
+   "sha256": "ddf5d6c0710fb37336b8675b89f9336c466cb9e7c067101b24091668d0dba833"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/example_inputs/Mustache_640x360.mp4": {
+   "size": 115496,
+   "sha256": "21581bc8454e234e3d3f833172bb358215f47d33cfcf5fc12f3dd0dff3319d1d"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/example_workflows/example_inputs/Sadhu_320x478.png": {
+   "size": 417158,
+   "sha256": "b7faf22b8911a49742b1577b461f2187e78942d5f15c3998254edadfee970084"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/cache.py": {
+   "size": 1538,
+   "sha256": "4a830f8851a24a6d3290d67085a201b0fea4e06d9c8e5eba3e3ec42b14bd9191"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/config.py": {
+   "size": 4402,
+   "sha256": "13f332dad1f51de7b3dab3028f79834d2bde93406a400de793c88c4763fcea62"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/decorators.py": {
+   "size": 4193,
+   "sha256": "2a4f43f971e09264fcfb1c2b177bd8a3f7067a3334aa6257988c974ffc0ed1e2"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/half_precision_fixes.py": {
+   "size": 6270,
+   "sha256": "25d19ccda80f523e9dcfaac4d09d7db37f291efe5cfa61d43391489e441540c8"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/logger.py": {
+   "size": 1454,
+   "sha256": "ab8d999c59e50f24502aedd49017bf7f1bfc90888bf537954130b221723bb232"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/partition.py": {
+   "size": 1773,
+   "sha256": "2b02556ce8b57c5560a43a497ec4ecd0bac8f1dabdcb1bdfdd8c1adfcf0a30f0"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/seed.py": {
+   "size": 1114,
+   "sha256": "2e6ad43a284248b55fbc3ae6176367b1a0d5a3b06c00c2bf5880bdd2c5f4b36a"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/config.py": {
+   "size": 2326,
+   "sha256": "b827dbd56ba9ee75f717f434ea35398a9bf4cd55c55282aabb410873e23d4949"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/types.py": {
+   "size": 1916,
+   "sha256": "36ebb70100307c9f9b63820dacafc0ddf8f85aeae844b50bf8d3e98ca799df86"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/utils.py": {
+   "size": 2637,
+   "sha256": "feee0551df559aeec5f9c89ce9daa644fa92708a82c965d22862302966b2f2d5"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/__init__.py": {
+   "size": 1872,
+   "sha256": "3254c49d07ef3f676f1e701839d14885da89e3557ed6280267a7f257d4d414d9"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/samplers/base.py": {
+   "size": 3300,
+   "sha256": "f0ea0d133987dfb5124abbdee805c08bad52bc12555f207aab29a7b9adfedd13"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/samplers/euler.py": {
+   "size": 3083,
+   "sha256": "8f5982a947fb4d1ca9b22949f32ec3ca7bc28a3e503bcba2577449ba2496dc11"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/schedules/base.py": {
+   "size": 4257,
+   "sha256": "74bd8255e1d090a221abadb433e141fe0cf9ccd8086ed54d8622220105d4d5d4"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/schedules/lerp.py": {
+   "size": 1760,
+   "sha256": "d132fc7bce780c6cfa37c31730bffc6721f63593928bbadb3cc36e3fa59cc7dd"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/timesteps/base.py": {
+   "size": 1879,
+   "sha256": "2af240f9750884c4201aeecebb65216d1eed7eec03c004a7210c477bca1001cd"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/diffusion/timesteps/sampling/trailing.py": {
+   "size": 1768,
+   "sha256": "f7a1b623c8182b17b2af0fef8fb3a77a700f4d10f910be7f16de6c62af6d8992"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/distributed/advanced.py": {
+   "size": 7278,
+   "sha256": "d55912dbf8a44f53754a9a04551d8831a597c964fbed92f78f31192fc86e2ac5"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/distributed/basic.py": {
+   "size": 2531,
+   "sha256": "af782168c606986c1d24ce36d913571a3e743da959cec6f9825f155944c9c708"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/distributed/meta_init_utils.py": {
+   "size": 1741,
+   "sha256": "e36f5ab1d08aff1d0f5747373b2dd6cfa638d4ff7fe2ec5a57e9c44399e7fb38"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/distributed/ops.py": {
+   "size": 18158,
+   "sha256": "1c0302e3ede5b7578c74cda96342a39db6f0e610df200a586d61ccf4bfe35606"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/common/distributed/__init__.py": {
+   "size": 1045,
+   "sha256": "e3f204083051fab855c82b4d73138b055ad80fcff366d32a3d41185e467869c0"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/core/alpha_upscaling.py": {
+   "size": 16277,
+   "sha256": "eb78cca8e3e3e7e8ba9ca341f9a62d2febbd8f0a578ab0640968c8c223867bdd"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/core/generation_phases.py": {
+   "size": 71517,
+   "sha256": "4744a70e7eb1c5cd38689817426a7e07472a1f2a91ac312093ebdbc33775e393"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/core/generation_utils.py": {
+   "size": 33907,
+   "sha256": "efc0f133c382175775cd7d6a6de1f82b2064d15f9f209efb170460fd33bdd3b0"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/core/infer.py": {
+   "size": 17177,
+   "sha256": "ebdf30dbe77d3a7ec332f3c31dbd98864f096419796d704dfcc3ae4409d8434e"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/core/model_cache.py": {
+   "size": 9136,
+   "sha256": "c8a8b43d603cf52dfdf0f78d08d007df50df515a478d2c5e8196118c8a5b8104"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/core/model_configuration.py": {
+   "size": 65965,
+   "sha256": "178cdfc681d5b070dd2914f5e60f892300899e1553891bcfb087d6d1a2c8ffdc"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/core/model_loader.py": {
+   "size": 42208,
+   "sha256": "f598cfdaef3a2350a1d1f52e858b126e8babcb5b6e80601a61866b400ca27989"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/core/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/data/image/transforms/area_resize.py": {
+   "size": 4807,
+   "sha256": "dd68ff7ca3320a01e561b1d5584921af5d86c5eef8a1c2f8ff26552a06cf88a2"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/data/image/transforms/divisible_crop.py": {
+   "size": 3056,
+   "sha256": "fb447c39af9e3410477b30e34db856f936999f9b43afcb258a545aee85b6443c"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/data/image/transforms/na_resize.py": {
+   "size": 1941,
+   "sha256": "cd488142840a0839940f027cc201663b455c6f67e7d6441a8974c1dd92c7417e"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/data/image/transforms/side_resize.py": {
+   "size": 3015,
+   "sha256": "9221318c18a8df1eb4bc0973b0e368c7631414ec6d6d4861c1e750ad91739d01"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/interfaces/dit_model_loader.py": {
+   "size": 8846,
+   "sha256": "61c80ddca058cf54c92b302e252683958d3a373886b2cc4463093bd0ae75509c"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/interfaces/torch_compile_settings.py": {
+   "size": 5986,
+   "sha256": "d5bd259428f681f58ba2925e744be69803229eec0bbb0bb17403478eb52e5ed9"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/interfaces/vae_model_loader.py": {
+   "size": 10215,
+   "sha256": "ad27b51557e2f7d0ce873bb4845ebb37cb9d52476995e822dd85a3ed6dbe2016"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/interfaces/video_upscaler.py": {
+   "size": 26511,
+   "sha256": "84adc1263d8b2cbaabda41e25aaea7d3fc5082057ea85b90f715c88c24fb62a8"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/interfaces/__init__.py": {
+   "size": 1024,
+   "sha256": "81ec6a036c810ecb8ea923ad7e84a5b9737448c25ff240620c91fcb08a7e14f3"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/attention.py": {
+   "size": 6512,
+   "sha256": "a06329c045d5873a7eb51c7ab74b62040f1ee2c40734f04d26c3c88d6e7a4e27"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/embedding.py": {
+   "size": 2160,
+   "sha256": "5fad156f379d27ae99a82050a0f36772108da0467978861a508cff899131f8a8"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/mlp.py": {
+   "size": 2066,
+   "sha256": "bb8fb838d08ea98b3f7959861d9f82681598160a30c72d55367a2341457750ee"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/mm.py": {
+   "size": 2599,
+   "sha256": "34d8b7dbfdcfe5584eef6a559fefd25633f6cee81e3db9a13d16bbb93efbb9f5"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/modulation.py": {
+   "size": 4546,
+   "sha256": "a83eef3c04488f31659520ce6569def8a5120101321b81201be61690b124c81e"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/na.py": {
+   "size": 22021,
+   "sha256": "dbc7fb4680da89c426cac2b2a52ea4a14e39ccfd42b567cb3e76994c7bb9c287"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/nadit.py": {
+   "size": 9054,
+   "sha256": "882154cb00141001ec23e0f594b4075c12432c6345a4521b342587b8211a5e84"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/normalization.py": {
+   "size": 5530,
+   "sha256": "86eb0c025e6068990e28afb8020ec66928897b307054afed5c64aabf1a442d08"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/rope.py": {
+   "size": 7301,
+   "sha256": "7f45457afed3dc1d52f6c090e093558a4708d337fc876bb06363311744c24e2f"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/window.py": {
+   "size": 3454,
+   "sha256": "1bd18cd246cb265653df4c5c6cefe96d8b67475f8c1c561e91f4e2e643948c55"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/nablocks/mmsr_block.py": {
+   "size": 4655,
+   "sha256": "54028f886481cb567b8d81bb845a0634ef06d748a69ada982fe32cd2b08ee246"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/nablocks/__init__.py": {
+   "size": 953,
+   "sha256": "41d061b8ab47f485c3d5d9eb7141ca80b3f7fbbe7e4c118558f578acea2d3171"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/nablocks/attention/mmattn.py": {
+   "size": 10528,
+   "sha256": "dc38cc44e1a4d7914ddf09423f51a268af41697d4020199b8525a0917983a3ae"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/nablocks/attention/__init__.py": {
+   "size": 900,
+   "sha256": "b267ea6a3f160b25f1751c188b63175957cc9674779892b8f9439154c099062e"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/patch/patch_v1.py": {
+   "size": 4464,
+   "sha256": "82257d9827ea3bf4cd186789d61be50e442be561e813abf971db2e20c7761a4a"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_3b/patch/__init__.py": {
+   "size": 849,
+   "sha256": "d0a353137dc98df7680973d23e5e5839431d2f95965b360629c485e12e29b90d"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/attention.py": {
+   "size": 6512,
+   "sha256": "a06329c045d5873a7eb51c7ab74b62040f1ee2c40734f04d26c3c88d6e7a4e27"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/embedding.py": {
+   "size": 2160,
+   "sha256": "5fad156f379d27ae99a82050a0f36772108da0467978861a508cff899131f8a8"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/mlp.py": {
+   "size": 2066,
+   "sha256": "bb8fb838d08ea98b3f7959861d9f82681598160a30c72d55367a2341457750ee"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/mm.py": {
+   "size": 2399,
+   "sha256": "10e28061e6d5953bf53f131f20508b4b5f383779f840e4bef20be899e32b66fe"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/modulation.py": {
+   "size": 4207,
+   "sha256": "e1ee3e0b7faad94c751b9e2afff331141bdc81e5ce1b86d47982c281cf926700"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/na.py": {
+   "size": 22021,
+   "sha256": "dbc7fb4680da89c426cac2b2a52ea4a14e39ccfd42b567cb3e76994c7bb9c287"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/nadit.py": {
+   "size": 12533,
+   "sha256": "d692022ff7c7c329e44d97d7feac316200f1f847e2ebcceea87bde4895aa4bca"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/normalization.py": {
+   "size": 5048,
+   "sha256": "ca5aad0c9f4b661e11eb930d22221587ac0231ff18f6e993576b68ae34a43c61"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/patch.py": {
+   "size": 3501,
+   "sha256": "66646a81ac0294fa9d58acef539b54beaa7aa266423aff5ac99c578a52b4835d"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/rope.py": {
+   "size": 4224,
+   "sha256": "1ba88b897162af7c68f9f327a4a177fc05307a51989c14043f031db655583d20"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/window.py": {
+   "size": 3454,
+   "sha256": "1bd18cd246cb265653df4c5c6cefe96d8b67475f8c1c561e91f4e2e643948c55"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/blocks/mmdit_window_block.py": {
+   "size": 8330,
+   "sha256": "898e6870e477e9e1cca330d3963907a694a282d635ceedbc2a746decaaec1291"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/blocks/__init__.py": {
+   "size": 959,
+   "sha256": "701ef82e57ee0e41a4798f87c01c378c62371b2e44c1dd777e8813f163523abf"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/nablocks/mmsr_block.py": {
+   "size": 8851,
+   "sha256": "a3a52c71872b7e8d9395cc13ac5d79d3783439a333e079a24bb550fa04eeb129"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/dit_7b/nablocks/__init__.py": {
+   "size": 951,
+   "sha256": "123d6a77f841ffb28358e0a25ac375c08b7c97f519196ec504ffe68535be5af4"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/s8_c16_t4_inflation_sd3.yaml": {
+   "size": 571,
+   "sha256": "45c47d54c70bc02f8c8f7e69bc3f4c405d4870233ba027e98a5d38b09f751cbd"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/modules/attn_video_vae.py": {
+   "size": 71144,
+   "sha256": "0ac8780def65680f97aeed9491482db6062ed671905fbd4504007a9e993ed403"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/modules/causal_inflation_lib.py": {
+   "size": 19683,
+   "sha256": "bec97bdb288de8492ca13a08ffd5c40aef507fcaee0264939b06f8cec5bcd5ec"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/modules/context_parallel_lib.py": {
+   "size": 2516,
+   "sha256": "cd5a2990e952f16e9aee631b136a74db0d0c549809ccfd3a735f720732a2eb51"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/modules/global_config.py": {
+   "size": 926,
+   "sha256": "6f00725ca6593f927fa46356d9a8194d0d3a43c5af871f5d051ededb960c7a95"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/modules/inflated_layers.py": {
+   "size": 3886,
+   "sha256": "81bd6b7d43840ce54732643aef4479c1636ea0569f6982891b0401994fbd255a"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/modules/inflated_lib.py": {
+   "size": 5737,
+   "sha256": "dc4e3350a1c43e5ab7f572981670e02ee2bd321361095246b625606c1ee91983"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/modules/types.py": {
+   "size": 2620,
+   "sha256": "17fa3aa3a2b4c11b015e3b52b9c9f0a1fa7ef964321f6b40c88a35c2f42f987e"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/models/video_vae_v3/modules/video_vae.py": {
+   "size": 35024,
+   "sha256": "574dc191b65c0e3ba13f65d5ce8b5dd6bc42cb19d1df372d146e5e73b51779e7"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/optimization/blockswap.py": {
+   "size": 39581,
+   "sha256": "68243eb6179725d18f05b1fca28ba8e6b1f69c480542644465780701f98e016d"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/optimization/compatibility.py": {
+   "size": 39639,
+   "sha256": "7f41b49606e3eade16bf28a618082aa27042884e6654be54262781195b061397"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/optimization/gguf_dequant.py": {
+   "size": 16020,
+   "sha256": "0ef25503053404fd4d83fd9ee0c93fe33c2f5c9081c5353a657edf0f6670cece"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/optimization/gguf_ops.py": {
+   "size": 12494,
+   "sha256": "4e58bfb6356e2e503bd397c70de224cd25364e85e7158793ef9a305ef62a50f8"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/optimization/memory_manager.py": {
+   "size": 49368,
+   "sha256": "ca8f8831048d900c875c68287f9e0ec536c5e44db572cbcdd92cbd9672318e6d"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/optimization/performance.py": {
+   "size": 6053,
+   "sha256": "483bdbf9caf3f519ed1b17b1b05ee767f82a0713774e4de4e924a14084b31a8b"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/optimization/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/utils/color_fix.py": {
+   "size": 31409,
+   "sha256": "41a789bccfcacd8b44432216ff2b7c26f51ff26da5f155ae9b1986de60903d0d"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/utils/constants.py": {
+   "size": 5495,
+   "sha256": "4a9f9809eda56e7d1210b4726005d47dc9b0f815a01d10c44db0a64890c57045"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/utils/debug.py": {
+   "size": 38252,
+   "sha256": "7aa926cabbf74c49d07f265d3c00d5f89ba109d0986114a17932cc78e9c5678e"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/utils/downloads.py": {
+   "size": 10841,
+   "sha256": "476d26f3aac7b9a894f40f60fd240b45105baa42e28765079293c29c6449a288"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/utils/model_registry.py": {
+   "size": 4492,
+   "sha256": "5db999803bd5c001ec41b2eb2f72bb46fad26646d25e779d02b3f7a7f4b7c7e2"
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler/src/utils/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-VideoHelperSuite/.gitignore": {
+   "size": 3263,
+   "sha256": "d3ff0b64a861c0a92c4c80242651f7e89297b9b862c9ddedb3238cfd8e745ffc"
+  },
+  "ComfyUI-VideoHelperSuite/LICENSE": {
+   "size": 35823,
+   "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+  },
+  "ComfyUI-VideoHelperSuite/pyproject.toml": {
+   "size": 440,
+   "sha256": "5f2d0dfb43a7e52e2687e1d9f725c1f79cdce4c002185ff97261ef249eb7d3ef"
+  },
+  "ComfyUI-VideoHelperSuite/README.md": {
+   "size": 8987,
+   "sha256": "3b0b5dfafd576a712991499881ec55ee198a0bd5951fdce630aa11b57b0c3d7d"
+  },
+  "ComfyUI-VideoHelperSuite/requirements.txt": {
+   "size": 31,
+   "sha256": "aa01f3ae51d8411260300f55edad85a2475415035a14fae5ec43a004af2a2621"
+  },
+  "ComfyUI-VideoHelperSuite/__init__.py": {
+   "size": 407,
+   "sha256": "c51233bb8aa8b1fe68f5df0b2008f9f83d579c9484178ace4602ca6d7c011114"
+  },
+  "ComfyUI-VideoHelperSuite/.github/workflows/publish.yml": {
+   "size": 664,
+   "sha256": "bf0e41dace0612292e610ab71e583bb26049ca2ec494c3bedd206fb52f5bd279"
+  },
+  "ComfyUI-VideoHelperSuite/testframework/README.md": {
+   "size": 471,
+   "sha256": "69fc9d5dd945ad92edd37b5627ccd5eda324848eb755d334ef50a405249a6599"
+  },
+  "ComfyUI-VideoHelperSuite/testframework/server.py": {
+   "size": 2896,
+   "sha256": "72ef53625b0751d40646af839b7d06f04cba565caa9dfea96714e70dee7dac9a"
+  },
+  "ComfyUI-VideoHelperSuite/testframework/__init__.py": {
+   "size": 190,
+   "sha256": "54345cb99560d4442a21dba16612ede76ce2ea2c3dc34df2497c9586a133c802"
+  },
+  "ComfyUI-VideoHelperSuite/testframework/web/js/testRunner.js": {
+   "size": 3228,
+   "sha256": "781e865970f77573d6425218dfbc298db1589485663f2cb9e4fc651d41664b60"
+  },
+  "ComfyUI-VideoHelperSuite/tests/audio.json": {
+   "size": 6404,
+   "sha256": "0ded1b61e44ae3db0436889a2fb336513d96cef4f3ed887c5b3105e027da0124"
+  },
+  "ComfyUI-VideoHelperSuite/tests/batch4x4.json": {
+   "size": 10771,
+   "sha256": "697c95e767eda8e97f991cb406aa8bc333b63bcd61de0c892cb2df91ab9f94d6"
+  },
+  "ComfyUI-VideoHelperSuite/tests/converted-format-input.json": {
+   "size": 4767,
+   "sha256": "419ed2832c0709b8ccc37f0374313139bbe9da100049e30816a3d40d6c31ca8f"
+  },
+  "ComfyUI-VideoHelperSuite/tests/converted-input.json": {
+   "size": 6224,
+   "sha256": "272ac3d9181779f8df91018fc83ad1f721a5a12f802708d6284052d859bbec8b"
+  },
+  "ComfyUI-VideoHelperSuite/tests/loop.json": {
+   "size": 3821,
+   "sha256": "7294233971f73a248451525a26d426c783258659b10f36d801d2e99dff339074"
+  },
+  "ComfyUI-VideoHelperSuite/tests/old-prores.json": {
+   "size": 9116,
+   "sha256": "d74f2bb7fae50d0ba4d7e7f84a18265c5f9ada94fc0356517bdfbce15c7f67ee"
+  },
+  "ComfyUI-VideoHelperSuite/tests/old-vae-conversion.json": {
+   "size": 4659,
+   "sha256": "01c1d655c6d1c00965df214100da0c4db5d4a2ec7f9c0752a90bcc486e8f611c"
+  },
+  "ComfyUI-VideoHelperSuite/tests/README.md": {
+   "size": 141,
+   "sha256": "ff36bdde7647c61b2768330f140920f61fe6264d5cee011fae1ee8718b48f774"
+  },
+  "ComfyUI-VideoHelperSuite/tests/simple.json": {
+   "size": 2954,
+   "sha256": "59a521f72a2487e76ef25bda06f5716e4399f75ac7cb7b6b87d1daa70f7f0b5e"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/batched_nodes.py": {
+   "size": 1846,
+   "sha256": "73a371c820cb5f0b46dffe0f4cf006879c918dbf609a8be3575ab55ce67e062f"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/documentation.py": {
+   "size": 44421,
+   "sha256": "31397e6741a74533a1fc34b029eb35af7dea4212ee32970030c23296b478e3bf"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/image_latent_nodes.py": {
+   "size": 19593,
+   "sha256": "d7d79e9f44be654b74d3160abbf6bb931eca2ea459de7c6f3aa6bd62ff7ad4b8"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/latent_preview.py": {
+   "size": 5614,
+   "sha256": "05b915bdd04913e1414a2c965ac4034cb581e51bfbf0cdf1dc8ecd38b92319fa"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/load_images_nodes.py": {
+   "size": 8326,
+   "sha256": "a43854754a334fea1ece1a013155a572a654cd244cf01dc69330054d7be59304"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/load_video_nodes.py": {
+   "size": 29703,
+   "sha256": "e385652360576001c9ef23e7852b0cd704b1abb78ab035aa204522220dc21285"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/logger.py": {
+   "size": 1093,
+   "sha256": "5eb3d918fbc10735e47e65fe9c5f2c75cc5f13b4d43c539f08de3591761e7121"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/nodes.py": {
+   "size": 49342,
+   "sha256": "e284138eddad2cb74007f7fd76712e298f5ca7c860f7fca6cd845da1b4cda60b"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/server.py": {
+   "size": 12472,
+   "sha256": "82c3565dca141c15f1e0013125de02864dcf10552a82b1091d070eee8501d0cb"
+  },
+  "ComfyUI-VideoHelperSuite/videohelpersuite/utils.py": {
+   "size": 17487,
+   "sha256": "e43b3df369c54c579531d4693ea5ce997c6cbd8619c52ec2b39468a9c3d22c4d"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/16bit-png.json": {
+   "size": 148,
+   "sha256": "de2e4c3657151cf3a3c4e6ea4152214dd4b42d6835db588094308647fbb050ec"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/8bit-png.json": {
+   "size": 82,
+   "sha256": "de07be7aa05ae45d00d552dc7ee15556f5747968f395029404a2d3662bab3846"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/av1-webm.json": {
+   "size": 641,
+   "sha256": "33fdcc9cd4c455a67b102b185ca7a4b1fa44b84386cd99f24e6c4f621cc43d06"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/ffmpeg-gif.json": {
+   "size": 374,
+   "sha256": "a523305b717e1708268650b73cd12e87a7b8c0e1301fb924bee2a54bcaafb7ba"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/ffv1-mkv.json": {
+   "size": 1129,
+   "sha256": "e5aaf796da76e727f06931efbfe51308db53c9c5f839c821dcc4df71d03e7927"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/gifski.json": {
+   "size": 299,
+   "sha256": "f7fb572c1266916a64c23c73256605e1840056b732109f21890af2790d5937a7"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/h264-mp4.json": {
+   "size": 634,
+   "sha256": "ca55387fbd3625d5d0af452632ac2274d79b09f3c03a30ace7a8966bcf7f9eb9"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/h265-mp4.json": {
+   "size": 662,
+   "sha256": "b9a108351dd7edeb70b515e993fcf5210d56fe5e0401c0c0528b17a1ce87973e"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/nvenc_av1-mp4.json": {
+   "size": 621,
+   "sha256": "5eea8d64fb0794819a8243423aef33e81579192356da0a6cb7b31ed5eb8db3e5"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/nvenc_h264-mp4.json": {
+   "size": 622,
+   "sha256": "bccd6650bdf27834972ec25dde68ad424cfa47c77e142c7c3f3950fe9676cbe4"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/nvenc_hevc-mp4.json": {
+   "size": 648,
+   "sha256": "58c7d9e357082c810c002a8d58d102e669a49089fe41a4e9159f473319133186"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/ProRes.json": {
+   "size": 965,
+   "sha256": "bf1226b9557aac079b9d43d7a4e7d1b7a3f66c7941ad821adf64c5f7258509fc"
+  },
+  "ComfyUI-VideoHelperSuite/video_formats/webm.json": {
+   "size": 605,
+   "sha256": "c3bb906b76bbc02194d8e3391a3417bab265ee071c7c7701f75a720330ba08da"
+  },
+  "ComfyUI-VideoHelperSuite/web/js/VHS.core.js": {
+   "size": 109256,
+   "sha256": "c2da5da70536e5be50f7111cf87f78ccde8b7fd6201fae93419a17824c530e0b"
+  },
+  "ComfyUI-VideoHelperSuite/web/js/videoinfo.js": {
+   "size": 4414,
+   "sha256": "c116940d36cdb1d4dfbf81244c0d6bc1f363f81876be8c92f61669fbb28c3930"
+  },
+  "ComfyUI-WanVideoWrapper/.gitattributes": {
+   "size": 68,
+   "sha256": "d8fb0de4792538f93822b2c0d235604921299d5e54a3d6ec7a6cb34536e8bf1e"
+  },
+  "ComfyUI-WanVideoWrapper/.gitignore": {
+   "size": 133,
+   "sha256": "c0943964f3300c0cd3b52ccad82e5a4d74debc2d8ddcb423f50fda08a8ce8cee"
+  },
+  "ComfyUI-WanVideoWrapper/custom_linear.py": {
+   "size": 12441,
+   "sha256": "c2af910480669f6f8e5872334753f62b2a3246dbd394ff005cbf20f79951484e"
+  },
+  "ComfyUI-WanVideoWrapper/fp8_optimization.py": {
+   "size": 2159,
+   "sha256": "71061d32c00f5839238badb8bde36d3da1a8ac16aec9163a2ac81fda817d88a6"
+  },
+  "ComfyUI-WanVideoWrapper/latent_preview.py": {
+   "size": 10685,
+   "sha256": "5ee7d073d8c1eb8f9708a6a3e488f3d10959283e195b7a660e3caa472bbb76e5"
+  },
+  "ComfyUI-WanVideoWrapper/LICENSE": {
+   "size": 11558,
+   "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+  },
+  "ComfyUI-WanVideoWrapper/nodes.py": {
+   "size": 116690,
+   "sha256": "9117b9bebf28e3dbf4fbab97ed2661467e75944c77d5267a7461b90e3cabd4d2"
+  },
+  "ComfyUI-WanVideoWrapper/nodes_deprecated.py": {
+   "size": 6530,
+   "sha256": "9b58cfd5dfbd4f5f6ad7ef4983a0c9d00612a93a4d23c9ff991bec5dabffd36d"
+  },
+  "ComfyUI-WanVideoWrapper/nodes_model_loading.py": {
+   "size": 110859,
+   "sha256": "376482011a66715982240d674ec61609c477e5f972b93c0a9bc98137c6c8173d"
+  },
+  "ComfyUI-WanVideoWrapper/nodes_sampler.py": {
+   "size": 178065,
+   "sha256": "b411bcea2b8c03878543e100a644dcfe41e7923ed2b12c57b7532a23081d4f64"
+  },
+  "ComfyUI-WanVideoWrapper/nodes_utility.py": {
+   "size": 35439,
+   "sha256": "65e82a7e31587d30365338922cec8591e0bff1047b0658612acad0f9d5faaccf"
+  },
+  "ComfyUI-WanVideoWrapper/pyproject.toml": {
+   "size": 494,
+   "sha256": "ea0a922b64477f8b786b48dda6a1e3afc491bf04b0d1aad8f41f60a9eb257d68"
+  },
+  "ComfyUI-WanVideoWrapper/readme.md": {
+   "size": 7709,
+   "sha256": "3da497e6090103d42ad6ccb232485189e84256984a608e0fd9e729d5783aa505"
+  },
+  "ComfyUI-WanVideoWrapper/requirements.txt": {
+   "size": 144,
+   "sha256": "9d26256db166f26594595754b6eedf100dbc370c0d85146b87b5bc8fbc12fb95"
+  },
+  "ComfyUI-WanVideoWrapper/utils.py": {
+   "size": 34766,
+   "sha256": "453b610ead1161812d1df712ffd631536b38628becbc3f360a25e92c733c6aa1"
+  },
+  "ComfyUI-WanVideoWrapper/__init__.py": {
+   "size": 2737,
+   "sha256": "7508ebee8b533653fadae1dbce94a208d10dbf0011ab47fd7e5b1025a901a789"
+  },
+  "ComfyUI-WanVideoWrapper/.github/workflows/publish.yml": {
+   "size": 667,
+   "sha256": "ef457a62889037f1030ee25f4d651f1defa30cdc593cd8ed075c27b0617ea9a9"
+  },
+  "ComfyUI-WanVideoWrapper/ATI/motion.py": {
+   "size": 1696,
+   "sha256": "2a496c2a5baafa77f70f0b26faa9a8f06d5a1ae386d86285b0256290d71f5b75"
+  },
+  "ComfyUI-WanVideoWrapper/ATI/motion_patch.py": {
+   "size": 5618,
+   "sha256": "b699d4cc4748ad0c4578085f66a4abc1810045f59e2ef8b44de2c77163627da0"
+  },
+  "ComfyUI-WanVideoWrapper/ATI/nodes.py": {
+   "size": 12650,
+   "sha256": "e75e51bacc68f2bf9058140a7ca1b8f4f6fad280a90ff5a65e0003457bbb61af"
+  },
+  "ComfyUI-WanVideoWrapper/cache_methods/cache_methods.py": {
+   "size": 6236,
+   "sha256": "e63eb05f15f8dcfe0f155190e40dd4cab697ee8ce2ffddd1eb083129ca4239b4"
+  },
+  "ComfyUI-WanVideoWrapper/cache_methods/nodes_cache.py": {
+   "size": 6247,
+   "sha256": "489cfcfd1795e1505143117da2ca0b3bf1e2b87211e1adf6853a53c0d51c0b91"
+  },
+  "ComfyUI-WanVideoWrapper/configs/transformer_config_i2v.json": {
+   "size": 288,
+   "sha256": "c96e3bb69f2f85f88b9af3ea6bbee357eaeff079a065a688c0845398a9fdb65c"
+  },
+  "ComfyUI-WanVideoWrapper/configs/T5_tokenizer/special_tokens_map.json": {
+   "size": 6931,
+   "sha256": "5fd0861e3c1921d7a94b6c249b706c185a2b94690c1bac096d83e574b386fbf4"
+  },
+  "ComfyUI-WanVideoWrapper/configs/T5_tokenizer/spiece.model": {
+   "size": 4548313,
+   "sha256": "e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458"
+  },
+  "ComfyUI-WanVideoWrapper/configs/T5_tokenizer/tokenizer.json": {
+   "size": 17865442,
+   "sha256": null
+  },
+  "ComfyUI-WanVideoWrapper/configs/T5_tokenizer/tokenizer_config.json": {
+   "size": 64476,
+   "sha256": "b37f675fb618108fda1413becf73bd5dbdc2f86b38e1c2f7478abd3e054b9dd3"
+  },
+  "ComfyUI-WanVideoWrapper/context_windows/context.py": {
+   "size": 10515,
+   "sha256": "111c79428b3a14b1f5d18ba932e30b04742a7cf611dbc44241722640bd66d658"
+  },
+  "ComfyUI-WanVideoWrapper/controlnet/nodes.py": {
+   "size": 7469,
+   "sha256": "eb41156ef8403d53515a4ab8a687e98b1f0ee5362e2012766d7ebbf728bca99a"
+  },
+  "ComfyUI-WanVideoWrapper/controlnet/wan_controlnet.py": {
+   "size": 10424,
+   "sha256": "f900d9ef498e1fa3f25e665ee0267f2a886e5b68807660225e66adb3c9a294fd"
+  },
+  "ComfyUI-WanVideoWrapper/diffsynth/vram_management/layers.py": {
+   "size": 5557,
+   "sha256": "1022d7840205d8214d40a78cf78dbe7c00828fa5e495fc5faf1c80ed228f31a9"
+  },
+  "ComfyUI-WanVideoWrapper/diffsynth/vram_management/LICENSE": {
+   "size": 11548,
+   "sha256": "58feeee47be7ec1007e49a80890838e4302c1bc130501d7bc1eb8bcf15bd3522"
+  },
+  "ComfyUI-WanVideoWrapper/diffsynth/vram_management/utils.py": {
+   "size": 2190,
+   "sha256": "0d4f32c8096b5bb38bb768ff623ac553c6fbbf600d493271ab7c68ee0050f11f"
+  },
+  "ComfyUI-WanVideoWrapper/diffsynth/vram_management/__init__.py": {
+   "size": 21,
+   "sha256": "7a8d6a405c289c7546c6834cb099904f6f8010b8d4ce1a24805628f9b99abeb4"
+  },
+  "ComfyUI-WanVideoWrapper/echoshot/echoshot.py": {
+   "size": 3784,
+   "sha256": "ffb86f092ce28de39217444dec18c283aff23cedbcfd84f49326a95538b8f944"
+  },
+  "ComfyUI-WanVideoWrapper/enhance_a_video/enhance.py": {
+   "size": 2196,
+   "sha256": "3a35eb618f52a8f4e7639d26388e1c907b782fb64325e03b0f8f665257d54586"
+  },
+  "ComfyUI-WanVideoWrapper/enhance_a_video/globals.py": {
+   "size": 732,
+   "sha256": "e16603e191b1282f7a19f82f4432d76cdc82f7fdeb71dab13df68691ac749738"
+  },
+  "ComfyUI-WanVideoWrapper/enhance_a_video/LICENSE": {
+   "size": 45004,
+   "sha256": "faeb2182f7cbb9dc8389f2d9184e0196eefc2e6753380654cb900df29e8deee2"
+  },
+  "ComfyUI-WanVideoWrapper/enhance_a_video/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/LongCatAvatar_audio_image_to_video_example_01.json": {
+   "size": 103508,
+   "sha256": "c33615f7780dd61931686d62a23f73ac518efe5fec69d70bfdf2504b9d50007a"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/LongCat_TI2V_example_01.json": {
+   "size": 185087,
+   "sha256": "c935dcd35e0f00a61c291f0becd50224bc4c4fbad512be2f625d8ac82033936b"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_1_3B_control_lora_example_01.json": {
+   "size": 22875,
+   "sha256": "60998556068211583a6225f9e2b53952d6f0ec64b6274ce4d68566e6b77187de"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_1_3B_EchoShot_example.json": {
+   "size": 35945,
+   "sha256": "e0a64fc8345b2b209427fca2a07e51fb2d41adaaa405fdc335004335618f76ef"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_1_3B_FlashVSR_upscale_example.json": {
+   "size": 25759,
+   "sha256": "77c3d49db142efe180d6cfbba097d92cd4c7affa4ddf959859f4a120b94d7bec"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_1_3B_ReCamMaster_example_01.json": {
+   "size": 50554,
+   "sha256": "6557d76c0a90bfc41b2fd038b5978d34fec77482a839ec43b47039bbc54ccb01"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_1_3B_UniLumos_relight_example_01.json": {
+   "size": 41066,
+   "sha256": "5d6865b3607cc157a0a0aed2fc8198f5641c60fc2e23a89ec66b3170dade69e2"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_1_3B_VACE_examples_03.json": {
+   "size": 126779,
+   "sha256": "aff599952dc9b79cbc32fc487575dc3f84d5af2a95f9e42770731a28d5637eac"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_FLF2V_720P_example_02.json": {
+   "size": 47550,
+   "sha256": "01eaebc1da76e9166880b1949ff3da9891b37667ebb982ac09cc4370db7ab42b"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_Fun_control_camera_example_01.json": {
+   "size": 39763,
+   "sha256": "f4a5597ae737e01f309186b561c1585e0720e0926af2273692f8a205c72bc12a"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_Fun_control_example_01.json": {
+   "size": 54519,
+   "sha256": "30c057930787d35251b7a9a99d0087baf1d9fecffaf54ef64aec030dc88055ba"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_HuMo_example_01.json": {
+   "size": 38327,
+   "sha256": "49b334ed733f38a62794970335b497b29a4d940b0e9b0b4242102443ca8683af"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_I2V_ATI_track_testing_01.json": {
+   "size": 159529,
+   "sha256": "c2a13a1bd19a5bab668d5b1c2fcf48473fb4e45edcc6e46f228a5fe238d66633"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_I2V_example_03.json": {
+   "size": 32870,
+   "sha256": "18fbb380455140826f336a0aa0c6d16ff3e780bb6f87d67517a2e843dbaf33f7"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_I2V_FantasyPortrait_example_01.json": {
+   "size": 49293,
+   "sha256": "02b0968529f31de5458dcbaa8f1f1c0657be4ed6daef4a1d5e25d7ff1c503764"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_I2V_FantasyTalking_example_01.json": {
+   "size": 43821,
+   "sha256": "c8dec8f3244bfd0ece0fa578525cc9ba9d9d0e291c1b8019b260648e11a5e5da"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_I2V_InfiniteTalk_example_03.json": {
+   "size": 51151,
+   "sha256": "c8c6fc53a8f25b9a7a2b2d7dfeb4cdde56ec7e2196ceb97fe18707077fce26ee"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_I2V_SkyReelsV3_TalkingAvatar_example_01.json": {
+   "size": 111589,
+   "sha256": "fafb2d0208c3a3e791a1012d3b2a7deb8342e93b7f74ead2c83e4938f0bacc8d"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_MoCha_replace_subject_KJ_02.json": {
+   "size": 76058,
+   "sha256": "099987f2bce1d47e61d225e4aaa131d3bc3c27e0bfa137de1046152301fd10f9"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_MTV_Crafter_example_WIP.json": {
+   "size": 46300,
+   "sha256": "8e27f1eb18509b142c687fcabc3a756ada830f5e4937c67b4524080f23dd4dc8"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_OneToAllAnimation_pose_control_example_01.json": {
+   "size": 207416,
+   "sha256": "c5f43fa8a4768b5b377b58b610663a7cc503bb506d74476c053bf2f338a0f119"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_phantom_subject2vid_example_02.json": {
+   "size": 43114,
+   "sha256": "157ec244e78401d54b5034bf471d14c7d825ed33c560365e597af0d742292730"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_pusa_I2V_example_01.json": {
+   "size": 28849,
+   "sha256": "e18cfbf010fe7c592de0b5e74dfb9e89ffa4e33f5e5f7618175d93b78acba168"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_SCAIL_pose_control_example_01.json": {
+   "size": 115411,
+   "sha256": "a79bebb954228616b3bff6df6436a76a4b2276cce10a2a18102fb38b17480d68"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_skyreels_a2_example_01.json": {
+   "size": 92599,
+   "sha256": "0bd5abcb5c77c65212e04953cf999a927203b665134e242cef7ea7a4bb353be7"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_skyreels_diffusion_forcing_extension_example_01.json": {
+   "size": 109486,
+   "sha256": "a95cf7a53ff73e25939aa8c0c5039c224fd3433964bb8578c6bf5d00742a2942"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_Stand-In_reference_example_01.json": {
+   "size": 52535,
+   "sha256": "ae1a78d7f50134583193c656579a7728e660befbd1d4463dc4621fdab1ac7c82"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_SteadyDancer_pose_control_example_01.json": {
+   "size": 102276,
+   "sha256": "f744a255c9eb7b24013b2d55f2c6481889db6f848edfc8e9fa3c22676f529625"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_T2V_14B_lynx_example_01.json": {
+   "size": 36411,
+   "sha256": "da1797dda87f9929e8ceffc69fe93a4f344f321d33e4895fbfe09bba251ee489"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_T2V_example_03.json": {
+   "size": 29252,
+   "sha256": "0ee6ade6983b9c0f348f82e03cd30ff98fc81c53b589431c09505acaf7de5de9"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_V2V_InfiniteTalk_example_02.json": {
+   "size": 60043,
+   "sha256": "cbe9266fa2701f7200bbc573538cd486bceb1db6678506aa3fa33d3a61bad2bc"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_1_14B_WanMove_I2V_example_01.json": {
+   "size": 122490,
+   "sha256": "97247b67cf4ab1b608667680f2eb8b64fe9b1294254c171a0825c80543ea3ef0"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_14B_Pusa_extension_example_01.json": {
+   "size": 162912,
+   "sha256": "31313fb00519f2e58661826becce937983e4abead3cc7157f29282d8f4825bf1"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_5B_I2V_controlnet_example.json": {
+   "size": 33999,
+   "sha256": "704f486aeabad82f5185d4945db3e4b9d1a1108b5f5064239d26093ced374d7e"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_5B_I2V_example_WIP.json": {
+   "size": 26825,
+   "sha256": "a699677713f50d0cf0491b0ed7e0a34d2fc43da3e3480007bf91828a895c8665"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_5B_Ovi_image_to_video_audio_10_seconds_example_01.json": {
+   "size": 32602,
+   "sha256": "cc655c3cafc8e4adbfe9681486ba310598980286503a5cfca5cb45a69f13bc3b"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_5B_Ovi_image_to_video_audio_example_01.json": {
+   "size": 32167,
+   "sha256": "a59956cd247e697aefd3a7041c2acd69132b4a73284974c561991cd7ab2543c2"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_5B_T2V_controlnet_example.json": {
+   "size": 31481,
+   "sha256": "199582cdc2a2d7fbaaf0a99cffecf0f0c79dafa11f0d9b7c0f5711ab5edee948"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_Fun_control_camera_example_01.json": {
+   "size": 63749,
+   "sha256": "b5f4967eb8425c23e4b0c9a2e9b046b83309b680261638206d914cc4cd19e916"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_Fun_control_example_03.json": {
+   "size": 150812,
+   "sha256": "9c412d4490219d290a816c3fb8eed3766d8b8c7888ec59e393ada3accee115a1"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_I2V_A14B_example_WIP.json": {
+   "size": 42905,
+   "sha256": "3e1a73a35a96790e243ef1eb8fba19d0a983f69f6d591104ff3dafaf98fcc00b"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_2_2_I2V_A14B_TimeToMove_example.json": {
+   "size": 62450,
+   "sha256": "631857210684fd8fd52518e28686acbfe65edc1009e3b5e52b988a5fb0353b4a"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_WanAnimate_example_01.json": {
+   "size": 140161,
+   "sha256": "7f3d2b9f1bf9da0e512cf9fa13c9f56c668559146069489301c56193bb59f3b6"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/wanvideo_WanAnimate_preprocess_example_02.json": {
+   "size": 78158,
+   "sha256": "a71f3741f42206c1f0e09968b67b51f220f6b950b2bfbbfac658a4ca41d87133"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/example_inputs/env.png": {
+   "size": 1229032,
+   "sha256": "61d79eed86a7fd7d831dfc16ce0091f1da725690ee7e8a516f75b42d1c31624f"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/example_inputs/human.png": {
+   "size": 210018,
+   "sha256": "3ee49acf2e6251ef452230019c9394addf95a34c784c421c50d4e3ccc664ed2f"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/example_inputs/jeep.mp4": {
+   "size": 185636,
+   "sha256": "67dc9e4ce73a7289901b159755953652965a17939fe43aedad43381934b32f55"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/example_inputs/MTV_crafter_example_pose.mp4": {
+   "size": 318276,
+   "sha256": "57f1d09148ca2bd7994de0647d73ed5a44fb186f4d300265edd9571a912f8a0d"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/example_inputs/thing.png": {
+   "size": 81077,
+   "sha256": "225d787d866a753187e7121860441a0b60fe31cd588e31035c0595258f030451"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/example_inputs/wolf_interpolated.mp4": {
+   "size": 194949,
+   "sha256": "56fadca209868e8930dc12bd825a2aa8bab822f0152812aaa2aeefd46176c74b"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/example_inputs/woman.jpg": {
+   "size": 196851,
+   "sha256": "5662b7d55d57749a8ed53267be076b13234d2e2de445fdd5b58a695f894a40de"
+  },
+  "ComfyUI-WanVideoWrapper/example_workflows/example_inputs/woman.wav": {
+   "size": 1765454,
+   "sha256": "e08584293621824d039c264132d90b654bede740f67d9384979544e3e2abfacc"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/LICENSE.txt": {
+   "size": 11558,
+   "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/model.py": {
+   "size": 8897,
+   "sha256": "bea514ad25b11a210498f3ca1a71f971bf6e21faa89918a990f5f3272fe8617f"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/nodes.py": {
+   "size": 12037,
+   "sha256": "b48532d5022cda45b939fb5ce692cbf37f4101550c67c6b46cdba9680f4ec6d3"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/requirements.txt": {
+   "size": 70,
+   "sha256": "21d884789bac91efd074746a4674bf10b80fcba0641ed31f293b3a5935ddc80d"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/models/face_det.onnx": {
+   "size": 370619,
+   "sha256": "7ea8de1da304c1459a11f637798bb1140805365aeb3cf6637ca6d61909720aec"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/models/face_landmark.onnx": {
+   "size": 2865751,
+   "sha256": "463aaa48dd24b9d3b966c76accf9a27f7c590a73a3827d5002a975e46bd54995"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/pd_fgc/camer.py": {
+   "size": 20087,
+   "sha256": "b13ffe1030826a9d87f285c1dd05285d65ce128e0008aaf4aa9e961e477d8e92"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/pd_fgc/face_align.py": {
+   "size": 4523,
+   "sha256": "d73b387cd376a42e07a7b13049510dc0e62c167145c532dc944c2b6ebe1e9b1f"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/pd_fgc/face_det.py": {
+   "size": 10890,
+   "sha256": "3dcdedf78b114fd4ea8a3abdbdd9fded2a328b9512de66af422fb939ac75c645"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/pd_fgc/face_utils.py": {
+   "size": 5073,
+   "sha256": "f9b197e4be7b03087c013706e1e5929be2c803cef097c4143766b9166cc8b811"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/pd_fgc/pdf.py": {
+   "size": 13836,
+   "sha256": "de13b93b7cec9a09dca1823dc1812b1556a31aeebfa740ebcf6537f10dbceda7"
+  },
+  "ComfyUI-WanVideoWrapper/fantasyportrait/pd_fgc/PF-FGC_LICENSE.txt": {
+   "size": 18486,
+   "sha256": "bb295d7d7cafb1642fce5136af6cea086427d6dc7bb678967ed53b0c3289ef79"
+  },
+  "ComfyUI-WanVideoWrapper/fantasytalking/model.py": {
+   "size": 5431,
+   "sha256": "e33cb524cc6eea65c343abacf738f2fa914e1fb986db3d520928d904edd3ecdf"
+  },
+  "ComfyUI-WanVideoWrapper/fantasytalking/nodes.py": {
+   "size": 8860,
+   "sha256": "46d5339dbadabad563a9c6c6dd99d71c9de5badc3e4878e9365904fd33efbf48"
+  },
+  "ComfyUI-WanVideoWrapper/FlashVSR/flashvsr_nodes.py": {
+   "size": 2503,
+   "sha256": "e8b457d7fa9121c57ce72b378dc0b96647293cdf237053d36e786b764df5d30d"
+  },
+  "ComfyUI-WanVideoWrapper/FlashVSR/LQ_proj_model.py": {
+   "size": 5643,
+   "sha256": "c57da8c2139f283e062b16d5e26ee70849ac6087b6dbc933b3f003ff4587f266"
+  },
+  "ComfyUI-WanVideoWrapper/FlashVSR/TCDecoder.py": {
+   "size": 10271,
+   "sha256": "a11d734495a82c57f65cda832997ecf2720dd3c8435de5e4ab71f4c2143b290a"
+  },
+  "ComfyUI-WanVideoWrapper/freeinit/freeinit_utils.py": {
+   "size": 4875,
+   "sha256": "0cf11b2ed2e496dbf25daec1de3289e33a24b1f160ebf3155c1c646ed30d2093"
+  },
+  "ComfyUI-WanVideoWrapper/fun_camera/nodes.py": {
+   "size": 7873,
+   "sha256": "5e7779afa5cfcf725da6ff88a9fb0dc3b80b134eb17e220c15a847c497b00334"
+  },
+  "ComfyUI-WanVideoWrapper/gguf/gguf.py": {
+   "size": 1250,
+   "sha256": "85846758d7b4dc6fa9ae163947ffe07be59ca57ff08650960bcc0e84d639e9c6"
+  },
+  "ComfyUI-WanVideoWrapper/gguf/gguf_utils.py": {
+   "size": 12052,
+   "sha256": "cdab61fd80c0499f91f135c69561c9c15cd060d13f268aefb93f3afee11f5158"
+  },
+  "ComfyUI-WanVideoWrapper/HuMo/audio_proj.py": {
+   "size": 3170,
+   "sha256": "f29a192849c21481c2063b66b9612ed3c3399734acdb153ce7c1fa9ca72e6bfb"
+  },
+  "ComfyUI-WanVideoWrapper/HuMo/nodes.py": {
+   "size": 13185,
+   "sha256": "10df08e12e39d5a62da37cb3d5171dec1ece2e2641018da74ddc07c41278de65"
+  },
+  "ComfyUI-WanVideoWrapper/HuMo/whisper_config.json": {
+   "size": 1322,
+   "sha256": "51867042043e134da7e126bc3df424822c017f11666064dc2fda75ea0aefb7fa"
+  },
+  "ComfyUI-WanVideoWrapper/LongCat/layers.py": {
+   "size": 9320,
+   "sha256": "248d4a4559d02a383dc04341e7014e1b6c47f5cded0b736083be1fed2752bfbb"
+  },
+  "ComfyUI-WanVideoWrapper/LongCat/longcat_i2v_testing.json": {
+   "size": 29347,
+   "sha256": "2b240d8c1bd0fb48fb8ca65ca25fcd8b3d6869ecb13ee108ce38f4262a4f2183"
+  },
+  "ComfyUI-WanVideoWrapper/LongCat/nodes.py": {
+   "size": 16683,
+   "sha256": "f108e1fcbdc989d337d030cb7581c5ba754911b5b128f00b68e7d49eeb4585cd"
+  },
+  "ComfyUI-WanVideoWrapper/LongVie2/modules.py": {
+   "size": 7548,
+   "sha256": "c2755c9abdc8b4a4b07b0f802d8cf467a0c0b4637ab781e51aa289c57815b61f"
+  },
+  "ComfyUI-WanVideoWrapper/LongVie2/nodes.py": {
+   "size": 5057,
+   "sha256": "30f2d7fc0a21a5eca2a5d891f3c3090d255ea820da5249d94a125e5e2101ba44"
+  },
+  "ComfyUI-WanVideoWrapper/lynx/modules.py": {
+   "size": 4451,
+   "sha256": "529abb8aab85e32825cc39dcdbb2be279154fe7b0903b7177866af0078ec8b75"
+  },
+  "ComfyUI-WanVideoWrapper/lynx/nodes.py": {
+   "size": 10429,
+   "sha256": "fbea60dd5825dc9e3f6b1b3759b749d1b08da53e0e6d8eae6c24a674a5736215"
+  },
+  "ComfyUI-WanVideoWrapper/lynx/requirements.txt": {
+   "size": 11,
+   "sha256": "88af042bfd95523ccc9be72c5b3cfa5b46211397e0e07e18017b2551c4fd9078"
+  },
+  "ComfyUI-WanVideoWrapper/lynx/resampler.py": {
+   "size": 5438,
+   "sha256": "2f5d2342561e00dc9e91748180fc88892bcdc5f6fad07562e717ae63a25f39a3"
+  },
+  "ComfyUI-WanVideoWrapper/lynx/face/arcface.py": {
+   "size": 9188,
+   "sha256": "22afd90879ea487ed71f318e6bf911534e2a9e2d5372c33c8f43ace25dbf552f"
+  },
+  "ComfyUI-WanVideoWrapper/lynx/face/face_encoder.py": {
+   "size": 3405,
+   "sha256": "ee17fdbd428348c9f472e6025f1f0ad10b6152e83a6f305ac7174cfffe630e87"
+  },
+  "ComfyUI-WanVideoWrapper/lynx/face/face_utils.py": {
+   "size": 2724,
+   "sha256": "22cda5a308e18cc51cae08ef59cb5f0ae09b784d68bae9f322e57c46c2fb6326"
+  },
+  "ComfyUI-WanVideoWrapper/mocha/nodes.py": {
+   "size": 6542,
+   "sha256": "1a90ba6527c6d21c6c297b6277b17471400eeddadee1326263812bffc27a20c6"
+  },
+  "ComfyUI-WanVideoWrapper/MTV/draw_pose.py": {
+   "size": 8207,
+   "sha256": "937680433635693d2c50ce8b257af0f3c89d49ec5dfcaf74b6bf43b66239475b"
+  },
+  "ComfyUI-WanVideoWrapper/MTV/mtv.py": {
+   "size": 9086,
+   "sha256": "af88e2e1eb3748ac55c07bbad45d33bfe32acedc07ec1cfbbb95aff7ef7ae0ee"
+  },
+  "ComfyUI-WanVideoWrapper/MTV/nodes.py": {
+   "size": 12907,
+   "sha256": "868187a2a9cbae3788d1474cdd6da057b679e994beb488d53e46e88279984d22"
+  },
+  "ComfyUI-WanVideoWrapper/MTV/data/mean.npy": {
+   "size": 416,
+   "sha256": "3ababeaabf5ac096ce7c7714ada14aa1de8355c0016de25695be611d51285141"
+  },
+  "ComfyUI-WanVideoWrapper/MTV/data/std.npy": {
+   "size": 416,
+   "sha256": "650e46902a0878e6947be401e4e1995e54a8fd407f2be3ded0dda62bda99a9b3"
+  },
+  "ComfyUI-WanVideoWrapper/MTV/motion4d/vqvae.py": {
+   "size": 13306,
+   "sha256": "20e69e53e7ad75f0294013bae1ce9c9655c39b9b79be20b657a4086cdd89ce61"
+  },
+  "ComfyUI-WanVideoWrapper/MTV/motion4d/__init__.py": {
+   "size": 64,
+   "sha256": "cfe2ea86a1199103760956fb8a5a39575fcba0f0f5eee0030315667aebc1ebab"
+  },
+  "ComfyUI-WanVideoWrapper/multitalk/encoded_silence.safetensors": {
+   "size": 1658968,
+   "sha256": "cd68739d78b9566cf3d575e4140f7e02f0d36e4ae9bcb33457d92711c3c6584d"
+  },
+  "ComfyUI-WanVideoWrapper/multitalk/multitalk.py": {
+   "size": 17100,
+   "sha256": "1aaf115407cd9e73fee6cfd721675a722cc7ac90d217e54ac7e6660cb8b0199a"
+  },
+  "ComfyUI-WanVideoWrapper/multitalk/multitalk_loop.py": {
+   "size": 31055,
+   "sha256": "fb4a4945e0b1f01563aff9d5d4c00151179418235289a1c8a8c705a444625327"
+  },
+  "ComfyUI-WanVideoWrapper/multitalk/nodes.py": {
+   "size": 27582,
+   "sha256": "e963982c2f9bb3df6282bdec911abb0efa2e81e0c6d837b73d9fbcb0474921be"
+  },
+  "ComfyUI-WanVideoWrapper/multitalk/wav2vec2.py": {
+   "size": 5186,
+   "sha256": "e3f88bca8f26429f555fe6a1b0881e68aafcbb04ebfccd2e3494f7423be7aa1a"
+  },
+  "ComfyUI-WanVideoWrapper/multitalk/wav2vec2_config.json": {
+   "size": 2056,
+   "sha256": "f2ad8ac74fa5b5b4f49f09430f68ea10bc3b7a9efe14db26afd9bb47d5599a58"
+  },
+  "ComfyUI-WanVideoWrapper/onetoall/controlnet.py": {
+   "size": 18118,
+   "sha256": "52c79e87a91522b9fa4033e29695aecc111c1b89e07659736328ccb135034098"
+  },
+  "ComfyUI-WanVideoWrapper/onetoall/nodes.py": {
+   "size": 8152,
+   "sha256": "eded608e9d4183019120fe28f723d399078cedebd2d9d3fa8551b09699688372"
+  },
+  "ComfyUI-WanVideoWrapper/onetoall/refextractor_2d.py": {
+   "size": 10243,
+   "sha256": "dd3734093184478df6043660ef22eaf4dbd136e9cbbd8e674c363a94172b7fbc"
+  },
+  "ComfyUI-WanVideoWrapper/onetoall/unet_causal_3d_blocks.py": {
+   "size": 6440,
+   "sha256": "0c3c5265df75dc99b0e1dc0c49f71f9dd716ec5659e4001b924f46de651004d3"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/audio_model_layers.py": {
+   "size": 1633,
+   "sha256": "ff50cb7241032ceebc11e48c85b8327a3d1bf5d8a0d1dc6fa59fa57323388ee6"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/mel_converter.py": {
+   "size": 6785,
+   "sha256": "59995d81e695cbbcfd9c6ab91c7b45be5cc4414fa983de5cc1861d5795008cf7"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/nodes_ovi.py": {
+   "size": 9371,
+   "sha256": "c3a53baff26bfdaa6f3d90af7befbc665c4a15db7d36b8501a2a8a86ca0ec5ab"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/activations.py": {
+   "size": 4623,
+   "sha256": "9429d2b01f02c9dc33aa7db86789f6fca94f11df08c754df018aba6a7d11c73c"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/bigvgan.py": {
+   "size": 1769,
+   "sha256": "0ae67b2db0112987974308929ee222b43545c3b4e941a99030787be55990066f"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/LICENSE": {
+   "size": 1096,
+   "sha256": "d766006d0f14720c3e0a0225a7ce82fa34cf97ac99c85e83b3c599b3a7c19cb6"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/models.py": {
+   "size": 9759,
+   "sha256": "1286c2f436a109839253e5ed8ada47d02d9e1d66c44af5bea222a8abd5e50e06"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/utils.py": {
+   "size": 576,
+   "sha256": "e79be0f40cdd2db65e871f34d091be9833ef4b48964d3c7a5c719d19fb6f437f"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/__init__.py": {
+   "size": 30,
+   "sha256": "4d3ff12f43843ed71e0d6a27c56d0bed61265b986b7debf01061b16509966876"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/alias_free_torch/act.py": {
+   "size": 881,
+   "sha256": "3201d7212d5615ca2ef0d04f9cfa8facef1174ba849ae7bcd410961736d40a47"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/alias_free_torch/filter.py": {
+   "size": 3550,
+   "sha256": "08a2f707c9b12ecebe6db8f1abb3cd7b57c8d23906d1560a585c972b3aea4b0d"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/alias_free_torch/resample.py": {
+   "size": 1907,
+   "sha256": "2cc8d5a3dae7fcec00809f775adc8909ec5f586ace7bb80966a557b3f701c697"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/alias_free_torch/__init__.py": {
+   "size": 204,
+   "sha256": "a2d6840773999c9a050af2fe0fa780201887ef38e193b1375173620f7c6477b0"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/incl_licenses/LICENSE_1": {
+   "size": 1087,
+   "sha256": "dc2e017a9a4430fbd21aa83345310fa34b7050d6c1d7a06d30436f7e5c4be2f4"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/incl_licenses/LICENSE_2": {
+   "size": 1088,
+   "sha256": "c3816ce4c3465e45b2d2c318c05af3e0050def54434b2c9f8ab0995b7760881f"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/incl_licenses/LICENSE_3": {
+   "size": 11555,
+   "sha256": "a4e4b2468504e54741ba589a2dd3c2d39469511d6c805951e36e2c5c9943ccae"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/incl_licenses/LICENSE_4": {
+   "size": 1558,
+   "sha256": "8c4a503f8af60737a58ffec285e313c908c522b75f8c6d6cdf1350a765e74f5b"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/bigvgan/incl_licenses/LICENSE_5": {
+   "size": 1073,
+   "sha256": "01ea888e8036ad7b0b7e094cdb47772da4d5d2e8dbd4a10bde20e34dbd786513"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/vae/autoencoder.py": {
+   "size": 1956,
+   "sha256": "42474c08262ebd30361ec0ac101b4fce4984a96c716afa8c1a9fdf5356051268"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/vae/distributions.py": {
+   "size": 1659,
+   "sha256": "2c742bd6793b904d02c3645d1f2841db2322de12d2fea524235c22068a6154c6"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/vae/edm2_utils.py": {
+   "size": 5717,
+   "sha256": "c38f5622ad958cd241918d354c045e8d44b731200fab3b5497638e32e7e65fb6"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/vae/vae.py": {
+   "size": 15216,
+   "sha256": "8350b351ce26f504a94213d5b5fd2b90e5032c02e19f66885f66144973dcdf15"
+  },
+  "ComfyUI-WanVideoWrapper/Ovi/vae/vae_modules.py": {
+   "size": 3456,
+   "sha256": "d5b638be6905cd43e838ed2b0a773ac7fca3506cb0e2221e9c3feb324405c2be"
+  },
+  "ComfyUI-WanVideoWrapper/qwen/config.json": {
+   "size": 688,
+   "sha256": "6ef8ca02825f318184c932850a1eadbec3f5273f41239f87ba8dc6c05341efb6"
+  },
+  "ComfyUI-WanVideoWrapper/qwen/qwen.py": {
+   "size": 9844,
+   "sha256": "82750170aa7bbea44d1f354fa17b1dbcb47dcaf7a46b3a384551f55a165346bd"
+  },
+  "ComfyUI-WanVideoWrapper/qwen/system_prompt.py": {
+   "size": 21074,
+   "sha256": "8b7f9e4f4cf2768f59cda905ec0a03416e21e55a74411444f67e6fd91122477e"
+  },
+  "ComfyUI-WanVideoWrapper/qwen/tokenizer/merges.txt": {
+   "size": 1823226,
+   "sha256": "0de0bc38a29ea38eef099b677fa1ff52edd181e573529af26c4cd2136e233777"
+  },
+  "ComfyUI-WanVideoWrapper/qwen/tokenizer/tokenizer.json": {
+   "size": 7334926,
+   "sha256": null
+  },
+  "ComfyUI-WanVideoWrapper/qwen/tokenizer/tokenizer_config.json": {
+   "size": 7511,
+   "sha256": "fa2a40a9d8c8c4bb7f25ab726eb78ec9cbaaef96d1fa26f1d7f5615e886449a8"
+  },
+  "ComfyUI-WanVideoWrapper/qwen/tokenizer/vocab.json": {
+   "size": 2776833,
+   "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+  },
+  "ComfyUI-WanVideoWrapper/recammaster/nodes.py": {
+   "size": 14776,
+   "sha256": "b3151f726f68853805e5a16018b17dcfc9c8a2c35982c6806efb3e43c5e86b8f"
+  },
+  "ComfyUI-WanVideoWrapper/recammaster/recam_extrinsics.json": {
+   "size": 82094,
+   "sha256": "6264e34c6eb7f734804f280c6a327d323f19890aa974fbdbe8d89808b7d19d3c"
+  },
+  "ComfyUI-WanVideoWrapper/s2v/nodes.py": {
+   "size": 8235,
+   "sha256": "f617e6c2161b1de94c034d70fe90cfa9c344bdb49b886de6495caf5d1be704db"
+  },
+  "ComfyUI-WanVideoWrapper/s2v/wanvideo2_2_S2V_context_window_testing.json": {
+   "size": 46778,
+   "sha256": "0c633b3f8a0dbcf06e6aa0ff604a2a27cfb67330818d254fc622bb64494deb00"
+  },
+  "ComfyUI-WanVideoWrapper/s2v/wanvideo2_2_S2V_framepack_pose_testing.json": {
+   "size": 68991,
+   "sha256": "405f95e227eaea8b293dee6dcc4b58b1d8ef45c09ae785167da855c26148efde"
+  },
+  "ComfyUI-WanVideoWrapper/SCAIL/nodes.py": {
+   "size": 4485,
+   "sha256": "d5cad47b7b99f02a0c94409808fafbb25f7e3dfe43b7c7f2f3c22d4d85683eb7"
+  },
+  "ComfyUI-WanVideoWrapper/skyreels/nodes.py": {
+   "size": 32240,
+   "sha256": "7f1b9b88f3881c4d9dd0334a71ed354cf085d228d4b2e9d3803a08849a42607d"
+  },
+  "ComfyUI-WanVideoWrapper/steadydancer/mobilenetv2_dcd.py": {
+   "size": 3580,
+   "sha256": "423e6965041aef71576b7fba38f26f215118967726aba7dc480243ac00a0b220"
+  },
+  "ComfyUI-WanVideoWrapper/steadydancer/nodes.py": {
+   "size": 2652,
+   "sha256": "1fb79bdded54b517e8f874f13c08ff35df9bb0f7a5ca6ed3bf632e77f0425e10"
+  },
+  "ComfyUI-WanVideoWrapper/steadydancer/small_archs.py": {
+   "size": 4678,
+   "sha256": "a1249f0234b9033dde6b8848d56589c708eac745c1339407394f4d6cbe3e64f8"
+  },
+  "ComfyUI-WanVideoWrapper/taehv/taehv.py": {
+   "size": 11536,
+   "sha256": "6c16c53962eaf4cd22702707d98dd584bae7f890c3ad3237f9f22b7e39743630"
+  },
+  "ComfyUI-WanVideoWrapper/taehv/__init__.py": {
+   "size": 24,
+   "sha256": "a2865fce5b3889ebb4409953d5f69e51af900afe32b7e5561971616981980bab"
+  },
+  "ComfyUI-WanVideoWrapper/ultravico/sageattn/attn_qk_int8_per_block.py": {
+   "size": 10261,
+   "sha256": "1b6fa07b6b9721075aaa2304cc48af56c1316e110b9af8fe24b4fcd78c9be320"
+  },
+  "ComfyUI-WanVideoWrapper/ultravico/sageattn/core.py": {
+   "size": 2074,
+   "sha256": "e5978f843ac1b22bfab30355c2bd167fec515727d91e66c7b171507810c6eb44"
+  },
+  "ComfyUI-WanVideoWrapper/ultravico/sageattn/quant_per_block.py": {
+   "size": 3683,
+   "sha256": "1cb7f631c19a56d0e40b935695c507ae24776d52b62efec4c614bdc88bbd3f60"
+  },
+  "ComfyUI-WanVideoWrapper/uni3c/camera.py": {
+   "size": 3368,
+   "sha256": "e7f3a6fa8331f9dd37cdb98f8d0839b844176d29a41f21303fed35124835aaf7"
+  },
+  "ComfyUI-WanVideoWrapper/uni3c/controlnet.py": {
+   "size": 14796,
+   "sha256": "df69e19933413ec20bc73afed6e1b47a40d16a29b93ee367a50d78916ec3ef6c"
+  },
+  "ComfyUI-WanVideoWrapper/uni3c/nodes.py": {
+   "size": 11064,
+   "sha256": "5a16644642d77cde500ba68f4fc7285ec7cadb0b9e8e9a325a8f8dffee8bbb59"
+  },
+  "ComfyUI-WanVideoWrapper/uni3c/utils.py": {
+   "size": 7304,
+   "sha256": "03b36166c2ce55a2e82f49dfeccbb0cb491a1ba55e0c6062f81dd252eb8ac45f"
+  },
+  "ComfyUI-WanVideoWrapper/unianimate/nodes.py": {
+   "size": 42679,
+   "sha256": "6a13b1f139b8fad68b4e0352113d3f000200561ba429616d53cb20f173a2a783"
+  },
+  "ComfyUI-WanVideoWrapper/unianimate/dwpose/jit_det.py": {
+   "size": 4548,
+   "sha256": "62cf2c72ccdadbcbfb48ade48de2cf78891a6fd7d906c3802177f76198c66bd4"
+  },
+  "ComfyUI-WanVideoWrapper/unianimate/dwpose/jit_pose.py": {
+   "size": 12492,
+   "sha256": "7622487bf9c47ab48d108d3252c448d8df3686af8099296edb10b921201facd8"
+  },
+  "ComfyUI-WanVideoWrapper/unianimate/dwpose/util.py": {
+   "size": 15375,
+   "sha256": "f03ec608252fbab88d70ff49bba26325d7ae33c637f99f348b973b91aab584e8"
+  },
+  "ComfyUI-WanVideoWrapper/unianimate/dwpose/wholebody.py": {
+   "size": 1453,
+   "sha256": "ec7e45ceff9fcad138cd68a14609443cc9ef8bd18ddf9a1a9e95e1cd9ab7ec5d"
+  },
+  "ComfyUI-WanVideoWrapper/unianimate/dwpose/__init__.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-WanVideoWrapper/WanMove/example_tracks.npy": {
+   "size": 776,
+   "sha256": "678110c4d4b3ebf6a3851bd43a33013da6251ab24ad49e9c89ec6c2defbfa2ac"
+  },
+  "ComfyUI-WanVideoWrapper/WanMove/example_visibility.npy": {
+   "size": 209,
+   "sha256": "4aaf18d47e5e05b94bbda8f044fc2d685bf6bce8d91665def0d0ce6e9432663f"
+  },
+  "ComfyUI-WanVideoWrapper/WanMove/nodes.py": {
+   "size": 8902,
+   "sha256": "cd719f27355d0619e42190857d6f3abff788fb2a2bfa1b9d1f8a9ef6a2c7cca3"
+  },
+  "ComfyUI-WanVideoWrapper/WanMove/trajectory.py": {
+   "size": 13313,
+   "sha256": "b19ea86068f215c4199ffaa43f42eab790f6272750cba7c69a48dbdaa792ebc7"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/LICENSE": {
+   "size": 11558,
+   "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/wan_video_vae.py": {
+   "size": 59108,
+   "sha256": "9c7de6b3aa6873a6b057cedfcdf9b20fd475b2aaf37dda4a09872a8f85e57669"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/configs/shared_config.py": {
+   "size": 934,
+   "sha256": "b6fa90d34f48d034006beff6c08a1d34240e97eb3338bb24851ab8d3036b37c0"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/configs/wan_i2v_14B.py": {
+   "size": 1006,
+   "sha256": "8a34ce3bede4d9b09620075c63a1f082d09b477cb2ec9e6a309b6d8dd06e2957"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/configs/wan_t2v_14B.py": {
+   "size": 771,
+   "sha256": "041451620e87ef2560ae022433455221d4cb394b032adb198bc0cda0502815c7"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/configs/wan_t2v_1_3B.py": {
+   "size": 788,
+   "sha256": "721fb2e490cd4a431a45f566cf6ad1210a7c955b47d541fb39480a0a763867ef"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/configs/__init__.py": {
+   "size": 1053,
+   "sha256": "791782ef10d42bb0519eabb4e31591e7208f52cb314a88999a86525d7bdba416"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/attention.py": {
+   "size": 7602,
+   "sha256": "84ce5ac64d40e1c8b95939480cd2a748e2e280f99b96fe8a92a95dfe9250b6a4"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/attention_flash.py": {
+   "size": 3534,
+   "sha256": "cc60cd76aa403c39882a6ee3f6e9a5e154eb24858c4e5f8c0f0ec5b45d47e367"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/clip.py": {
+   "size": 15175,
+   "sha256": "2e0ca0fe8d682f1a70252c098396c634895a7c63414da0e5df4de671a8f9f12c"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/model.py": {
+   "size": 172135,
+   "sha256": "93a9fe20565eb4942f015e4ac758a406bf766c5d30672b18d3e9565653b00825"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/t5.py": {
+   "size": 17509,
+   "sha256": "6c162d738fa53cc2133f8c9aa69afd2b90ace93615062e7aa085721c7bbb6e23"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/tokenizers.py": {
+   "size": 2535,
+   "sha256": "66954128c663a1be8b9814a6c7cf548ff107fe0afdbeb2d4b761e2c57e8e42bc"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/vae.py": {
+   "size": 23972,
+   "sha256": "d6487e167b935227713238c3c2be558235e4de429d10628270c9c4b03f802c0e"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/wan_camera_adapter.py": {
+   "size": 2389,
+   "sha256": "f470f05b8dc38a77042a4653e0e626efc7029e794fae776ffd24bdd3acb508f0"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/__init__.py": {
+   "size": 277,
+   "sha256": "1d02f9394083242334e3d820ded88288e96a0627b11cc068e7ff61e7be30e2a6"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/s2v/audio_encoder.py": {
+   "size": 6598,
+   "sha256": "99a4496950a828640ba8048c1f761e3dd0cdb9a4c0e1b59435eb1fe2d61ec43b"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/s2v/auxi_blocks.py": {
+   "size": 4066,
+   "sha256": "8edda4da90bf5c18b37df7d28af49e436b5236368451f12efbd0804ee5d1a461"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/wananimate/config.py": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/wananimate/face_blocks.py": {
+   "size": 4979,
+   "sha256": "6fbf0ab02f6bb0ef61a95e8cdaa96c24d03559e594c085ebe0ec52d36482376d"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/modules/wananimate/motion_encoder.py": {
+   "size": 7830,
+   "sha256": "e528742ccca05c2c6c3e599894f56f0514dc3e9921ee353fb1a84320c9672934"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/radial_attention/attn_mask.py": {
+   "size": 8324,
+   "sha256": "78974c85758caae4bcbf6cfcccbbe753b662daacc16991f46f86c364ef73ba66"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/radial_attention/sparse_sage/core.py": {
+   "size": 1819,
+   "sha256": "9ee0967f5fb90a6f63df6567e17a48336bdc9dbd975c870ba3018727b093d0e9"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/radial_attention/sparse_sage/LICENSE.txt": {
+   "size": 11543,
+   "sha256": "bc92676c5cc8ef13fac2921b7e54797f604336d397ea109e9aefc750ed8d9788"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/radial_attention/sparse_sage/quant_per_block.py": {
+   "size": 4216,
+   "sha256": "d362a87b3940ec6d4298cee8d34bad7c6c4085f49cd2476c77dda869c951b2aa"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/radial_attention/sparse_sage/sparse_int8_attn.py": {
+   "size": 7626,
+   "sha256": "b4446fc0742cf0c955d089207e48897af13757c16393717ae1c73e494e638e05"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/basic_flowmatch.py": {
+   "size": 4094,
+   "sha256": "d7f3e6b75c0e409639949d892c0193fb15bd594ee14edcc7ab9bff11668f19ae"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/ersde_scheduler.py": {
+   "size": 6633,
+   "sha256": "6aa3c5e225e3802011f67c6fc992f1cc829c861aa2f9ebde0c9c4bda816e862d"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/flowmatch_pusa.py": {
+   "size": 8104,
+   "sha256": "35c94a7f1f6ba59b445bc45c17dc590127d758d438bd4bdeaf4a3a34dd9937e6"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/flowmatch_res_multistep.py": {
+   "size": 4571,
+   "sha256": "85f63c9a9f1570cbedc486b85a6e22172046295ca8a5b873c05c8f1ccb28b4ba"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/fm_rcm.py": {
+   "size": 1516,
+   "sha256": "07ce2da4d47f8ce6555d907e2d6274d9cedb0045333e03b38c81e074ea647c0b"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/fm_sa_ode.py": {
+   "size": 10435,
+   "sha256": "dddba7bc21e4aea010951efd18368054406e1a9b9b499cd9d5d6817bffb3d6f2"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/fm_solvers.py": {
+   "size": 44062,
+   "sha256": "0720b790689c4018d1dd56bc55901af49161ba54620ed1cb0335e3a89a67a98d"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/fm_solvers_unipc.py": {
+   "size": 36876,
+   "sha256": "88f4765e894e1aeca19d3891ad1f191c4a846110c9f71c0976401d20cc987280"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/scheduling_flow_match_lcm.py": {
+   "size": 25530,
+   "sha256": "30985dde5065bd1c06a74432e9b01c24cf4238bc1e7078c453dbb37c45bc5958"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/vitb_unipc.py": {
+   "size": 1386,
+   "sha256": "74d61dc9bec35b00a8384298182b45d6decba9877f6f05ba443e1b52635e6f16"
+  },
+  "ComfyUI-WanVideoWrapper/wanvideo/schedulers/__init__.py": {
+   "size": 10663,
+   "sha256": "b0d3b121c8d886a46142e1ebba649bfea61c747f4303ee6be809eea14a527e63"
+  },
+  "ComfyUI_CFGStar/.gitignore": {
+   "size": 3617,
+   "sha256": "b96529c28fdb75c9256db7abf2bc2a67e575d9c2aae2ca26a9e7ed8f46722e2c"
+  },
+  "ComfyUI_CFGStar/cfgstar.py": {
+   "size": 1043,
+   "sha256": "abbf359448ed2809d2cad5ab519f96d226ecc0a2b65f2fcff41ddf7fea929029"
+  },
+  "ComfyUI_CFGStar/LICENSE": {
+   "size": 35823,
+   "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+  },
+  "ComfyUI_CFGStar/pyproject.toml": {
+   "size": 439,
+   "sha256": "6e3317de9c7d2df307a667c6ef39be06104973fbeef2bed8aafcde13112b541d"
+  },
+  "ComfyUI_CFGStar/__init__.py": {
+   "size": 139,
+   "sha256": "6a9484121b15c6df946ab0916d583d1aeefb2a30ed1c16e9d86c237fe950ce99"
+  },
+  "ComfyUI_CFGStar/.github/workflows/publish.yml": {
+   "size": 670,
+   "sha256": "81323a2226f7656cf2a53de82bdad3807e4b3e10fcd1b157be4cc740ae860291"
+  },
+  "ComfyUI_IPAdapter_plus/.gitignore": {
+   "size": 63,
+   "sha256": "86191ef5320670bb5a4df03338a1c543d4e7d07e3bf2f3e6d099cacac3b80df8"
+  },
+  "ComfyUI_IPAdapter_plus/CrossAttentionPatch.py": {
+   "size": 10904,
+   "sha256": "8511ea6f6495d408275893bf199d1db0529b746b0167d55d962e95898d281d0c"
+  },
+  "ComfyUI_IPAdapter_plus/image_proj_models.py": {
+   "size": 9221,
+   "sha256": "bdd2a890e0c53749e1c9863bc3021859a0ffb7fdcfea7e3505c18e34a1a4c132"
+  },
+  "ComfyUI_IPAdapter_plus/IPAdapterPlus.py": {
+   "size": 92267,
+   "sha256": "a0424207242ddda05640b4c32d79a095f0cf7016969bf3dd118065e17b27898b"
+  },
+  "ComfyUI_IPAdapter_plus/LICENSE": {
+   "size": 35823,
+   "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+  },
+  "ComfyUI_IPAdapter_plus/NODES.md": {
+   "size": 5298,
+   "sha256": "fe418537fa9708edc7a78d89137ee5d538ebbed66d25506a533bbf134137657d"
+  },
+  "ComfyUI_IPAdapter_plus/pyproject.toml": {
+   "size": 574,
+   "sha256": "1f7db239f494a9190078d6eda7f9ec11bbf93091455877d6d98b95caeffda0c0"
+  },
+  "ComfyUI_IPAdapter_plus/README.md": {
+   "size": 10018,
+   "sha256": "9163de9eef542e0bf025dd07ad09539808e44238df236cb2d1f390cefbaaf9b1"
+  },
+  "ComfyUI_IPAdapter_plus/utils.py": {
+   "size": 16354,
+   "sha256": "5a9f113767a149dc2593f7e06d9efe1572fa9f66a8b95586127bb705cc2a83fd"
+  },
+  "ComfyUI_IPAdapter_plus/__init__.py": {
+   "size": 1806,
+   "sha256": "b11b6feced87e43ebcc4a2665737f94680bebf7f5ddcc5840a7d0ecbd570df41"
+  },
+  "ComfyUI_IPAdapter_plus/.github/workflows/publish.yml": {
+   "size": 585,
+   "sha256": "7fcff28df9e319caec9ce6be60b9e388f411c6177ff26b6d136c751adee8c2c2"
+  },
+  "ComfyUI_IPAdapter_plus/examples/demo_workflow.jpg": {
+   "size": 237238,
+   "sha256": "3bca28e57d564274d11c4037a631c190e1c343cf63b61ea2afff300cea98662e"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_advanced.json": {
+   "size": 10849,
+   "sha256": "a89b23226bbb6e3c33334883a66e0a52fbc6373f37f7ec2586a13abd28b72ccd"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_clipvision_enhancer.json": {
+   "size": 16563,
+   "sha256": "01b168f447d2624555b0d99b57aca6be6d4d68c0928576498513ff6310003bf7"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_combine_embeds.json": {
+   "size": 25997,
+   "sha256": "e25fb9186d6a094269ff26edb3290cfb9629470bce720b0f1cdc3f153d077f5d"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_cosxl_edit.json": {
+   "size": 32023,
+   "sha256": "8a4bf5aa0466c754ab18062aa6bdfd8b293e9bdcce048cdbc018e41ec112b9f5"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_faceid.json": {
+   "size": 9920,
+   "sha256": "08f2575b67aac4d7781aee82067cd25f2c2085dfa728da718fa5aa2835bc4e39"
+  },
+  "ComfyUI_IPAdapter_plus/examples/IPAdapter_FaceIDv2_Kolors.json": {
+   "size": 15159,
+   "sha256": "9da5034ead9ac6cd7abef90a36abe09b9b0dd998e7bc20328a2a836f02d90ce5"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_faceid_batch.json": {
+   "size": 17809,
+   "sha256": "1eaa22691786d2168fe7d0dabcbed841edbb7634510b9466d9e1f2f4e94ae28c"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_ideal_faceid_config.json": {
+   "size": 12717,
+   "sha256": "9d4fabab67e7e73cd3e8f83a143272613b934b58dbf95a550458e51c4325bdb9"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_kolors.json": {
+   "size": 12319,
+   "sha256": "58cd784bb5af95bbf915e10eaac9318a718122833922d71a3bf0fbb86d2b0b59"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_negative_image.json": {
+   "size": 16345,
+   "sha256": "94f6c6c4d6889725def277aa40e05cad939bb9a518c9b0c8fc4d6de24109d37b"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_noise_injection.json": {
+   "size": 11810,
+   "sha256": "d020535ed34a88bd8bd55d8d6ddf0dcaecdf09634d04be6a6c68a34c2ffe25f4"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_portrait.json": {
+   "size": 9913,
+   "sha256": "be28ff8621f14c8c71fe938ddbf47981ab74890d66b470a0bd6915b29ad6f5b6"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_precise_composition.json": {
+   "size": 14963,
+   "sha256": "49869c7541a538ab1caa753ed3aa058021f64ed3ea62cdf7ca5330f68abb592d"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_precise_weight_type.json": {
+   "size": 16403,
+   "sha256": "e4fa46e7bd40fba8783c7a1e1f86717f6041ad13e9ad2e96b1a0553a606d7f8c"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_regional_conditioning.json": {
+   "size": 27431,
+   "sha256": "1d01d01c11c054e28092522659442e6d0282523c25daef965b8dbafc2f03448f"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_simple.json": {
+   "size": 9425,
+   "sha256": "1e41caa3b03422b3d4ad7e0807dba4c965c393621e8d6d1e9821274e73c7dd77"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_style_composition.json": {
+   "size": 10653,
+   "sha256": "3eb6eddfed23bf23578bb261a209e4bbc8fb62c5641b156cb1b9c713b7adbfcc"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_tiled.json": {
+   "size": 10280,
+   "sha256": "356e5dfbb3b926b9c16efe7257164803304338a8f9dcefe73e933bd4db4b9cc2"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_weighted_embeds.json": {
+   "size": 14624,
+   "sha256": "1e25a9aa4dce769fecb79d35e570465160b50d3547f8121bb4b0a9fb86fd28f6"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_weights.json": {
+   "size": 13438,
+   "sha256": "d1dc1638c9b7eb7a8efcd3764b1570b7cd0de4f29fd995773cb9df4a67f640ef"
+  },
+  "ComfyUI_IPAdapter_plus/examples/ipadapter_weight_types.json": {
+   "size": 29079,
+   "sha256": "4f7cbd6a53f9192462d114ca387be45735897469709840cedd3209629253cc80"
+  },
+  "ComfyUI_IPAdapter_plus/models/legacy_directory_do_not_use.txt": {
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ }
+}

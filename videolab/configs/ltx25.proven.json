@@ -1,0 +1,130 @@
+{
+  "schema": "videolab.proven/2",
+  "family": "LTX-Video 2.5 (22B distilled)",
+  "workflow": "workflows/ltx25_w4a8_production.json",
+  "hardware": "RTX 3070 8 GB (SM 8.6), 64 GB DDR4, Windows 11, ComfyUI v0.36.0, PyTorch 2.13.0+cu130, comfy-kitchen 0.2.34",
+  "model_geometry": {
+    "sequence_lengths_121f": {
+      "stage1_960x544": {"temporal_latents": 16, "spatial_tokens": 510, "sequence_length": 8160},
+      "stage2_1920x1088": {"temporal_latents": 16, "spatial_tokens": 2040, "sequence_length": 32640},
+      "derivation": "t_lat = floor((121-1)/8)+1 = 16; spatial = (W/32)*(H/32)"
+    },
+    "attention_share_measured": {
+      "stage1": "1.35 s of a 5.3 s step = 25.5%",
+      "stage2": "20.5 s of a 41 s step = 50%",
+      "lab_record_id": "BENCH_2026-09-22_REPORT_L2_L3"
+    }
+  },
+  "sampler_constants": {
+    "stage1_sigmas": "1.0, 0.9875, 0.975, 0.909375, 0.725, 0.421875, 0.0 (S6a, 6 steps)",
+    "stage2_sigmas": "0.85, 0.7250, 0.4219, 0.0 (3 steps)",
+    "sampler": "euler_ancestral",
+    "cfg": {"video": 1.0, "audio": 1.0},
+    "fps": 24,
+    "frames": 121,
+    "duration_s": 5.04,
+    "vae": "ltx-2.5-video-vae-conv-bf16.safetensors",
+    "decode": "VAEDecodeTiled tile_size 512, overlap 64, temporal_size 64, temporal_overlap 16",
+    "dfr": {"node": "LTXVAddGeneratedKeyframes", "interval_frames": 24, "applied": "stage-1 latent, removed before upscale"},
+    "msr_references": {"mode": "stage-1 only", "reference_frames": 33, "rule": "references at stage 2 stall due to memory bandwidth limits (~4 min/model-init and ~4 min/step; 2+ refs stall silently)", "shipped_wiring": "pic1 + pic2 + background = REF_IMAGE_1 / REF_IMAGE_2 / REF_BACKGROUND (matches the production prompts)"},
+    "detail_lora": {"name": "ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors", "strength": 0.6},
+    "text_encoder_policy": "keep_text_encoder=true on the eviction node",
+    "eviction": "LTX25LabEvictModels (unload_all_models + soft_empty_cache + empty_cache) between last sampler and VAEDecodeTiled",
+    "encode": "h264 re-encode with CRF 16 (applied in-graph by the shipped SaveVideo node; the lab runner applied CRF 16 as a post-encode step)"
+  },
+  "configurations": {
+    "production_1080p": {
+      "adopted_as": "standard 1080p quality path at archive time",
+      "measured": {
+        "wall_s": 269.0,
+        "peak_device_vram_gib": 7.48,
+        "pcie_tx_gib_sampled": 31,
+        "pcie_rx_gib_sampled": 132,
+        "stage1_s_per_step": 5.3,
+        "stage2_s_per_step": 37,
+        "verification": "1920x1088, 121 frames, h264, 0 black frames, no NaN"
+      },
+      "label": "exploratory (N=1 for this rung of the ladder)",
+      "archive_run_id": "phase5_r6_1920x1088x121_00001__verify + LTX25_W4A8_IMPLEMENTATION_REPORT_s6"
+    },
+    "production_sim_three_prompts": {
+      "adopted_as": "steady-state production estimate",
+      "seed": "one fixed seed per prompt, three distinct prompts",
+      "measured": {"walls_s": [295.6, 299.0, 281.7], "mean_s": 292.1, "peak_device_vram_gib_range": [7.64, 7.75]},
+      "label": "N=3 prompts, same session (warm)",
+      "lab_record_id": "BENCH_2026-09-22_REPORT_KTE"
+    },
+    "resolution_ladder_121f": {
+      "measured_walls_s": {
+        "512x288x73_cold": 278.8,
+        "1024x576x81": 72.6,
+        "1024x576x121": 72.7,
+        "1280x704x81": 72.7,
+        "1280x704x121": 107.6,
+        "1536x896x121": 167.6,
+        "1920x1088x121": 269.0
+      },
+      "peak_device_vram_gib": 7.50,
+      "label": "one run per rung; wall times include cold loads on the first rung",
+      "lab_record_id": "LTX25_W4A8_IMPLEMENTATION_REPORT_s6"
+    },
+    "warm_variants": {
+      "measured_walls_s": {
+        "1024x576x121_convVAE": 54.6,
+        "1024x576x121_dfr_diffusionVAE": 74.7,
+        "1280x704x121_dfr_convVAE": 87.3,
+        "1920x1088x121_noDFR_convVAE": 224.8,
+        "1920x1088x121_dfr_convVAE": 353.2
+      },
+      "label": "warm, same session, one run each",
+      "lab_record_id": "LTX25_W4A8_IMPLEMENTATION_REPORT_s14"
+    },
+    "temporal_upscale_x2": {
+      "effect": "121 frames -> 241 frames (10.04 s at 24 fps; slow-motion semantics, no new action)",
+      "measured": {"wall_s": 844, "peak_device_vram_gib": 7.67, "retention_edge_proxy": "1133.8 vs 1200.7 anchor = 94.4%, per-pair mostly 92-99%, fast-motion dips to ~75%"},
+      "label": "exploratory (N=1); the per-pair values are a summary in the source document, the raw artifact is not in the archive",
+      "lab_record_id": "BENCH_2026-09-23_BEST_CONFIGS"
+    },
+    "keep_text_encoder_ab": {
+      "design": "A/B/C/D, same session, 73 frames 960x544",
+      "measured": {
+        "A_off_warm_s": 72.4,
+        "B_off_cold_s": 150.8,
+        "C_on_cold_s": 124.6,
+        "D_on_warm_s": 70.5,
+        "steady_state_delta_s": -80.3,
+        "encode_s": {"off_cold": 56.3, "on_warm": 5.3},
+        "stage1_s": {"off_cold": 52.1, "on_warm": 31.7},
+        "quality": "bit-identical output statistics with the flag on"
+      },
+      "lab_record_id": "BENCH_2026-09-22_REPORT_KTE"
+    },
+    "sigma_ladder_s6a": {
+      "adopted_as": "6-step stage-1 ladder",
+      "design": "3 scenes x 3 seeds x ladders + warm determinism control",
+      "measured": {
+        "production_shape_edge_proxy": "2693.8 (B0 8-step) -> 2673.6 (S6a) = -0.75%",
+        "production_shape_motion": "10.11 -> 9.49 = -6.1%",
+        "same_seed_pair_spread": "edge -56%..+40%, motion -46%..+108% across trajectories",
+        "cross_seed_face_span": "edge 173.6 to 729.5",
+        "determinism": "warm rerun of B0 reproduced the cold baseline exactly"
+      },
+      "lab_record_id": "BENCH_2026-09-22_REPORT_L2_L3"
+    }
+  },
+  "rejected_configurations": {
+    "s6b_ladder": {"reason": "content-filled pillarbox artifact at seed 42", "lab_record_id": "BENCH_2026-09-22_REPORT_L2_L3"},
+    "s5_ladder": {"reason": "drops 3 of 4 dense-head points; below the adopted conservatism bar", "lab_record_id": "BENCH_2026-09-22_REPORT_L2_L3"},
+    "msr_references_stage2": {"reason": "~4 min/model-init and ~4 min/step; the tested stage-2 reference configurations stalled due to memory bandwidth limits", "lab_record_id": "PROVEN_CONFIGS"},
+    "query_gated_attention": {"reason": "saliency at step 2 is noise; gating random rows destroyed the clip (edge -45%, motion x12)", "lab_record_id": "BENCH_2026-09-22_REPORT_KTE"},
+    "ltx_as_upscaler_without_conditioning": {"reason": "re-generates instead of refining; 89/121 frames survived, edge -28%, corrupted output", "lab_record_id": "BENCH_2026-09-23_REPORT"},
+    "8s_1080p_stage2": {"reason": "51k stage-2 tokens thrash weight streaming: 28.3 min; fixed by 1280x704 stage-2 at 211.5 s", "lab_record_id": "BENCH_2026-09-23_BEST_CONFIGS"}
+  },
+  "notes": [
+    "All wall times are submit-to-completion",
+    "The conv VAE is used everywhere; the diffusion VAE was measured 2.6x slower to decode",
+    "No configuration was clock-locked; peak power/thermal behavior follows the H3 notes",
+    "edge proxy caveat applies: see docs/03 retraction 4",
+    "archive_run_id / lab_record_id identify immutable records in the non-redistributed laboratory archive (campaign-prefixed BENCH_YYYY-MM-DD_* ids; '+' joins multiple records; _sN is a section suffix). See docs/ARCHIVE_INDEX.md."
+  ]
+}

@@ -1,0 +1,31 @@
+# videolab environment contract.
+#
+# The pinned entries below are the versions measured on the lab machine
+# (RTX 3070 8 GB, SM 8.6, Windows 11). huggingface_hub is pinned to the version
+# of the verified environment (checked 2026-09-30); the archive did not record
+# its lab version. Pillow is pinned to 13.0.0, the first release with the fixes
+# for its open security advisories; `videolab.py selftest --skip-gpu` and the
+# bench metrics (bench/eval_metrics.py) pass with it.
+#
+# GPU stack (requires the PyTorch CUDA index):
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch==2.13.0+cu130
+torchvision==0.28.0+cu130
+torchaudio==2.11.0+cu130
+comfy-kitchen==0.2.34
+#
+# CPU-only tooling (the CLI, telemetry harness, and self-tests):
+psutil>=6.0.0
+Pillow==13.0.0
+#
+# Optional: Hugging Face downloads for `videolab.py download`.
+huggingface_hub==2.0.0
+#
+# Notes:
+# * NVML access is implemented with ctypes against the driver library; the
+#   deprecated `pynvml` package is not required.
+# * comfy-kitchen provides the fused W4A8/INT8 kernels validated by
+#   bench/gate_w4a8.py. On Windows it ships prebuilt wheels.
+# * ComfyUI itself is not a pip dependency of videolab. Initial baselines were
+#   collected on ComfyUI v0.36.0 / comfy-kitchen 0.2.34; H3 and Qwen execution
+#   was later verified on ComfyUI v0.37.4 / comfy-kitchen 0.2.35; see README.

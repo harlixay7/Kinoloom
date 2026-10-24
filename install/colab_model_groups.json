@@ -1,0 +1,134 @@
+{
+  "_readme": [
+    "Declarative model state for cloud workers (Colab). One HF repo mirrors",
+    "the studio's models/ tree; groups select which subsets a worker pulls.",
+    "",
+    "PC side: tool/scripts/publish_models_hf.py walks 'source' paths, fills",
+    "bytes + sha256, and uploads to hf_repo (private dataset repo).",
+    "Worker side: colab/fetch_models.py (bootstrap) or the Workers page",
+    "group-install pulls the union of the selected groups into models_dir",
+    "with the SAME relative layout, so model filenames in workflows resolve",
+    "byte-identically. Files already present with a matching size are",
+    "skipped, so re-running after a Colab session death only fetches deltas.",
+    "",
+    "bytes/sha256 are filled in by the publisher; 0/empty means 'compute at",
+    "publish time'. Path is the worker-relative layout (models_dir/<path>).",
+    "Disk budget: h3_shared + one h3 DiT ~ 20GB; every extra DiT",
+    "group adds ~12GB, ltx_core ~27GB, stills groups 8-15GB."
+  ],
+  "hf_repo": "datasets/OWNER/kinoloom-models",
+  "hf_revision": "main",
+  "disk_budget_gb": 60,
+  "groups": {
+    "h3_shared": {
+      "description": "MiniMax H3 shared stack: W4A8 text encoder + video/audio VAEs + latent upscaler + tier LoRAs (larryvrh v4 6-step, lightx2v 4-step, PDD Acc-8Step pair) — required by every h3 tier",
+      "files": [
+        {"path": "text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+         "source": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "vae/minimax_h3_video_vae_fp16.safetensors",
+         "source": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "vae/minimax_h3_audio_vae_fp32.safetensors",
+         "source": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+         "source": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "loras/minimax_h3_turbo_v4_step600_ema.safetensors",
+         "source": "models/loras/minimax_h3_turbo_v4_step600_ema.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+         "source": "models/loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "loras/MiniMax-H3-Ref2VA-Acc-8Step.safetensors",
+         "source": "models/loras/MiniMax-H3-Ref2VA-Acc-8Step.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "loras/MiniMax-H3-FL2VA-Acc-8Step.safetensors",
+         "source": "models/loras/MiniMax-H3-FL2VA-Acc-8Step.safetensors",
+         "bytes": 0, "sha256": ""}
+      ]
+    },
+    "h3_dit_singularity": {
+      "description": "Singularity v1.3 DiT (W4A8) — singularity32 1080p + 544p tiers",
+      "files": [
+        {"path": "diffusion_models/Minimax-h3_Singularity_ref2va_v1.3_Pruned_w4a8.safetensors",
+         "source": "models/diffusion_models/Minimax-h3_Singularity_ref2va_v1.3_Pruned_w4a8.safetensors",
+         "bytes": 0, "sha256": ""}
+      ]
+    },
+    "h3_dit_ref2va": {
+      "description": "Ref2VA pruned DiT (W4A8) — hero/v2/larry6/turbo4/base25 1080p tiers",
+      "files": [
+        {"path": "diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+         "source": "models/diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+         "bytes": 0, "sha256": ""}
+      ]
+    },
+    "h3_dit_fl2va": {
+      "description": "FL2VA pruned DiT (W4A8) — 768p / 544p draft + pdd8 tiers",
+      "files": [
+        {"path": "diffusion_models/minimax_h3_fl2va_pruned-w4a8_convrot_pruned.safetensors",
+         "source": "models/diffusion_models/minimax_h3_fl2va_pruned-w4a8_convrot_pruned.safetensors",
+         "bytes": 0, "sha256": ""}
+      ]
+    },
+    "ltx_core": {
+      "description": "LTX-2.5 22B distilled W4A8 stack: DiT + gemma TE + video VAE + latent upscalers + audio VAE + MSR/CQ LoRAs",
+      "files": [
+        {"path": "diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+         "source": "models/diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+         "bytes": 12520292200, "sha256": ""},
+        {"path": "text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+         "source": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+         "bytes": 10604323186, "sha256": ""},
+        {"path": "vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+         "source": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+         "bytes": 1452269922, "sha256": ""},
+        {"path": "latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+         "source": "models/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+         "source": "models/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "checkpoints/ltx-2.5-audio-vae-bf16.safetensors",
+         "source": "models/checkpoints/ltx-2.5-audio-vae-bf16.safetensors",
+         "bytes": 0, "sha256": ""},
+        {"path": "loras/LTX-2.5-Licon-MSR-V1.safetensors",
+         "source": "models/loras/LTX-2.5-Licon-MSR-V1.safetensors",
+         "bytes": 1308840536, "sha256": ""},
+        {"path": "loras/ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors",
+         "source": "models/loras/ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors",
+         "bytes": 0, "sha256": ""}
+      ]
+    },
+    "qwen21_stills": {
+      "description": "Qwen-Image-2.1 stills (GGUF Q5 + int8 convrot TE + compact VAE)",
+      "files": [
+        {"path": "diffusion_models/qwen_image_2.1_Q5_K_M.gguf",
+         "source": "models/diffusion_models/qwen_image_2.1_Q5_K_M.gguf",
+         "bytes": 5007397024, "sha256": ""},
+        {"path": "text_encoders/qwen3vl_8b_int8_convrot.safetensors",
+         "source": "models/text_encoders/qwen3vl_8b_int8_convrot.safetensors",
+         "bytes": 9350798360, "sha256": ""},
+        {"path": "vae/qwen_image_2.1_vae_bf16_compact.safetensors",
+         "source": "models/vae/qwen_image_2.1_vae_bf16_compact.safetensors",
+         "bytes": 675509688, "sha256": ""}
+      ]
+    },
+    "zimage_stills": {
+      "description": "Z-Image turbo stills (GGUF Q4 + Qwen3 TE + AE)",
+      "files": [
+        {"path": "diffusion_models/z_image_turbo-Q4_K_M.gguf",
+         "source": "models/diffusion_models/z_image_turbo-Q4_K_M.gguf",
+         "bytes": 4981532736, "sha256": ""},
+        {"path": "text_encoders/qwen_3_4b.safetensors",
+         "source": "models/text_encoders/qwen_3_4b.safetensors",
+         "bytes": 8044982048, "sha256": ""},
+        {"path": "vae/z_image_ae.safetensors",
+         "source": "models/vae/z_image_ae.safetensors",
+         "bytes": 335304388, "sha256": ""}
+      ]
+    }
+  }
+}

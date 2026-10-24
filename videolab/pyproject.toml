@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "videolab"
+version = "0.1.0"
+description = "Benchmark harness and reproducible configurations for running 20B-33B video diffusion transformers on an 8 GB RTX 3070."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "videolab contributors" }]
+keywords = ["diffusion", "video", "quantization", "w4a8", "nvml", "benchmark"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core dependencies are CPU-only: the CLI, telemetry harness, and self-tests run without CUDA.
+dependencies = [
+  "psutil>=6.0.0",
+  "Pillow==13.0.0",
+]
+
+[project.optional-dependencies]
+# Hugging Face downloads. Can also be done with huggingface-cli login.
+hf = ["huggingface_hub==2.0.0"]
+# GPU stack measured on the lab machine. Install with the cu130 extra index:
+#   pip install "videolab[cuda]" --extra-index-url https://download.pytorch.org/whl/cu130
+cuda = [
+  "torch==2.13.0+cu130",
+  "torchvision==0.28.0+cu130",
+  "torchaudio==2.11.0+cu130",
+  "comfy-kitchen==0.2.34",
+]
+
+# No console entry point is declared on purpose: the data in this folder
+# (configs/, workflows/) is not part of the installable package, so an installed
+# `videolab` command would resolve its data paths inside site-packages and fail.
+# The supported invocation is `python videolab.py` from the videolab folder.
+
+[tool.setuptools]
+py-modules = ["videolab"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bench*", "nodes*"]
