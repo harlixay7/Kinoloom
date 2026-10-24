@@ -1,0 +1,63 @@
+name: Dependency audit
+
+# Checks every pinned package list against the public advisory databases
+# (pip-audit: PyPI and OSV), so a pin with a known vulnerability fails here
+# before it reaches main. It runs when a list changes and once a week, because
+# a new advisory can land on a pin that has not changed.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "tool/requirements.txt"
+      - "install/requirements-frozen/**"
+      - "tests/requirements-ci.txt"
+      - "videolab/requirements.txt"
+      - "videolab/pyproject.toml"
+      - ".github/workflows/dependency-audit.yml"
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "tool/requirements.txt"
+      - "install/requirements-frozen/**"
+      - "tests/requirements-ci.txt"
+      - "videolab/requirements.txt"
+      - "videolab/pyproject.toml"
+      - ".github/workflows/dependency-audit.yml"
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v5
+
+      - name: "Set up Python 3.12"
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: "Install pip-audit"
+        run: |
+          python -m pip install pip-audit==2.10.1
+
+      - name: "Audit the pinned package lists"
+        # --no-deps --disable-pip audits the pins exactly as written, without
+        # resolving or installing them. The CUDA builds of torch (+cu126, +cu130)
+        # and the two git requirements are not on PyPI; pip-audit lists them as
+        # skipped. videolab/requirements.txt keeps psutil as a range on purpose,
+        # so only its exact pins are audited (videolab/pyproject.toml pins the same).
+        run: |
+          grep -E '^[A-Za-z0-9_.-]+==' videolab/requirements.txt > "$RUNNER_TEMP/videolab-pins.txt"
+          status=0
+          for f in tool/requirements.txt install/requirements-frozen/*.txt tests/requirements-ci.txt "$RUNNER_TEMP/videolab-pins.txt"; do
+            echo "::group::$f"
+            pip-audit --no-deps --disable-pip --progress-spinner off -r "$f" || status=1
+            echo "::endgroup::"
+          done
+          exit $status

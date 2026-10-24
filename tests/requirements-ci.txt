@@ -1,0 +1,16 @@
+# What the hermetic test suite imports, pinned to the versions in
+# tool/requirements.txt (keep them in step). The full studio stack (CUDA
+# torch, training libraries, git-built packages) is not needed to run tests.
+anyio==4.14.2
+fastapi==0.141.1
+httpx==0.28.1
+numpy==2.4.4
+opencv-python==4.10.0.84
+psutil==7.2.2
+pydantic==2.13.4
+python-multipart==0.0.32
+PyYAML==6.0.3
+starlette==1.4.1
+uvicorn==0.52.1
+pytest==9.1.1
+ruff==0.17.1

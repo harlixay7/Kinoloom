@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v5
+
+      - name: "Set up Python 3.12"
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: tests/requirements-ci.txt
+
+      - name: "Set up Node.js"
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: "Install test dependencies and ffmpeg"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements-ci.txt
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: "Python syntax (every tracked .py file)"
+        run: |
+          git ls-files -z '*.py' | xargs -0 python -m py_compile
+
+      - name: "Lint: undefined names and other definite bugs"
+        # The broader E/W/B/I style set in pyproject.toml is not yet clean
+        # across the codebase; these rules flag code that cannot work.
+        run: |
+          ruff check --select E9,F63,F7,F82,F601 tool tests benchmarks install
+
+      - name: "JavaScript syntax"
+        run: |
+          git ls-files -z 'tool/static/*.js' | xargs -0 -n1 node --check
+
+      - name: "Test suite (hermetic sandbox, see tests/conftest.py)"
+        run: |
+          python -m pytest tests -q
+
+      - name: "Install gate on a fresh clone"
+        run: |
+          python install/verify_install.py --quick
+
+      - name: "Benchmarks (informational: shared runners vary in speed)"
+        continue-on-error: true
+        run: |
+          python -m benchmarks.run --quick
