@@ -1,0 +1,59 @@
+{
+  "1": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": { "unet_name": "{MODEL_SDXL}", "weight_dtype": "default" }
+  },
+  "2": {
+    "class_type": "DualCLIPLoader",
+    "inputs": { "clip_name1": "{CLIP_L}", "clip_name2": "{CLIP_G}", "type": "sdxl" }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": { "vae_name": "{VAE_SDXL}" }
+  },
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": { "image": "{HIRES_IMAGE}" }
+  },
+  "5": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": { "model_name": "{UPSCALE_MODEL}" }
+  },
+  "6": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": { "upscale_model": ["5", 0], "image": ["4", 0] }
+  },
+  "7": {
+    "class_type": "ImageScale",
+    "inputs": { "image": ["6", 0], "width": {HIRES_W}, "height": {HIRES_H}, "upscale_method": "lanczos", "crop": "disabled" }
+  },
+  "8": {
+    "class_type": "VAEEncode",
+    "inputs": { "pixels": ["7", 0], "vae": ["3", 0] }
+  },
+  "9": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["2", 0], "text": "{PROMPT}" }
+  },
+  "10": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["2", 0], "text": "{NEGATIVE}" }
+  },
+  "11": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["1", 0], "seed": {SEED}, "steps": {HIRES_STEPS}, "cfg": {CFG},
+      "sampler_name": "{SAMPLER}", "scheduler": "{SCHEDULER}",
+      "positive": ["9", 0], "negative": ["10", 0],
+      "latent_image": ["8", 0], "denoise": {HIRES_DENOISE}
+    }
+  },
+  "12": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["11", 0], "vae": ["3", 0] }
+  },
+  "13": {
+    "class_type": "SaveImage",
+    "inputs": { "images": ["12", 0], "filename_prefix": "kinoloom/hires_{SHOT_ID}" }
+  }
+}

@@ -1,0 +1,15 @@
+# NOTE: This file preserves historical pre-hardening pins from 2026-08-06.
+# Active release pins and current fleet topology live in docs/setup/PINNED_VERSIONS.md.
+#
+# Kinoloom — pinned versions (2026-08-06)
+# Combo validated: cu126 torch + ComfyUI 2eb60976 + pollockjj MultiGPU + komikndr fix
+comfyui_commit=2eb609766a749e3104485979615e062e401bab97
+torch=2.13.0+cu126
+torchvision=0.28.0+cu126
+python=3.12.10
+driver=581.57 (historical pin; the studio now runs 616.64 - see docs/setup/PINNED_VERSIONS.md)
+git=tools\git (2.55.0.3)
+ffmpeg=9.0-essentials (tools\ffmpeg)
+comfyui_port=8188
+ui_port=8080
+extra_model_paths=ComfyUI/extra_model_paths.yaml -> models

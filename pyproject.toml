@@ -1,0 +1,63 @@
+# Project metadata and tool configuration.
+#
+# Kinoloom is an application that runs from its own tree (tool/ uses flat
+# imports such as `from core import ...`); it is not an installable package.
+# Runtime dependencies are pinned in tool/requirements.txt (with the CUDA
+# torch index); the test-only set is tests/requirements-ci.txt. pytest is
+# configured in pytest.ini.
+
+[project]
+name = "kinoloom"
+version = "0.1.0"
+description = "Local multi-model AI film studio: FastAPI control room orchestrating ComfyUI render farms on 8 GB GPUs"
+readme = "README.md"
+requires-python = "==3.12.*"
+license = { text = "MIT" }
+authors = [
+    { name = "Kinoloom contributors" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "types-PyYAML",
+    "types-psutil",
+    "types-requests",
+]
+
+[project.urls]
+Homepage = "https://github.com/harlixay7/Kinoloom"
+Repository = "https://github.com/harlixay7/Kinoloom.git"
+Documentation = "https://github.com/harlixay7/Kinoloom/tree/main/docs"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Full style set for local use (`make lint`). It is not yet clean across the
+# codebase; CI enforces the definite-bug subset (see .github/workflows/ci.yml).
+select = ["E", "F", "W", "B", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+files = ["tool", "benchmarks"]
+mypy_path = "tool"

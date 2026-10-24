@@ -1,0 +1,59 @@
+{
+  "1": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": { "unet_name": "{MODEL_5B}", "weight_dtype": "default" }
+  },
+  "2": {
+    "class_type": "LoraChain",
+    "inputs": { "model": ["1", 0], "loras": {LORA_CHAIN} }
+  },
+  "9": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": { "model": ["2", 0], "shift": 8.0 }
+  },
+  "10": {
+    "class_type": "CLIPLoaderGGUF",
+    "inputs": { "clip_name": "{T5}", "type": "wan" }
+  },
+  "11": {
+    "class_type": "VAELoader",
+    "inputs": { "vae_name": "{VAE_WAN22}" }
+  },
+  "12": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["10", 0], "text": "{PROMPT}" }
+  },
+  "13": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["10", 0], "text": "{NEGATIVE}" }
+  },
+  "15": {
+    "class_type": "Wan22ImageToVideoLatent",
+    "inputs": { "vae": ["11", 0], "width": {WIDTH}, "height": {HEIGHT}, "length": {FRAMES}, "batch_size": 1 }
+  },
+  "16": {
+    "class_type": "WanVideoTeaCacheKJ",
+    "inputs": { "model": ["9", 0], "rel_l1_thresh": {TEA_THRESH}, "start_percent": 0.0, "end_percent": {TEA_END}, "cache_device": "main_device", "coefficients": "disabled" }
+  },
+  "17": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["16", 0], "seed": {SEED}, "steps": {STEPS}, "cfg": 1.0,
+      "sampler_name": "euler", "scheduler": "simple",
+      "positive": ["12", 0], "negative": ["13", 0],
+      "latent_image": ["15", 0], "denoise": 1.0
+    }
+  },
+  "18": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["17", 0], "vae": ["11", 0] }
+  },
+  "19": {
+    "class_type": "CreateVideo",
+    "inputs": { "images": ["18", 0], "fps": {FPS} }
+  },
+  "20": {
+    "class_type": "SaveVideo",
+    "inputs": { "filename_prefix": "kinoloom/{SHOT_ID}", "format": "mp4", "codec": "h264", "video": ["19", 0] }
+  }
+}

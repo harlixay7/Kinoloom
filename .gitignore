@@ -1,0 +1,119 @@
+# ===== Kinoloom — repository ignore policy =====
+# Posture: source IS tracked by default. Heavy, re-downloadable or runtime
+# material is excluded by name; studio-owned files living INSIDE upstream
+# trees are re-included explicitly (a re-include only works when no parent
+# directory itself is excluded — hence the /* form and intermediate
+# re-includes; ordering matters).
+
+# ---- weights & downloadables ----
+/models/
+/tools/
+/temp/
+/output/
+/logs/
+/backups/
+backups/
+/shots/
+/roster/
+/bible/
+/external_loras/
+
+# ---- runtime state the studio writes on each machine (the code starts
+#      empty when a file is missing) ----
+/tool/video_lora_registry.json
+/tool/perf_records.json
+/tool/training_runs.json
+
+# ---- your own reference photos (the folder's README stays tracked) ----
+/ReferenceImages/*
+!/ReferenceImages/README.md
+
+# ---- python runtimes / caches / runtime databases ----
+.venv/
+venv/
+**/.venv/
+**/venv/
+pyvenv.cfg
+**/pyvenv.cfg
+/tool/.venv/
+/.colab-venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.log
+**/*.log
+/colab/agent.out
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ---- weight extensions (weights belong under /models/, ignored above;
+#      belt & braces so a stray checkpoint can never enter history) ----
+*.safetensors
+*.ckpt
+*.gguf
+*.pt
+*.pth
+*.onnx
+*.engine
+*.trt
+
+# ---- secrets: the real config stays local; the sanitized example is
+#      tracked. A worker's config holds the fleet token; the Colab
+#      bootstrap writes the HF and worker tokens into colab_env.sh. ----
+/tool/settings.yaml
+/tool/worker/worker_config.yaml
+/colab/colab_env.sh
+.env
+.env.*
+*.env
+
+# ---- upstream ComfyUI trees: excluded wholesale; studio-owned files are
+#      re-included below ----
+/ComfyUI/*
+!/ComfyUI/extra_model_paths.yaml
+!/ComfyUI/custom_nodes/
+/ComfyUI/custom_nodes/*
+!/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/
+/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/*
+!/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/LICENSE.txt
+!/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/modules/
+/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/modules/*
+!/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/modules/impact/
+/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/modules/impact/*
+!/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/modules/impact/impact_onnx.py
+
+/ComfyUI_LTX/*
+!/ComfyUI_LTX/extra_model_paths.yaml
+!/ComfyUI_LTX/LICENSE
+!/ComfyUI_LTX/comfy_extras/
+/ComfyUI_LTX/comfy_extras/*
+!/ComfyUI_LTX/comfy_extras/nodes_lt_audio.py
+!/ComfyUI_LTX/custom_nodes/
+/ComfyUI_LTX/custom_nodes/*
+!/ComfyUI_LTX/custom_nodes/ComfyUI-LTX25-Studio/
+!/ComfyUI_LTX/custom_nodes/Comfyui_Minimax_h3_latent_Upscaler/
+/ComfyUI_LTX/custom_nodes/Comfyui_Minimax_h3_latent_Upscaler/*
+!/ComfyUI_LTX/custom_nodes/Comfyui_Minimax_h3_latent_Upscaler/LICENSE
+!/ComfyUI_LTX/custom_nodes/Comfyui_Minimax_h3_latent_Upscaler/nodes/
+/ComfyUI_LTX/custom_nodes/Comfyui_Minimax_h3_latent_Upscaler/nodes/*
+!/ComfyUI_LTX/custom_nodes/Comfyui_Minimax_h3_latent_Upscaler/nodes/MMH3_Split_Upscale.py
+
+/ComfyUI_Qwen21/*
+!/ComfyUI_Qwen21/extra_model_paths.yaml
+!/ComfyUI_Qwen21/custom_nodes/
+/ComfyUI_Qwen21/custom_nodes/*
+!/ComfyUI_Qwen21/custom_nodes/ComfyUI-Qwen21-Optimized/
+
+# ---- machine-specific install snapshot (install/make_manifest.py) ----
+/install/manifest.json
+
+# ---- archives ----
+*.rar
+*.7z

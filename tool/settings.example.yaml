@@ -1,0 +1,241 @@
+paths:
+  root: .
+  comfyui: ComfyUI
+  models: models
+  extra_model_dirs: []
+  shots: shots
+  output: output
+  bible: bible
+  roster: roster
+  temp: temp
+  ffmpeg: tools\ffmpeg\bin\ffmpeg.exe
+  python: tool\.venv\Scripts\python.exe
+ensemble:
+  enabled: false
+  comfyui_port: 8188
+  # Nothing loads at launch. Models warm only after their first real use; the
+  # idle VRAM watchdog (vram.auto_offload, idle_minutes below) keeps the
+  # last-used model warm for the idle window and then unloads it. warm_video
+  # stays off because it collided with image jobs on the single 8 GB GPU.
+  warm_models: false
+  warm_image_models: []
+  warm_video: false
+lora:
+  registry: roster/loras/registry.json
+  anatomy: true
+  quality: true
+  style: false
+  style_lora: ''
+  char_strength: 0.7
+  power_strength: 0.7
+  env_strength: 0.6
+  anatomy_strength: 0.7
+  quality_strength: 0.6
+  style_strength: 0.7
+tiers:
+  resolution:
+    hero: 832x480
+    standard: 832x480
+    volume_people: 768x432
+    volume_env: 512x288
+  fps:
+    hero: 24
+    standard: 24
+    volume: 24
+  steps:
+    hero: 20
+    standard: 20
+    volume: 20
+  # The legacy Wan 2.2 unet, read only by the warm-up script's video warm-up
+  # (tool/scripts/warm_studio.py, off by default). It is NOT the movie model:
+  # projects pick theirs in the Generate tab, and a project without one renders
+  # on the studio default, LTX-2.5 s6 CQ (video_models.DEFAULT_MODEL).
+  model: Wan2.2-TI2V-5B-Q4_K_M.gguf
+  upscale:
+    hero: esrgan
+    standard: esrgan
+    volume: esrgan
+qa:
+  clip_score_min: 0.28
+  face_sim:
+    main: 0.75
+    supporting: 0.65
+    recurring: 0.55
+  motion_score_range:
+  - 5.0e-05
+  - 6.0
+  max_retries:
+    hero: 3
+    standard: 2
+    volume: 1
+post:
+  fps_target: 48
+  fps_generate: 24
+  rife: true
+  temporal_pass: true
+  dhcc: false
+  v2v_refine: false
+  face_fix: true
+  face_fix_every_n: 3
+  lut: bible/luts/cinematic_teal_amber.cube   # relative = studio root
+  audio:
+    loudness_target_lufs: -14.0
+  temp_cleanup: true
+training:
+  # all training paths are relative to the studio root
+  ai_toolkit_dir: tools/ai-toolkit
+  aitk_python: tools/ai-toolkit/.venv/Scripts/python.exe
+  aitk_out: models/train_models/aitk_out
+  # Wan 2.2 TI2V-5B in diffusers layout — the base ai-toolkit trains against.
+  # LoRA training targets this legacy model only; LTX-2.5 and MiniMax H3 use
+  # cast reference images instead of LoRAs.
+  wan22_diffusers: models/train_models/wan22_5b_diffusers
+  steps_presets:
+    face: 1800
+    power: 4000
+    environment: 4500
+    anatomy: 7000
+    quality: 4500
+  rank_presets:
+    face: 16
+    power: 24
+    environment: 24
+    anatomy: 32
+    quality: 24
+  lr_presets:
+    face: 0.0001
+    power: 5.0e-05
+    environment: 5.0e-05
+    anatomy: 5.0e-05
+    quality: 5.0e-05
+  resolution: 512,512
+  datasets_dir: roster/datasets
+render_mode:
+  enabled: true
+  # process names (without .exe) that the Generate tab's "free VRAM" button
+  # force-closes, e.g. [Discord]; empty = close nothing
+  kill_gpu_apps: []
+automation:
+  auto_post: true
+  auto_assemble: true
+architect:
+  # any OpenAI-compatible /chat/completions server; the default is a local
+  # Ollama (`ollama pull llama3.1:70b`, or any smaller model you prefer)
+  base_url: http://127.0.0.1:11434/v1
+  api_key: ollama
+  model: llama3.1:70b
+  max_tokens: 32000
+  timeout_s: 600
+  retries: 2
+ui:
+  # 127.0.0.1 = this PC only. 0.0.0.0 exposes the studio to the LAN; on the
+  # first start with a non-loopback host an api_token is generated (below)
+  # and every remote browser must supply it (see SECURITY.md).
+  host: 127.0.0.1
+  port: 8080
+security:
+  # API token for remote clients (Authorization: Bearer / X-API-Token / the
+  # login prompt). The KINOLOOM_API_TOKEN env var overrides it. Empty + a
+  # non-loopback ui.host = generated at startup. Redacted in the Settings UI.
+  api_token: ""
+  # loopback requests (peer AND Host header both 127.0.0.1/::1/localhost)
+  # skip the token; set false to require it everywhere
+  local_bypass: true
+  # extra browser origins allowed to make state-changing requests (CSRF);
+  # same-origin requests always pass
+  cors_origins:
+    - "http://127.0.0.1:8080"
+    - "http://localhost:8080"
+  # host NAMES the studio answers to (DNS-rebinding guard). IP literals and
+  # localhost always pass; entries are exact names or "*.suffix".
+  allowed_hosts: []
+  # extra folders whose files API calls may read by absolute path (story /
+  # shot-list import, continuation images). The studio root, paths.* and
+  # paths.extra_model_dirs are always allowed; everything else is refused.
+  media_roots: []
+render_profiles:
+  preview:
+    res: 512x288
+    steps: 4
+    fps: 24
+  production_fast:
+    res: 832x480
+    steps: 8
+    fps: 24
+  effect_quality:
+    res: 832x480
+    steps: 8
+    cfg: 5.0
+    fps: 24
+keyframes:
+  # Images-tab model that renders keyframe stills, with its own steps/CFG at
+  # its size nearest width x height. `wan` = the legacy Wan 2.2 graphs (not as
+  # good; `steps` below applies only to them).
+  model: realvis
+  candidates: 2
+  auto_approve: true
+  width: 768
+  height: 480
+  steps: 8
+workers:
+  enabled: true
+  # fleet secret shared by every worker agent; the placeholder is replaced
+  # with a generated token on first start (Workers page: rotate / installer)
+  shared_token: __WORKER_SHARED_TOKEN__
+  # largest render a worker may upload back (MB); bigger uploads get 413
+  max_result_mb: 8192
+  heartbeat_s: 10
+  offline_after_s: 30
+  on_worker_loss: requeue_local
+  agent_port: 8120
+  # Cloud workers (Colab T4) render 2-4x slower than the local card: stretch
+  # remote job deadlines by this factor (agent-side wait AND main-side poll).
+  remote_timeout_scale: 3.0
+queue:
+  default_mode: direct
+  max_attempts: 2
+  dispatcher_interval_s: 2
+vram:
+  auto_offload: true
+  idle_minutes: 8
+  poll_seconds: 30
+# GPU model-lifecycle broker: one authority for the four local ComfyUI
+# instances on the single 8 GB card. One warm stack at a time; every job
+# starts with the other instances verified empty; warm evictions keep the
+# prompt-conditioning cache so a re-warm skips the CPU encode.
+gpu_broker:
+  enabled: true
+  max_warm_stacks: 1
+  default_ttl_minutes: 8
+  evict_keep_conditioning: true
+  verify_timeout_s: 60
+  vram_tolerance_mb: 512
+  restart_on_verify_fail: true
+  reconcile_on_start: true
+  reconcile_on_resume: true
+  h3_mode: restart
+  # Startup warm-up of the Qwen image stack (production-shaped rounds that
+  # stop as soon as user work arrives). Off, like the ensemble.warm_* keys
+  # above: nothing loads at launch. The code default is true.
+  prewarm: false
+  prewarm_model: qwen21_fast
+  prewarm_size: 1024x1024
+  prewarm_steps: 8
+  prewarm_max_rounds: 3
+  prewarm_fast_seconds: 150
+  # ttl_minutes:
+  #   ltx25: 15
+  #   h3: 15
+# Video Studio chains. seamless_chains: LTX-2.5 chain models and MiniMax H3 render
+# a chain as ONE take (pinned per-stage carries, one reference set, the take's
+# sound decoded once, seam QA on every join; tool/chain_studio.py). false falls
+# back to the old tail-frame continuation. The code default is true.
+video_studio:
+  seamless_chains: true
+# Movie projects: on a seamless model, a run of CONTINUE shots renders as ONE
+# take and is cut back into its shots (tool/movie_takes.py); needs
+# seamless_chains above. Projects can opt out on their Generate tab. At most
+# take_max_shots shots per take (4 = 20 s; an H3 1080p take of 4 ~2 h 40 min).
+movie:
+  seamless_takes: true
+  take_max_shots: 4

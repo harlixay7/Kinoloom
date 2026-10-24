@@ -1,0 +1,86 @@
+{
+  "1": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": { "unet_name": "{MODEL_HIGH}", "weight_dtype": "default" }
+  },
+  "2": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": { "model": ["1", 0], "lora_name": "{LORA_4STEP_HIGH}", "strength_model": 1.0 }
+  },
+  "3": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": { "model": ["2", 0], "shift": 5.0 }
+  },
+  "4": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": { "unet_name": "{MODEL_LOW}", "weight_dtype": "default" }
+  },
+  "5": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": { "model": ["4", 0], "lora_name": "{LORA_4STEP_LOW}", "strength_model": 1.0 }
+  },
+  "6": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": { "model": ["5", 0], "shift": 5.0 }
+  },
+  "7": {
+    "class_type": "CLIPLoaderGGUF",
+    "inputs": { "clip_name": "{T5}", "type": "wan" }
+  },
+  "8": {
+    "class_type": "VAELoader",
+    "inputs": { "vae_name": "{VAE_WAN}" }
+  },
+  "9": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["7", 0], "text": "{PROMPT}" }
+  },
+  "10": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["7", 0], "text": "{NEGATIVE}" }
+  },
+  "11": {
+    "class_type": "EmptyHunyuanLatentVideo",
+    "inputs": { "width": {WIDTH}, "height": {HEIGHT}, "length": {FRAMES}, "batch_size": 1 }
+  },
+  "12": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+      "model": ["18", 0], "add_noise": "enable", "noise_seed": {SEED},
+      "steps": {STEPS}, "cfg": 1.0, "sampler_name": "euler",
+      "scheduler": "simple", "positive": ["9", 0], "negative": ["10", 0],
+      "latent_image": ["11", 0], "start_at_step": 0, "end_at_step": {STEPS_HALF},
+      "return_with_leftover_noise": "disable"
+    }
+  },
+  "18": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": { "model": ["3", 0], "lora_name": "{CHAR_LORA}", "strength_model": 0.8 }
+  },
+  "13": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+      "model": ["17", 0], "add_noise": "disable", "noise_seed": {SEED},
+      "steps": {STEPS}, "cfg": 1.0, "sampler_name": "euler",
+      "scheduler": "simple", "positive": ["9", 0], "negative": ["10", 0],
+      "latent_image": ["12", 0], "start_at_step": {STEPS_HALF}, "end_at_step": {STEPS},
+      "return_with_leftover_noise": "disable"
+    }
+  },
+  "17": {
+    "class_type": "WanVideoTeaCacheKJ",
+    "inputs": { "model": ["6", 0], "rel_l1_thresh": {TEA_THRESH}, "start_percent": 0.0, "end_percent": {TEA_END}, "cache_device": "main_device", "coefficients": "14B" }
+  },
+  "14": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["13", 0], "vae": ["8", 0] }
+  },
+  "15": {
+    "class_type": "CreateVideo",
+    "inputs": { "images": ["14", 0], "fps": {FPS} }
+  },
+  "16": {
+    "class_type": "SaveVideo",
+    "inputs": { "filename_prefix": "kinoloom/{SHOT_ID}", "format": "mp4", "codec": "h264", "video": ["15", 0] }
+  }
+}

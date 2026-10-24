@@ -1,0 +1,25 @@
+{
+  "1": {
+    "class_type": "VHS_LoadImages",
+    "inputs": { "directory": "{FRAMES_DIR}" }
+  },
+  "2": {
+    "class_type": "RIFE VFI",
+    "inputs": {
+      "frames": ["1", 0],
+      "ckpt_name": "rife47.pth",
+      "clear_cache_after_n_frames": 10,
+      "multiplier": 2,
+      "fast_mode": true,
+      "ensemble": false,
+      "scale_factor": 1.0,
+      "dtype": "float32",
+      "torch_compile": false,
+      "batch_size": 4
+    }
+  },
+  "3": {
+    "class_type": "SaveImage",
+    "inputs": { "images": ["2", 0], "filename_prefix": "{OUT_PREFIX}" }
+  }
+}

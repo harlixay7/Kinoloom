@@ -1,0 +1,254 @@
+{
+ "1": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "{MODEL_5B}",
+   "weight_dtype": "default"
+  }
+ },
+ "2": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "{H3_TE}",
+   "type": "minimax",
+   "device": "default"
+  }
+ },
+ "3": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "{H3_VAE_VIDEO}"
+  }
+ },
+ "4": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "{H3_VAE_AUDIO}"
+  }
+ },
+ "30": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": ""
+  }
+ },
+ "31": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": ""
+  }
+ },
+ "32": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": ""
+  }
+ },
+ "33": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": ""
+  }
+ },
+ "34": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": ""
+  }
+ },
+ "35": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": ""
+  }
+ },
+ "5": {
+  "class_type": "MiniMaxH3ReferenceToVideo",
+  "inputs": {
+   "clip": ["2", 0],
+   "vae": ["3", 0],
+   "audio_vae": ["4", 0],
+   "prompt": "{PROMPT}",
+   "width": "{WIDTH}",
+   "height": "{HEIGHT}",
+   "length": "{FRAMES}",
+   "ref_image_size": "match"
+  }
+ },
+ "60": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": ""
+  }
+ },
+ "47": {
+  "class_type": "MiniMaxH3AddGuide",
+  "inputs": {
+   "positive": ["5", 0],
+   "latent": ["5", 1],
+   "image": ["60", 0],
+   "vae": ["3", 0],
+   "frame_idx": 0
+  }
+ },
+ "7": {
+  "class_type": "ModelAttentionBackend",
+  "inputs": {
+   "model": ["1", 0],
+   "attention": "comfy kitchen attention"
+  }
+ },
+ "6": {
+  "class_type": "MiniMaxH3SigmaShift",
+  "inputs": {
+   "model": ["7", 0],
+   "shift_video": 12.0,
+   "shift_audio": 3.0
+  }
+ },
+ "19": {
+  "class_type": "LoraLoaderModelOnly",
+  "inputs": {
+   "model": ["6", 0],
+   "lora_name": "minimax_h3_turbo_v4_step600_ema.safetensors",
+   "strength_model": 1.0
+  }
+ },
+ "8": {
+  "class_type": "KSamplerSelect",
+  "inputs": {
+   "sampler_name": "euler"
+  }
+ },
+ "9": {
+  "class_type": "RandomNoise",
+  "inputs": {
+   "noise_seed": "{SEED}"
+  }
+ },
+ "10": {
+  "class_type": "BasicGuider",
+  "inputs": {
+   "model": ["19", 0],
+   "conditioning": ["47", 0]
+  }
+ },
+ "11": {
+  "class_type": "BasicScheduler",
+  "inputs": {
+   "model": ["6", 0],
+   "scheduler": "simple",
+   "steps": "{STEPS}",
+   "denoise": 1.0
+  }
+ },
+ "12": {
+  "class_type": "SamplerCustomAdvanced",
+  "inputs": {
+   "noise": ["9", 0],
+   "guider": ["10", 0],
+   "sampler": ["8", 0],
+   "sigmas": ["11", 0],
+   "latent_image": ["5", 1]
+  }
+ },
+ "40": {
+  "class_type": "LTXVSeparateAVLatent",
+  "inputs": {
+   "av_latent": ["12", 0]
+  }
+ },
+ "41": {
+  "class_type": "MinimaxH3LatentUpscaler3D",
+  "inputs": {
+   "latent": ["40", 0],
+   "model_name": "{H3_UPSCALER}",
+   "mode": "target dimensions",
+   "mode.width": {REFINE_W},
+   "mode.height": {REFINE_H},
+   "align": 32,
+   "enable_temporal_chunking": true,
+   "force_unload": true,
+   "device": "cuda",
+   "precision": "bf16"
+  }
+ },
+ "42": {
+  "class_type": "LTXVConcatAVLatent",
+  "inputs": {
+   "video_latent": ["41", 0],
+   "audio_latent": ["40", 1]
+  }
+ },
+ "43": {
+  "class_type": "MMH3SpatialSplitParamsV10",
+  "inputs": {
+   "tile_width": 1024,
+   "tile_height": 704,
+   "overlap_ratio": 0.25,
+   "fade_ratio": 0.5,
+   "min_tile_size": 256,
+   "seam_denoise": 0.8
+  }
+ },
+ "44": {
+  "class_type": "RandomNoise",
+  "inputs": {
+   "noise_seed": "{SEED2}"
+  }
+ },
+ "45": {
+  "class_type": "ManualSigmas",
+  "inputs": {
+   "sigmas": "0.4500, 0.3612, 0.3032, 0.1967, 0.1081, 0.0000"
+  }
+ },
+ "46": {
+  "class_type": "MMH3SplitUpscale",
+  "inputs": {
+   "model": ["6", 0],
+   "conditioning": ["47", 0],
+   "latent": ["42", 0],
+   "noise": ["44", 0],
+   "sampler": ["8", 0],
+   "sigmas": ["45", 0],
+   "cfg": 1.0,
+   "spatial_split_param": ["43", 0],
+   "seam_polish": "off",
+   "color_match": true
+  }
+ },
+ "13": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": ["46", 0],
+   "vae": ["3", 0]
+  }
+ },
+ "14": {
+  "class_type": "VAEDecodeAudio",
+  "inputs": {
+   "samples": ["46", 0],
+   "vae": ["4", 0]
+  }
+ },
+ "15": {
+  "class_type": "CreateVideo",
+  "inputs": {
+   "images": ["13", 0],
+   "fps": 24.0,
+   "audio": ["14", 0]
+  }
+ },
+ "16": {
+  "class_type": "SaveVideo",
+  "inputs": {
+   "video": ["15", 0],
+   "filename_prefix": "kinoloom/{SHOT_ID}",
+   "format": "auto",
+   "codec": "h264",
+   "codec.encoding": "re-encode",
+   "codec.encoding.crf": 16.0
+  }
+ }
+}

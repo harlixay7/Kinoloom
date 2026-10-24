@@ -1,0 +1,34 @@
+{
+  "1": {
+    "class_type": "VHS_LoadVideo",
+    "inputs": {
+      "video": "{VIDEO_NAME}",
+      "force_rate": 0,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1
+    }
+  },
+  "3": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": { "model_name": "{ESRGAN_MODEL}" }
+  },
+  "4": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": { "upscale_model": ["3", 0], "image": ["1", 0] }
+  },
+  "5": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["4", 0],
+      "frame_rate": {FPS},
+      "loop_count": 0,
+      "filename_prefix": "{OUT_PREFIX}",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true
+    }
+  }
+}

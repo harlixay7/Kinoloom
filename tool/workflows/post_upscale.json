@@ -1,0 +1,28 @@
+{
+  "1": {
+    "class_type": "SeedVR2LoadDiTModel",
+    "inputs": { "model": "{SEEDVR2_DIT}", "device": "cuda:0", "blocks_to_swap": 32, "offload_device": "cpu" }
+  },
+  "2": {
+    "class_type": "SeedVR2LoadVAEModel",
+    "inputs": { "model": "{SEEDVR2_VAE}", "device": "cuda:0", "offload_device": "cpu" }
+  },
+  "3": {
+    "class_type": "VHS_LoadImages",
+    "inputs": { "directory": "{FRAMES_DIR}" }
+  },
+  "4": {
+    "class_type": "SeedVR2VideoUpscaler",
+    "inputs": {
+      "image": ["3", 0], "dit": ["1", 0], "vae": ["2", 0],
+      "seed": {SEED}, "resolution": 720, "max_resolution": 768,
+      "batch_size": 3, "uniform_batch_size": true,
+      "color_correction": "lab", "temporal_overlap": 3,
+      "prepend_frames": 4, "offload_device": "cpu"
+    }
+  },
+  "5": {
+    "class_type": "SaveImage",
+    "inputs": { "images": ["4", 0], "filename_prefix": "{OUT_PREFIX}" }
+  }
+}

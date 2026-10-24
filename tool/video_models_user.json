@@ -1,0 +1,1514 @@
+{
+ "_readme": [
+  "USER video-model registry \u2014 merged into tool/video_models.py:VIDEO_MODELS at",
+  "load time. Add your optimized/distinct models here WITHOUT touching code.",
+  "",
+  "Each entry follows the exact VIDEO_MODELS schema (see wan22_5b_q4 in",
+  "video_models.py for a full example). Minimum viable entry for a GGUF Wan",
+  "family model that reuses an existing workflow template:",
+  "",
+  "  \"my_model_id\": {",
+  "    \"id\": \"my_model_id\",",
+  "    \"display_name\": \"My Optimized Quant\",",
+  "    \"family\": \"wan22_ti2v_5b\",",
+  "    \"version\": \"2.2\",",
+  "    \"path\": \"models/diffusion_models/MyOptimized-Q6_K.gguf\",",
+  "    \"format\": \"gguf\",",
+  "    \"quantization\": \"Q6_K\",",
+  "    \"workflow\": \"wan2.2_ti2v_5b\",",
+  "    \"workflow_version\": 1,",
+  "    \"text_encoder\": \"models/text_encoders/umt5-xxl-encoder-Q4_K_M.gguf\",",
+  "    \"vae\": \"models/vae/wan2.2_vae.safetensors\",",
+  "    \"supported_modes\": [\"t2v\", \"i2v\"],",
+  "    \"supported_loras\": [\"wan22_5b\"],",
+  "    \"supported_controls\": [\"prompt\", \"negative\", \"seed\", \"resolution\", \"frames\", \"steps\", \"sampler\", \"cfg\", \"loras\", \"start_image\", \"cache\"],",
+  "    \"defaults\": {\"steps\": 8, \"cfg\": 1.0},",
+  "    \"resolution_limits\": {\"min\": [256, 256], \"max\": [1280, 720], \"step\": 16, \"native\": [\"832x480\"]},",
+  "    \"frame_limits\": {\"min\": 5, \"max\": 121, \"step\": 4},",
+  "    \"vram_estimate_mb\": 7000,",
+  "    \"experimental\": true,",
+  "    \"source\": \"my-optimization\",",
+  "    \"note\": \"what makes this version distinct\"",
+  "  },",
+  "",
+  "Drop the weight file into models/diffusion_models/ (same on workers).",
+  "Availability is computed from disk automatically \u2014 if the file is there,",
+  "the Video Studio select picks it up on next page load. If the model needs",
+  "a different graph, add tool/workflows/<your_template>.json and point",
+  "\"workflow\" at it. Delete the entry (or set \"disabled\": true) to remove.",
+  "",
+  "Optional \"catalog\" block = how the model pickers list the entry:",
+  "  \"catalog\": {\"group\": \"ltx25\" | \"h3_1080p\" | \"h3_draft\" | \"wan\" | \"legacy\",",
+  "              \"label\": \"short name\", \"detail\": \"resolution / time\", \"rank\": 10,",
+  "              \"recommended\": true}",
+  "Without it the entry is grouped by family and listed under its display_name."
+ ],
+ "models": {
+  "minimax_h3_hero": {
+   "id": "minimax_h3_hero",
+   "display_name": "MiniMax H3 \u2014 HERO 1080p (two-phase Ref2VA + identity anchor)",
+   "catalog": {
+    "group": "h3_1080p",
+    "label": "Hero \u00b7 20-step (original)",
+    "detail": "two-phase 1080p \u00b7 ~18-23 min",
+    "rank": 60
+   },
+   "family": "h3",
+   "version": "1.0",
+   "path": "models/diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM)",
+   "workflow": "h3_ref2va_1080p",
+   "studio_workflow": "h3_ref2va_1080p",
+   "workflows": {
+    "refs": "h3_ref2va_1080p",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "latent_upscaler": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+   "refine_target": "1920x1088",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 20,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "width": 960,
+    "height": 544
+   },
+   "resolution_limits": {
+    "min": [
+     640,
+     352
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 32,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 192,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7600,
+   "vram_note": "Measured peak 7.57 GB (two-phase 1080p, 3 refs + frame-0 anchor). Phase 1 runs at HALF the target resolution; the LBH latent upscaler doubles it and MMH3SplitUpscale refines 5 steps (2x2 tiles, raw model - no Turbo LoRA).",
+   "source": "measured on this machine (RTX 3070 8 GB) in H3_LAB (lab record PROVEN_CONFIGS_H3)",
+   "note": "Hero tier. Measured 18.3-23.3 min per 5.17 s clip at 1920x1088 with cast refs. The studio writes its prompts in H3's Ref2VA layout (tool/videoprompt.py: integrated_multimodal_description + overall_soundscape + non_diegetic_music, <Picture N> tags in submission order, camera grammar). Refs: <Picture 1> = lead cast, <Picture 2> = second subject/vfx style, <Picture 3> = environment.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700
+  },
+  "minimax_h3_768p": {
+   "id": "minimax_h3_768p",
+   "display_name": "MiniMax H3 \u2014 Cinematic 768p (single-pass)",
+   "catalog": {
+    "group": "h3_draft",
+    "label": "Cinematic 768p single-pass",
+    "detail": "1344x768 \u00b7 ~17 min",
+    "rank": 20
+   },
+   "family": "h3",
+   "version": "1.0",
+   "path": "models/diffusion_models/minimax_h3_fl2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM)",
+   "workflow": "h3_t2v",
+   "studio_workflow": "h3_ref2va",
+   "workflows": {
+    "refs": "h3_ref2va",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 20,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "width": 1344,
+    "height": 768
+   },
+   "resolution_limits": {
+    "min": [
+     640,
+     352
+    ],
+    "max": [
+     1344,
+     768
+    ],
+    "step": 32,
+    "native": [
+     "1344x768"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 192,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7500,
+   "vram_note": "Measured peak 7.49-7.57 GB single-pass at 1344x768.",
+   "source": "measured on this machine (RTX 3070 8 GB) in H3_LAB (lab record PROVEN_CONFIGS_H3)",
+   "note": "WORKHORSE tier: 17 min per 5.17 s clip at 1344x768 (the model's native canvas ceiling). 25 steps measured +4 min for marginal detail.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2400
+  },
+  "minimax_h3_544p": {
+   "id": "minimax_h3_544p",
+   "display_name": "MiniMax H3 \u2014 Draft 544p (fast iteration)",
+   "catalog": {
+    "group": "h3_draft",
+    "label": "Draft \u00b7 20-step",
+    "detail": "544p single-pass \u00b7 ~10 min",
+    "rank": 40
+   },
+   "family": "h3",
+   "version": "1.0",
+   "path": "models/diffusion_models/minimax_h3_fl2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM)",
+   "workflow": "h3_t2v",
+   "studio_workflow": "h3_ref2va",
+   "workflows": {
+    "refs": "h3_ref2va",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 20,
+    "cfg": 1.0,
+    "sampler": "euler"
+   },
+   "resolution_limits": {
+    "min": [
+     480,
+     288
+    ],
+    "max": [
+     960,
+     544
+    ],
+    "step": 32,
+    "native": [
+     "960x544"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 192,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7400,
+   "vram_note": "Lightest H3 graph - for prompt/framing iteration only, not delivery.",
+   "source": "measured on this machine (RTX 3070 8 GB) in H3_LAB (lab record PROVEN_CONFIGS_H3)",
+   "note": "DRAFT tier for iteration. Same model family; delivery shots belong to the hero/768p tiers.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2400
+  },
+  "ltx25_w4a8_refs": {
+   "id": "ltx25_w4a8_refs",
+   "display_name": "LTX-2.5 22B W4A8 \u2014 References + DFR",
+   "catalog": {
+    "group": "ltx25",
+    "label": "References + DFR",
+    "detail": "1080p \u00b7 ~8 min",
+    "rank": 40
+   },
+   "family": "ltx25",
+   "version": "2.5",
+   "path": "models/diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (int4 weight / int8 tensor-core)",
+   "workflow": "ltx25_t2v_dfr",
+   "studio_workflow": "ltx25_msr_dfr",
+   "workflows": {
+    "refs_dfr": "ltx25_msr_dfr",
+    "refs_plain": "ltx25_msr_plain",
+    "t2v_dfr": "ltx25_t2v_dfr",
+    "t2v_plain": "ltx25_t2v_plain"
+   },
+   "clip_type": "ltxv",
+   "comfy_port": 8189,
+   "text_encoder": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+   "vae": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "ref_nodes": {
+    "pic1": "51",
+    "pic2": "52",
+    "pic3": "53",
+    "pic4": "54",
+    "background": "55"
+   },
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "negative",
+    "seed",
+    "resolution",
+    "frames",
+    "refs",
+    "dfr"
+   ],
+   "defaults": {
+    "steps": 8,
+    "refine_steps": 3,
+    "cfg": 1.0,
+    "sampler": "euler_ancestral",
+    "dfr": true
+   },
+   "resolution_limits": {
+    "min": [
+     512,
+     256
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 64,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 9,
+    "max": 121,
+    "step": 8
+   },
+   "fps": 24,
+   "vram_estimate_mb": 8000,
+   "vram_note": "Measured peak 7.6-7.8 GB. References are applied at STAGE 1 ONLY (half-resolution latent) - applying them at stage 2 stalls 8 GB cards.",
+   "source": "measured on this machine (RTX 3070 8 GB) in LTX25_LAB",
+   "note": "Reference-image tier. Character/environment reference images + DFR detail keyframes. Measured 465 s per 5 s clip at 1920x1088.",
+   "comfy_root": "ComfyUI_LTX",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700
+  },
+  "ltx25_w4a8_refs_plain": {
+   "id": "ltx25_w4a8_refs_plain",
+   "display_name": "LTX-2.5 22B W4A8 \u2014 References (no DFR)",
+   "catalog": {
+    "group": "ltx25",
+    "label": "References, no DFR (more motion)",
+    "detail": "1080p \u00b7 ~8 min",
+    "rank": 50
+   },
+   "family": "ltx25",
+   "version": "2.5",
+   "path": "models/diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (int4 weight / int8 tensor-core)",
+   "workflow": "ltx25_t2v_plain",
+   "studio_workflow": "ltx25_msr_plain",
+   "workflows": {
+    "refs_dfr": "ltx25_msr_plain",
+    "refs_plain": "ltx25_msr_plain",
+    "t2v_dfr": "ltx25_t2v_plain",
+    "t2v_plain": "ltx25_t2v_plain"
+   },
+   "clip_type": "ltxv",
+   "comfy_port": 8189,
+   "text_encoder": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+   "vae": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "ref_nodes": {
+    "pic1": "51",
+    "pic2": "52",
+    "pic3": "53",
+    "pic4": "54",
+    "background": "55"
+   },
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "negative",
+    "seed",
+    "resolution",
+    "frames",
+    "refs",
+    "dfr"
+   ],
+   "defaults": {
+    "steps": 8,
+    "refine_steps": 3,
+    "cfg": 1.0,
+    "sampler": "euler_ancestral",
+    "dfr": false
+   },
+   "resolution_limits": {
+    "min": [
+     512,
+     256
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 64,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 9,
+    "max": 121,
+    "step": 8
+   },
+   "fps": 24,
+   "vram_estimate_mb": 8000,
+   "vram_note": "Same as the DFR variant; no detail-keyframe pass.",
+   "source": "measured on this machine (RTX 3070 8 GB) in LTX25_LAB",
+   "note": "BACKUP config for shots that need more motion: DFR suppresses per-frame motion (7.1% vs 11.2% measured). No DFR measured 21.6%/frame with an explicit-motion prompt.",
+   "comfy_root": "ComfyUI_LTX",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700
+  },
+  "ltx25_w4a8_t2v": {
+   "id": "ltx25_w4a8_t2v",
+   "display_name": "LTX-2.5 22B W4A8 \u2014 Text to Video + DFR",
+   "catalog": {
+    "group": "ltx25",
+    "label": "Text to video + DFR",
+    "detail": "1080p \u00b7 no references",
+    "rank": 60
+   },
+   "family": "ltx25",
+   "version": "2.5",
+   "path": "models/diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (int4 weight / int8 tensor-core)",
+   "workflow": "ltx25_t2v_dfr",
+   "studio_workflow": "ltx25_t2v_dfr",
+   "workflows": {
+    "t2v_dfr": "ltx25_t2v_dfr",
+    "t2v_plain": "ltx25_t2v_plain"
+   },
+   "clip_type": "ltxv",
+   "comfy_port": 8189,
+   "text_encoder": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+   "vae": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "negative",
+    "seed",
+    "resolution",
+    "frames",
+    "dfr"
+   ],
+   "defaults": {
+    "steps": 8,
+    "refine_steps": 3,
+    "cfg": 1.0,
+    "sampler": "euler_ancestral",
+    "dfr": true
+   },
+   "resolution_limits": {
+    "min": [
+     512,
+     256
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 64,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 9,
+    "max": 121,
+    "step": 8
+   },
+   "fps": 24,
+   "vram_estimate_mb": 8000,
+   "vram_note": "No reference tokens; the lightest LTX graph.",
+   "source": "measured on this machine (RTX 3070 8 GB) in LTX25_LAB",
+   "note": "Text-only LTX path. Also used automatically as the fallback when an LTX reference job resolves zero usable references.",
+   "comfy_root": "ComfyUI_LTX",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700
+  },
+  "ltx_video_2b": {
+   "disabled": true,
+   "reason": "weights removed in the 2026-09-25 storage cleanup (re-downloadable; see BENCH_2026-09-25\\CLEANUP_MANIFEST.md)"
+  },
+  "minimax_h3_draft_pdd8": {
+   "id": "minimax_h3_draft_pdd8",
+   "display_name": "MiniMax H3 - Draft 544p (PDD 8-step, fast iteration)",
+   "catalog": {
+    "group": "h3_draft",
+    "label": "Fast draft \u00b7 PDD 8-step",
+    "detail": "544p single-pass",
+    "rank": 50
+   },
+   "family": "h3",
+   "version": "1.0",
+   "path": "models/diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN) + official Ref2VA Acc-8Step PDD adapter",
+   "workflow": "h3_t2v",
+   "studio_workflow": "h3_ref2va_pdd8",
+   "workflows": {
+    "refs": "h3_ref2va_pdd8",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 8,
+    "cfg": 1.0,
+    "sampler": "euler"
+   },
+   "resolution_limits": {
+    "min": [
+     480,
+     288
+    ],
+    "max": [
+     960,
+     544
+    ],
+    "step": 32,
+    "native": [
+     "960x544"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 192,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7400,
+   "vram_note": "Draft graph only - the hero/768p tiers are the delivery paths.",
+   "source": "measured 2026-09-22 BENCH_2026-09-22 (A/B/C at 39f, 1080p refine)",
+   "note": "DRAFT: 8-step PDD, 544p single pass. In lab runs (124 frames, no refine) it sampled ~2.5x faster than 20 steps (~1.9x end-to-end); with a 1080p refine after it the end-to-end gain was only ~6-15%. ~22% softer (edge_mean 747 vs 962 at 20 steps, measured). Use for prompt/framing iteration; never for delivery shots.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 1200
+  },
+  "ltx25_w4a8_refs_s6": {
+   "id": "ltx25_w4a8_refs_s6",
+   "display_name": "LTX-2.5 22B W4A8 \u2014 References + DFR (6-step S1)",
+   "catalog": {
+    "group": "ltx25",
+    "label": "References + DFR, 6-step stage 1",
+    "detail": "1080p \u00b7 lab-tested",
+    "rank": 30
+   },
+   "family": "ltx25",
+   "version": "2.5",
+   "path": "models/diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (int4 weight / int8 tensor-core)",
+   "workflow": "ltx25_t2v_dfr",
+   "studio_workflow": "ltx25_msr_dfr_s6",
+   "workflows": {
+    "refs_dfr": "ltx25_msr_dfr_s6",
+    "refs_plain": "ltx25_msr_plain_s6",
+    "t2v_dfr": "ltx25_t2v_dfr",
+    "t2v_plain": "ltx25_t2v_plain"
+   },
+   "clip_type": "ltxv",
+   "comfy_port": 8189,
+   "text_encoder": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+   "vae": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "ref_nodes": {
+    "pic1": "51",
+    "pic2": "52",
+    "pic3": "53",
+    "pic4": "54",
+    "background": "55"
+   },
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "negative",
+    "seed",
+    "resolution",
+    "frames",
+    "refs",
+    "dfr"
+   ],
+   "defaults": {
+    "steps": 8,
+    "refine_steps": 3,
+    "cfg": 1.0,
+    "sampler": "euler_ancestral",
+    "dfr": true
+   },
+   "resolution_limits": {
+    "min": [
+     512,
+     256
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 64,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 9,
+    "max": 121,
+    "step": 8
+   },
+   "fps": 24,
+   "vram_estimate_mb": 8000,
+   "vram_note": "Measured peak 7.6-7.8 GB. References are applied at STAGE 1 ONLY (half-resolution latent) - applying them at stage 2 stalls 8 GB cards.",
+   "source": "measured on this machine (RTX 3070 8 GB) in LTX25_LAB",
+   "note": "Reference-image tier. Character/environment reference images + DFR detail keyframes. Measured 465 s per 5 s clip at 1920x1088.",
+   "comfy_root": "ComfyUI_LTX",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700,
+   "notes": "Lab-validated 2026-09-22: stage-1 8->6 steps (S6a ladder). Quality parity on 3 scenes x 2 seeds + production shape (edge -0.8%, motion -6%); S1 sampling 160.2->111.6 s at 121f/1080p with refs. Opt-in."
+  },
+  "minimax_h3_hero_v2": {
+   "id": "minimax_h3_hero_v2",
+   "display_name": "MiniMax H3 - HERO 1080p v2 (32-step + r45 refine, BENCH_2026-09-23)",
+   "catalog": {
+    "group": "h3_1080p",
+    "label": "Hero v2 \u00b7 32-step",
+    "detail": "two-phase 1080p \u00b7 ~20 min warm",
+    "rank": 40
+   },
+   "family": "h3",
+   "version": "2.0",
+   "path": "models/diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM)",
+   "workflow": "h3_ref2va_1080p_v2",
+   "studio_workflow": "h3_ref2va_1080p_v2",
+   "workflows": {
+    "refs": "h3_ref2va_1080p_v2",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "latent_upscaler": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+   "refine_target": "1920x1088",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 32,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "width": 960,
+    "height": 544
+   },
+   "resolution_limits": {
+    "min": [
+     640,
+     352
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 32,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 192,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7600,
+   "vram_note": "Measured peak ~7.6 GB; wall ~20.4 min/124f clip (B baseline 18.3 min).",
+   "source": "BENCH_2026-09-23 E1/E2/hero_v2: edge_mean 572.9 -> 767.9 (+34%), sharpness floor 211 -> 390 (+85%), motion 21.8 -> 23.1 vs the author-schedule hero path, same scene/seed. Blind-review strips in results\\hero_v2_vs_baseline.png.",
+   "note": "QUALITY flagship. Refine re-noise 0.45 (validated band 0.25-0.45) replaces the author 0.9231 (= sigma #10 of the shift-12 schedule, ~50% re-noise).",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700
+  },
+  "minimax_h3_544p_25": {
+   "id": "minimax_h3_544p_25",
+   "display_name": "MiniMax H3 - Value 544p (25-step, detail-boosted draft)",
+   "catalog": {
+    "group": "h3_draft",
+    "label": "Value draft \u00b7 25-step",
+    "detail": "544p single-pass",
+    "rank": 30
+   },
+   "family": "h3",
+   "version": "1.0",
+   "path": "models/diffusion_models/minimax_h3_fl2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM)",
+   "workflow": "h3_t2v",
+   "studio_workflow": "h3_ref2va",
+   "workflows": {
+    "refs": "h3_ref2va",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 25,
+    "cfg": 1.0,
+    "sampler": "euler"
+   },
+   "resolution_limits": {
+    "min": [
+     480,
+     288
+    ],
+    "max": [
+     960,
+     544
+    ],
+    "step": 32,
+    "native": [
+     "960x544"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 192,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7400,
+   "vram_note": "Lightest H3 graph - for prompt/framing iteration only, not delivery.",
+   "source": "BENCH_2026-09-23 E1: 25 vs 20 steps at 960x544x124f = edge +27% (fast) / +11% (face) / +7% (shockwave) for +75 s. Strips: results\\e1_review_*.png.",
+   "note": "VALUE profile for standard-tier H3 shots. 16-step was measured and REJECTED (-8% shockwave). PDD-8 remains the speed draft.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2400
+  },
+  "ltx25_s6_cq": {
+   "id": "ltx25_s6_cq",
+   "display_name": "LTX 2.5 \u2014 QUALITY 5s (S6a+DFR+MSR+CQ 0.6) \u00b7 5.0s clip \u00b7 ~6 min warm / ~8 min cold",
+   "catalog": {
+    "group": "ltx25",
+    "label": "Quality 5 s",
+    "detail": "S6a \u00b7 DFR \u00b7 MSR refs \u00b7 CQ \u00b7 1080p \u00b7 ~6 min",
+    "rank": 10,
+    "recommended": true
+   },
+   "family": "ltx25",
+   "version": "2.5",
+   "path": "models/diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (int4 weight / int8 tensor-core)",
+   "workflow": "ltx25_t2v_dfr_cq",
+   "studio_workflow": "ltx25_msr_dfr_s6_cq",
+   "workflows": {
+    "refs_dfr": "ltx25_msr_dfr_s6_cq",
+    "t2v_dfr": "ltx25_t2v_dfr_cq",
+    "chain": "ltx25_msr_dfr_s6_cq_chain"
+   },
+   "fps": 24,
+   "clip_type": "ltxv",
+   "comfy_port": 8189,
+   "text_encoder": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+   "vae": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "ref_nodes": {
+    "pic1": "51",
+    "pic2": "52",
+    "pic3": "53",
+    "pic4": "54",
+    "background": "55"
+   },
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "negative",
+    "seed",
+    "resolution",
+    "frames",
+    "refs",
+    "dfr"
+   ],
+   "defaults": {
+    "steps": 8,
+    "refine_steps": 3,
+    "cfg": 1.0,
+    "sampler": "euler_ancestral",
+    "dfr": true
+   },
+   "resolution_limits": {
+    "min": [
+     512,
+     256
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 64,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 9,
+    "max": 121,
+    "step": 8
+   },
+   "vram_estimate_mb": 8000,
+   "vram_note": "Measured peak 7.6-7.8 GB. LoRA adds no measurable step time (warm 352 s vs 448 s cold baseline). Refs stage-1 only.",
+   "source": "BENCH_2026-09-23 T1/T3: same seed vs no-LoRA baseline = edge +85%, detail floor +188%, motion preserved; visually verified (results\\iceq_final_compare.png). CQ enhancer adopted at 0.6.",
+   "note": "ADOPTED QUALITY DEFAULT. The proven best-result LTX config: S6a ladder + DFR + MSR references + CQ detail enhancer 0.6. 121f = 5.04 s @24fps, 1920x1088, CRF16 delivery. Measured 352 s warm.",
+   "comfy_root": "ComfyUI_LTX",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700,
+   "notes": "Adopted from BENCH_2026-09-23 (user-approved quality gate). The refs_dfr shape is the exactly-proven one; t2v_dfr_cq runs the same LoRA without refs."
+  },
+  "ltx25_temporal_10s": {
+   "id": "ltx25_temporal_10s",
+   "display_name": "LTX 2.5 \u2014 CINEMATIC 10s (temporal \u00d72 slow-mo) \u00b7 10.0s clip \u00b7 ~14 min",
+   "catalog": {
+    "group": "ltx25",
+    "label": "Cinematic 10 s (temporal \u00d72 slow-mo)",
+    "detail": "1080p \u00b7 ~14 min",
+    "rank": 20
+   },
+   "family": "ltx25",
+   "version": "2.5",
+   "path": "models/diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (int4 weight / int8 tensor-core)",
+   "workflow": "ltx25_temporal_10s",
+   "studio_workflow": "ltx25_temporal_10s",
+   "workflows": {
+    "refs_dfr": "ltx25_temporal_10s",
+    "t2v_dfr": "ltx25_temporal_10s"
+   },
+   "clip_type": "ltxv",
+   "comfy_port": 8189,
+   "text_encoder": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
+   "vae": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "ref_nodes": {
+    "pic1": "51",
+    "pic2": "52",
+    "pic3": "53",
+    "pic4": "54",
+    "background": "55"
+   },
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "negative",
+    "seed",
+    "resolution",
+    "frames",
+    "refs",
+    "dfr"
+   ],
+   "defaults": {
+    "steps": 8,
+    "refine_steps": 3,
+    "cfg": 1.0,
+    "sampler": "euler_ancestral",
+    "dfr": true
+   },
+   "resolution_limits": {
+    "min": [
+     512,
+     256
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 64,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 9,
+    "max": 121,
+    "step": 8
+   },
+   "fps": 24,
+   "vram_estimate_mb": 8000,
+   "vram_note": "Measured 7.67 GiB peak - the 10s timeline never hits the 51k-token stage-2 thrash (that direct path measured 28.3 min).",
+   "source": "BENCH_2026-09-23/25 temporal gate: 241f output @ native 1920x1088, interpolated mid-frames retain 94.4% anchor sharpness, peak VRAM 7.67 GiB, total 844 s incl. 241f CRF16 encode.",
+   "note": "10-SECOND config. Renders 121f with the full quality stack, then the official temporal upscaler doubles the timeline -> 241f = 10.04 s @24fps at NATIVE 1080p. Semantics (official): adds frames, not new action - plays as cinematic slow-motion (or 48fps for real-time). VIDEO ONLY (no audio track; use the post audio chain).",
+   "comfy_root": "ComfyUI_LTX",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700,
+   "notes": "Set FRAMES=121 (the UI control is the stage-1 count); output is 241f. Proven shape = refs_dfr (MSR references filled). Round 2 (20.7s) exists in the lab runner, not shipped here."
+  },
+  "wan22_i2v_a14b": {
+   "disabled": true,
+   "reason": "weights removed in the 2026-09-25 storage cleanup (re-downloadable; see BENCH_2026-09-25\\CLEANUP_MANIFEST.md)"
+  },
+  "wan22_5b_q5": {
+   "disabled": true,
+   "reason": "weights removed in the 2026-09-25 storage cleanup (re-downloadable; see BENCH_2026-09-25\\CLEANUP_MANIFEST.md)"
+  },
+  "wan22_5b_q6": {
+   "disabled": true,
+   "reason": "weights removed in the 2026-09-25 storage cleanup (re-downloadable; see BENCH_2026-09-25\\CLEANUP_MANIFEST.md)"
+  },
+  "minimax_h3_larry6_1080p": {
+   "id": "minimax_h3_larry6_1080p",
+   "display_name": "MiniMax H3 \u2014 QUALITY 5s 1080p (6-step larryvrh + r45 refine) \u00b7 ~19 min",
+   "catalog": {
+    "group": "h3_1080p",
+    "label": "Quality \u00b7 6-step larryvrh",
+    "detail": "two-phase 1080p \u00b7 ~19 min",
+    "rank": 20
+   },
+   "family": "h3",
+   "version": "3.0",
+   "path": "models/diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM) + larryvrh v4 EMA turbo (baked in template @1.0)",
+   "workflow": "h3_larry6_1080p",
+   "studio_workflow": "h3_larry6_1080p",
+   "workflows": {
+    "refs": "h3_larry6_1080p",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "latent_upscaler": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+   "refine_target": "1920x1088",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 6,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "width": 960,
+    "height": 544
+   },
+   "resolution_limits": {
+    "min": [
+     640,
+     352
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 32,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 124,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7850,
+   "vram_note": "Measured peak 7.85 GiB (two-phase 1080p, 3 refs + frame-0 anchor). Phase 1 at 960x544 with the baked larryvrh turbo; r45 refine runs the CLEAN base model (LoRA not active in refine - proven wiring).",
+   "source": "BENCH_2026-09-26 ULT-A (edge 2819.8, floor 1735.4, 1153s) + BENCH_2026-09-27 composite anchor A/B (edge 3053.3, floor 1722.8, 1154s) - the best renders of the program.",
+   "note": "QUALITY tier, proven config verbatim (lab record PROVEN_CONFIGS_FINAL, CONFIG 1). 124f = 5.17s @24fps, 1920x1088 CRF16. The larryvrh 6-step turbo EXCEEDS the 25-step base model's detail on the W4A8 stack. The template bakes the LoRA - no user LoRA selection needed or allowed.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2400
+  },
+  "minimax_h3_turbo4_1080p": {
+   "id": "minimax_h3_turbo4_1080p",
+   "display_name": "MiniMax H3 \u2014 SPEED-QUALITY 5s 1080p (4-step turbo + r45 refine) \u00b7 ~15 min",
+   "catalog": {
+    "group": "h3_1080p",
+    "label": "Speed \u00b7 4-step turbo",
+    "detail": "two-phase 1080p \u00b7 ~15 min",
+    "rank": 30
+   },
+   "family": "h3",
+   "version": "3.0",
+   "path": "models/diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM) + lightx2v ref2v turbo 4-step (baked in template @1.0)",
+   "workflow": "h3_turbo4_1080p",
+   "studio_workflow": "h3_turbo4_1080p",
+   "workflows": {
+    "refs": "h3_turbo4_1080p",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "latent_upscaler": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+   "refine_target": "1920x1088",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 4,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "width": 960,
+    "height": 544
+   },
+   "resolution_limits": {
+    "min": [
+     640,
+     352
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 32,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 124,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7850,
+   "vram_note": "Measured peak ~7.5 GiB (two-phase 1080p). Same shape as the larry6 tier; 4-step phase 1.",
+   "source": "BENCH_2026-09-26 C3 (edge 2363.5, floor 1261.4, 876.4s) + BENCH_2026-09-27 seamless continuation trial (899s, +2.6% vs record, seam diff 6.75/255).",
+   "note": "SPEED-QUALITY tier, proven config verbatim (lab record PROVEN_CONFIGS_FINAL, CONFIG 2). 124f = 5.17s @24fps, 1920x1088 CRF16. This is the tier the seamless-continuation chaining was proven on: pass the previous clip's last frame as a 'continuation' reference and the clip opens exactly on it.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 1800
+  },
+  "minimax_h3_base25_1080p": {
+   "id": "minimax_h3_base25_1080p",
+   "display_name": "MiniMax H3 \u2014 BASE 25-step 1080p (no LoRA + r45 refine) \u00b7 ~25 min",
+   "catalog": {
+    "group": "h3_1080p",
+    "label": "Base \u00b7 25-step, no LoRA (calibration)",
+    "detail": "two-phase 1080p \u00b7 ~25 min",
+    "rank": 50
+   },
+   "family": "h3",
+   "version": "3.0",
+   "path": "models/diffusion_models/minimax_h3_ref2va_pruned-w4a8_convrot_pruned.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM), clean base model",
+   "workflow": "h3_base25_1080p",
+   "studio_workflow": "h3_base25_1080p",
+   "workflows": {
+    "refs": "h3_base25_1080p",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "latent_upscaler": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+   "refine_target": "1920x1088",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 25,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "width": 960,
+    "height": 544
+   },
+   "resolution_limits": {
+    "min": [
+     640,
+     352
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 32,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 124,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7850,
+   "vram_note": "Measured peak ~7.6 GiB (flagship two-phase 1080p). Clean base model in BOTH phases (no LoRA anywhere - exactly the flagship recipe).",
+   "source": "BENCH_2026-09-26 flagship (edge 1472.5, floor 948.6, 1484s) - the 25-step undistilled reference the turbo tiers are measured against.",
+   "note": "BASE tier, flagship recipe verbatim: 25-step clean base + r45 two-phase 1080p, no LoRA. Use when turbo-LoRA artifacts must be ruled out. Kept as the calibration reference for the 6-step and 4-step tiers.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700
+  },
+  "minimax_h3_singularity32": {
+   "id": "minimax_h3_singularity32",
+   "display_name": "MiniMax H3 Singularity \u2014 QUALITY 5s 1080p (32-step + r45 refine) \u00b7 proven config",
+   "catalog": {
+    "group": "h3_1080p",
+    "label": "Singularity \u00b7 32-step quality",
+    "detail": "two-phase 1080p \u00b7 ~20 min",
+    "rank": 10,
+    "recommended": true
+   },
+   "family": "h3",
+   "version": "2.0",
+   "path": "models/diffusion_models/Minimax-h3_Singularity_ref2va_v1.3_Pruned_w4a8.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned AdaLN, int4 weight / int8 GEMM)",
+   "workflow": "h3_ref2va_1080p_v2",
+   "studio_workflow": "h3_ref2va_1080p_v2",
+   "workflows": {
+    "refs": "h3_ref2va_1080p_v2",
+    "t2v": "h3_t2v"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "latent_upscaler": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+   "refine_target": "1920x1088",
+   "ref_nodes": {
+    "guide": "5"
+   },
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 32,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "width": 960,
+    "height": 544
+   },
+   "resolution_limits": {
+    "min": [
+     640,
+     352
+    ],
+    "max": [
+     1920,
+     1088
+    ],
+    "step": 32,
+    "native": [
+     "1920x1088"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 192,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "vram_estimate_mb": 7600,
+   "vram_note": "Measured peak ~7.6 GB; wall ~20.4 min/124f clip (B baseline 18.3 min).",
+   "source": "BENCH_2026-09-23 E1/E2/hero_v2: edge_mean 572.9 -> 767.9 (+34%), sharpness floor 211 -> 390 (+85%), motion 21.8 -> 23.1 vs the author-schedule hero path, same scene/seed. Blind-review strips in results\\hero_v2_vs_baseline.png.",
+   "note": "Singularity v1.3 fused fine-tune (Apache 2.0, WarmBloodAban) on the ref2va W4A8 pruned stack. Bench 2026-10-06 vs hero_v2 (2 seeds, 32-step hero config, sword scene): equal-or-better temporal consistency, better cast adherence on closeups, less oversaturated, ~6% faster. sha256-verified download.",
+   "strict_frames": true,
+   "strict_dims": true,
+   "timeout_s": 2700
+  },
+  "minimax_h3_singularity_544p": {
+   "id": "minimax_h3_singularity_544p",
+   "display_name": "MiniMax H3 Singularity \u2014 Draft 544p (32-step single-pass) \u00b7 fast iteration",
+   "catalog": {
+    "group": "h3_draft",
+    "label": "Singularity draft \u00b7 32-step",
+    "detail": "960x544 single-pass",
+    "rank": 10,
+    "recommended": true
+   },
+   "family": "h3",
+   "version": "1.3",
+   "path": "models/diffusion_models/Minimax-h3_Singularity_ref2va_v1.3_Pruned_w4a8.safetensors",
+   "format": "safetensors",
+   "quantization": "W4A8 ConvRot (pruned)",
+   "workflow": "h3_ref2va",
+   "studio_workflow": "h3_ref2va",
+   "workflows": {
+    "refs": "h3_ref2va",
+    "t2v": "h3_ref2va"
+   },
+   "clip_type": "minimax",
+   "comfy_port": 8199,
+   "comfy_root": "ComfyUI_LTX",
+   "text_encoder": "models/text_encoders/qwen3vl_32b_minimax_h3-w4a8_convrot.safetensors",
+   "vae": "models/vae/minimax_h3_video_vae_fp16.safetensors",
+   "vae_audio": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+   "ref_guide_node": "5",
+   "ref_load_nodes": [
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35"
+   ],
+   "anchor_image_node": "60",
+   "supported_modes": [
+    "t2v",
+    "i2v"
+   ],
+   "supported_loras": [],
+   "supported_controls": [
+    "prompt",
+    "seed",
+    "resolution",
+    "frames",
+    "refs"
+   ],
+   "defaults": {
+    "steps": 32,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "width": 960,
+    "height": 544
+   },
+   "resolution_limits": {
+    "min": [
+     480,
+     288
+    ],
+    "max": [
+     960,
+     544
+    ],
+    "step": 32,
+    "native": [
+     "960x544"
+    ]
+   },
+   "frame_limits": {
+    "min": 5,
+    "max": 192,
+    "step": 17
+   },
+   "frame_snap": "nearest",
+   "fps": 24,
+   "experimental": true,
+   "vram_estimate_mb": 7400,
+   "note": "DRAFT: Singularity v1.3 at 960x544 single-pass, same trusted 32-step recipe without the 1080p refine. For prompt/framing iteration only \u2014 delivery shots use the 1080p tier.",
+   "ref_nodes": {
+    "guide": "5"
+   }
+  }
+ }
+}

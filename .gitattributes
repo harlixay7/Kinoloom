@@ -1,0 +1,21 @@
+* text=auto
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+*.sh    text eol=lf
+*.py    text eol=lf diff=python
+*.json  text
+*.yaml  text
+*.yml   text
+*.md    text
+*.html  text
+*.css   text
+*.js    text
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.db    binary

@@ -1,0 +1,58 @@
+{
+  "1": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": { "unet_name": "{MODEL_LTX}", "weight_dtype": "default" }
+  },
+  "2": {
+    "class_type": "CLIPLoaderGGUF",
+    "inputs": { "clip_name": "{T5_LTX}", "type": "ltxv" }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": { "vae_name": "{VAE_LTX}" }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["2", 0], "text": "{PROMPT}" }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["2", 0], "text": "{NEGATIVE}" }
+  },
+  "6": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": { "width": {WIDTH}, "height": {HEIGHT}, "length": {FRAMES}, "batch_size": 1 }
+  },
+  "7": {
+    "class_type": "LTXVConditioning",
+    "inputs": { "positive": ["4", 0], "negative": ["5", 0], "frame_rate": {FPS_F}, "shift": 25.0 }
+  },
+  "8": {
+    "class_type": "LTXVScheduler",
+    "inputs": { "steps": {STEPS}, "max_shift": 2.05, "base_shift": 0.95, "stretch": true, "terminal": 0.1 }
+  },
+  "9": {
+    "class_type": "KSamplerSelect",
+    "inputs": { "sampler_name": "euler" }
+  },
+  "10": {
+    "class_type": "SamplerCustom",
+    "inputs": {
+      "model": ["1", 0], "add_noise": true, "noise_seed": {SEED}, "cfg": 3.0,
+      "positive": ["7", 0], "negative": ["7", 1],
+      "sampler": ["9", 0], "sigmas": ["8", 0], "latent_image": ["6", 0]
+    }
+  },
+  "11": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["10", 0], "vae": ["3", 0] }
+  },
+  "12": {
+    "class_type": "CreateVideo",
+    "inputs": { "images": ["11", 0], "fps": {FPS} }
+  },
+  "13": {
+    "class_type": "SaveVideo",
+    "inputs": { "filename_prefix": "kinoloom/{SHOT_ID}", "format": "mp4", "codec": "h264", "video": ["12", 0] }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "1": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": { "unet_name": "{MODEL_5B}", "weight_dtype": "default" }
+  },
+  "2": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": { "model": ["1", 0], "lora_name": "{LORA_TURBO}", "strength_model": 1.0 }
+  },
+  "3": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": { "model": ["2", 0], "shift": 8.0 }
+  },
+  "4": {
+    "class_type": "CLIPLoaderGGUF",
+    "inputs": { "clip_name": "{T5}", "type": "wan" }
+  },
+  "5": {
+    "class_type": "WanVideoVAELoader",
+    "inputs": { "model_name": "{VAE_WAN22}", "precision": "fp32" }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["4", 0], "text": "{PROMPT}" }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["4", 0], "text": "{NEGATIVE}" }
+  },
+  "8": {
+    "class_type": "VHS_LoadImages",
+    "inputs": { "directory": "{FRAMES_DIR}" }
+  },
+  "9": {
+    "class_type": "WanVideoEncode",
+    "inputs": { "vae": ["5", 0], "image": ["8", 0], "enable_vae_tiling": true, "tile_x": 272, "tile_y": 272, "tile_stride_x": 144, "tile_stride_y": 128 }
+  },
+  "10": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["3", 0], "seed": {SEED}, "steps": 8, "cfg": 1.0,
+      "sampler_name": "euler", "scheduler": "simple",
+      "positive": ["6", 0], "negative": ["7", 0],
+      "latent_image": ["9", 0], "denoise": 0.35
+    }
+  },
+  "11": {
+    "class_type": "WanVideoDecode",
+    "inputs": { "samples": ["10", 0], "vae": ["5", 0], "enable_vae_tiling": true, "tile_x": 272, "tile_y": 272, "tile_stride_x": 144, "tile_stride_y": 128 }
+  },
+  "12": {
+    "class_type": "SaveImage",
+    "inputs": { "images": ["11", 0], "filename_prefix": "{OUT_PREFIX}" }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "1": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": { "unet_name": "{MODEL_5B}", "weight_dtype": "default" }
+  },
+  "2": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": { "model": ["1", 0], "lora_name": "{CHAR_LORA}", "strength_model": 0.8 }
+  },
+  "3": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": { "model": ["2", 0], "shift": 8.0 }
+  },
+  "4": {
+    "class_type": "CLIPLoaderGGUF",
+    "inputs": { "clip_name": "{T5}", "type": "wan" }
+  },
+  "5": {
+    "class_type": "VAELoader",
+    "inputs": { "vae_name": "{VAE_WAN22}" }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["4", 0], "text": "{PROMPT}" }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["4", 0], "text": "{NEGATIVE}" }
+  },
+  "8": {
+    "class_type": "VHS_LoadImages",
+    "inputs": { "directory": "{FRAMES_DIR}" }
+  },
+  "9": {
+    "class_type": "ONNXDetectorProvider",
+    "inputs": { "model_name": "bbox\\face_yolov8m.onnx" }
+  },
+  "10": {
+    "class_type": "FaceDetailer",
+    "inputs": {
+      "image": ["8", 0], "model": ["3", 0], "clip": ["4", 0], "vae": ["5", 0],
+      "guide_size": 512, "guide_size_for": true, "max_size": 1024,
+      "seed": {SEED}, "steps": {FF_STEPS}, "cfg": 1.0, "sampler_name": "euler",
+      "scheduler": "simple", "positive": ["6", 0], "negative": ["7", 0],
+      "denoise": 0.45, "feather": 20, "noise_mask": true,
+      "force_inpaint": true, "bbox_threshold": 0.15, "bbox_dilation": 10,
+      "bbox_crop_factor": 3.0, "sam_detection_hint": "center-1",
+      "sam_dilation": 0, "sam_threshold": 0.93, "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7, "sam_mask_hint_use_negative": "False",
+      "drop_size": 10, "bbox_detector": ["9", 0], "wildcard": "", "cycle": 1
+    }
+  },
+  "11": {
+    "class_type": "SaveImage",
+    "inputs": { "images": ["10", 0], "filename_prefix": "{OUT_PREFIX}" }
+  }
+}

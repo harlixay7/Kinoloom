@@ -1,0 +1,87 @@
+{
+  "1": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "{QW21_CLIP}", "type": "qwen_image", "device": "cpu" }
+  },
+  "2": {
+    "class_type": "TextEncodeQwenImage21CPU",
+    "inputs": {
+      "clip": ["1", 0], "prompt": "{PROMPT}", "token_budget": 4096,
+      "measure_dma": true, "vae": ["7", 0]
+    }
+  },
+  "3": {
+    "class_type": "TextEncodeQwenImage21CPU",
+    "inputs": {
+      "clip": ["1", 0], "prompt": "{NEGATIVE}", "token_budget": 4096,
+      "measure_dma": false, "vae": ["7", 0]
+    }
+  },
+  "4": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": { "unet_name": "{QW21_UNET}" }
+  },
+  "5": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": ["4", 0], "lora_name": "{QW21_LORA}", "strength_model": 1.0
+    }
+  },
+  "6": {
+    "class_type": "EmptyQwen21LatentImage",
+    "inputs": { "width": {WIDTH}, "height": {HEIGHT}, "batch_size": 1 }
+  },
+  "7": {
+    "class_type": "VAELoader",
+    "inputs": { "vae_name": "{QW21_VAE}" }
+  },
+  "8": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["5", 0], "seed": {SEED}, "steps": {STEPS}, "cfg": {CFG},
+      "sampler_name": "{QW21_SAMPLER}", "scheduler": "{QW21_SCHEDULER}",
+      "positive": ["2", 0], "negative": ["3", 0],
+      "latent_image": ["6", 0], "denoise": 1.0
+    }
+  },
+  "9": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["8", 0], "vae": ["7", 0] }
+  },
+  "10": {
+    "class_type": "SplitImageRGBA",
+    "inputs": { "image": ["9", 0] }
+  },
+  "11": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": { "model_name": "{QW21_UPSCALE}" }
+  },
+  "12": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": { "upscale_model": ["11", 0], "image": ["10", 0] }
+  },
+  "13": {
+    "class_type": "ImageScaleBy",
+    "inputs": {
+      "image": ["10", 1], "upscale_method": "bicubic", "scale_by": 4.0
+    }
+  },
+  "14": {
+    "class_type": "MergeImageRGBA",
+    "inputs": { "rgb": ["12", 0], "alpha": ["13", 0] }
+  },
+  "15": {
+    "class_type": "ImageScaleBy",
+    "inputs": {
+      "image": ["14", 0], "upscale_method": "bicubic", "scale_by": 0.5
+    }
+  },
+  "16": {
+    "class_type": "SaveImageAdvanced",
+    "inputs": {
+      "images": ["15", 0], "filename_prefix": "kinoloom/qwen21_{SHOT_ID}",
+      "format": "png", "format.bit_depth": "8-bit",
+      "format.input_color_space": "sRGB"
+    }
+  }
+}
