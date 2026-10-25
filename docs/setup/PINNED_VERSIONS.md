@@ -78,12 +78,13 @@ File names and folders: `RESTORE_INSTRUCTIONS.md` §3 Step 6.
 ---
 
 ## 6. Python runtimes
-- **Python**: 3.12 in every runtime (embedded `tools/python` is 3.12.10). The pinned numpy/scipy need 3.12.
+- **Python**: 3.12 in every runtime (embedded `tools/python` is 3.12.10). The pinned numpy/scipy need 3.12. On a new PC, `install/bootstrap.ps1` (run by `INSTALL.bat`) puts Python 3.12.15 from python-build-standalone 20261009 in `tools/python`, pinned by URL, size and SHA-256 in `install/components.json` (`tools.python`); python.org has no Windows build of 3.12 after 3.12.10.
+- **Git**: pip needs `git.exe` for the two git requirements of `tool/requirements.txt`. When the PC has none, `install/bootstrap.ps1` puts MinGit 2.56.0.windows.3 in `tools/git` (`tools.git`).
 - **Studio core backend**: `tool/.venv` → PyTorch 2.13.0+cu126, installed from `tool/requirements.txt` (which names the cu126 index itself); snapshot in `install/requirements-frozen/tool-venv.txt`. The control room and the production farm both import from it.
 - **LTX / H3 runtime**: `ComfyUI_LTX/venv` → PyTorch 2.13.0+cu130 (torchvision 0.28.0+cu130, torchaudio 2.11.0+cu130, comfy-kitchen 0.2.34, comfy-aimdo 0.5.3); frozen in `install/requirements-frozen/ltx-venv.txt` (install with `--extra-index-url https://download.pytorch.org/whl/cu130`).
 - **Qwen21 runtime**: `ComfyUI_Qwen21/venv` → PyTorch 2.13.0+cu126 (comfy-kitchen 0.2.35, comfy-aimdo 0.5.5, gguf 0.19.0); frozen in `install/requirements-frozen/qwen21-venv.txt` (install with `--extra-index-url https://download.pytorch.org/whl/cu126`).
 - The two ComfyUI venv lists were derived from the installed `*.dist-info` folders, because pip freeze was not available in those venvs.
-- **Base embedded Python**: `tools/python` → only pip (`install/requirements-frozen/base-python.txt`). It runs the launcher, control room and production farm, which get their packages from `tool/.venv` via `PYTHONPATH`. `tools/` is not in git.
+- **Base embedded Python**: `tools/python` → pip and PyYAML on the golden machine (`install/requirements-frozen/base-python.txt`); a new install's has pip only. It runs the launcher, control room and production farm, which get their packages from `tool/.venv` via `PYTHONPATH`; the launcher itself reads its settings with `tool/.venv`'s PyYAML when the base Python has none. `tools/` is not in git.
 - **Research and videolab runtime**: PyTorch 2.13.0+cu130 (`videolab/README.md`).
 - **NVIDIA driver**: R560 or newer for the cu126 runtimes, R580 or newer for the cu130 LTX/H3 runtime; tested on 616.64 (`install/INSTALL-MAIN.bat`). The 581.57 pin in `tool/versions.txt` is historical.
 - **FFmpeg**: `tools/ffmpeg` (9.0 essentials build, `tool/versions.txt`), or settings `paths.ffmpeg`, or `ffmpeg` on PATH. Drafts try NVENC and fall back to libx264.

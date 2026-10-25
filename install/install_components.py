@@ -26,11 +26,13 @@ folder that already holds H3 weights (paths.extra_model_dirs).
 from __future__ import annotations
 
 import argparse
+import ctypes
 import hashlib
 import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -174,6 +176,50 @@ def venv_python(root: Path, tree: dict) -> Path:
     return root / tree["dir"] / "venv" / "Scripts" / "python.exe"
 
 
+# Sits in a venv while pip fills it, so a run that stopped part-way is seen as
+# unfinished (INSTALL-MAIN.bat uses the same name for tool\.venv).
+INCOMPLETE = ".kinoloom-incomplete"
+
+
+def _dist_key(name: str) -> str:
+    return re.sub(r"[-_.]+", "_", name).lower()
+
+
+def venv_state(root: Path, tree: dict) -> str:
+    """'ok', 'missing' or 'incomplete'. Incomplete: the marker is still there,
+    a package lacks its RECORD (pip writes it last, so an install that broke
+    off leaves none), or a pin of the tree's list is not installed."""
+    venv = root / tree["dir"] / "venv"
+    if not venv_python(root, tree).is_file():
+        return "missing"
+    if (venv / INCOMPLETE).exists():
+        return "incomplete"
+    have = set()
+    for d in (venv / "Lib" / "site-packages").glob("*.dist-info"):
+        if not (d / "RECORD").is_file():
+            return "incomplete"
+        name, _, version = d.name[:-len(".dist-info")].partition("-")
+        have.add((_dist_key(name), version))
+    req = root / tree.get("venv", {}).get("requirements", "")
+    if req.is_file():
+        for line in req.read_text(encoding="utf-8").splitlines():
+            m = re.match(r"\s*([A-Za-z0-9_.\-]+)==([^\s;#]+)", line)
+            if m and (_dist_key(m.group(1)), m.group(2)) not in have:
+                return "incomplete"
+    return "ok"
+
+
+def remove_tree(path: Path) -> None:
+    """rmtree that also reaches files past 260 characters and read-only ones."""
+    def unlock(func, p, _exc):
+        os.chmod(p, stat.S_IWRITE)
+        func(p)
+    target = str(path.resolve())
+    if os.name == "nt" and not target.startswith("\\\\?\\"):
+        target = "\\\\?\\" + target
+    shutil.rmtree(target, onexc=unlock)
+
+
 def find_ffmpeg(root: Path) -> Path | None:
     p = root / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe"
     if p.is_file():
@@ -305,7 +351,7 @@ def fetch_source(src: dict, work: Path) -> Path:
         raise InstallError(f"unknown source type {src['type']!r}")
     http_download(url, archive)
     if src.get("sha256"):
-        bad = verify(archive, None, src["sha256"])
+        bad = verify(archive, src.get("size"), src["sha256"])
         if bad:
             archive.unlink(missing_ok=True)
             raise InstallError(f"{url}: {bad}")
@@ -314,13 +360,34 @@ def fetch_source(src: dict, work: Path) -> Path:
 
 
 # ------------------------------------------------------------------ steps
+def set_title(text: str) -> None:
+    """The console window's title, which stays in view while pip scrolls."""
+    if os.name == "nt":
+        try:
+            ctypes.windll.kernel32.SetConsoleTitleW(text)
+        except (AttributeError, OSError):
+            pass
+
+
+def duration(seconds: float) -> str:
+    m, s = divmod(int(round(seconds)), 60)
+    return f"{m} min {s} s" if m else f"{s} s"
+
+
 class Installer:
     def __init__(self, root: Path, cat: dict, dry_run: bool = False):
         self.root, self.cat, self.dry = root, cat, dry_run
         self.fails: list[str] = []
         self.notes: list[str] = []
+        self.total = 0      # steps in the plan, for the progress in the title
+        self.done = 0
 
     def step(self, label: str, fn, *args) -> bool:
+        self.done += 1
+        if self.total:
+            set_title(f"Kinoloom install - {self.done} of {self.total}: {label}"
+                      " - keep this window open")
+        t0 = time.monotonic()
         try:
             fn(*args)
             return True
@@ -328,6 +395,10 @@ class Installer:
             self.fails.append(f"{label}: {e}")
             print(f"  FAIL {label}: {e}")
             return False
+        finally:
+            took = time.monotonic() - t0
+            if took >= 30:      # say so after a long step, so the pace shows
+                print(f"       took {duration(took)}")
 
     # -- ComfyUI cores
     def core(self, tid: str) -> None:
@@ -378,26 +449,34 @@ class Installer:
         if not spec:
             return
         py = venv_python(self.root, tree)
-        if py.is_file():
+        venv = py.parent.parent
+        state = venv_state(self.root, tree)
+        if state == "ok":
             print(f"  OK   {tree['dir']}\\venv")
             return
+        if state == "incomplete":
+            print(f"  ...  {tree['dir']}\\venv was not finished last time; building it again")
         print(f"  ...  {tree['dir']}\\venv (Python 3.12, {spec['requirements']}, {spec['index']})")
         if self.dry:
             return
+        print(f"       about {spec.get('size_gb', 0):.1f} GB of packages, torch among them: this "
+              "takes several minutes, and pip's bars show its progress")
+        if venv.exists():
+            remove_tree(venv)
         base = Path(getattr(sys, "_base_executable", sys.executable))
         subprocess.run([str(base), "-c", "import sys; assert sys.version_info[:2] == (3, 12)"],
                        check=True)
-        subprocess.run([str(base), "-m", "venv", str(py.parent.parent)], check=True)
+        subprocess.run([str(base), "-m", "venv", str(venv)], check=True)
+        (venv / INCOMPLETE).write_text("pip has not finished this venv; the installer "
+                                       "builds it again\n", encoding="utf-8")
         subprocess.run([str(py), "-m", "pip", "install", "--upgrade", "pip"], check=True)
-        cmd = [str(py), "-m", "pip", "install", "--extra-index-url", spec["index"], "-r"]
-        r = subprocess.run(cmd + [str(self.root / spec["requirements"])])
+        r = subprocess.run([str(py), "-m", "pip", "install", "--extra-index-url", spec["index"],
+                            "-r", str(self.root / spec["requirements"])])
         if r.returncode != 0:
-            fallback = self.root / tree["dir"] / spec["fallback"]
-            print(f"  [WARN] the pinned list did not install; trying {fallback}")
-            self.notes.append(f"{tree['dir']}\\venv: installed from {spec['fallback']}, "
-                              "not the pinned list")
-            subprocess.run(cmd + [str(fallback)], check=True)
-        relay(self.root, py.parent.parent / "Lib" / "site-packages")
+            raise InstallError(f"pip could not install {spec['requirements']} (its messages "
+                               "are above); the next run builds this venv again")
+        (venv / INCOMPLETE).unlink()
+        relay(self.root, venv / "Lib" / "site-packages")
 
     # -- weights
     def model(self, mid: str, extra: list[Path]) -> None:
@@ -483,7 +562,8 @@ class Installer:
         if self.dry:
             return
         with tempfile.TemporaryDirectory(dir=self.root / "temp") as td:
-            files = fetch_source({"type": "archive", "url": t["url"], "sha256": t["sha256"]}, Path(td))
+            files = fetch_source({"type": "archive", "url": t["url"], "size": t["size"],
+                                  "sha256": t["sha256"]}, Path(td))
             copy_missing(files, self.root / "tools" / "ffmpeg")
         if not (self.root / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe").is_file():
             raise InstallError("tools\\ffmpeg\\bin\\ffmpeg.exe missing after the copy")
@@ -538,8 +618,8 @@ def component_status(root: Path, cat: dict, cid: str, extra: list[Path]) -> tupl
         t = cat["trees"][tid]
         if tree_state(root, t) != "ok":
             missing.append(f"{t['dir']} (ComfyUI {t['core']['version']})")
-        elif t.get("venv") and not venv_python(root, t).is_file():
-            missing.append(f"{t['dir']}\\venv")
+        elif t.get("venv") and (vs := venv_state(root, t)) != "ok":
+            missing.append(f"{t['dir']}\\venv" + (" (not finished)" if vs == "incomplete" else ""))
     missing += [f"{cat['nodes'][n]['dir']} node pack" for n in c.get("nodes", [])
                 if node_state(root, cat, n) != "ok"]
     for mid in c.get("models", []) + c.get("manual", []):
@@ -664,6 +744,9 @@ def main(argv: list[str] | None = None) -> int:
                                      "(subfolders diffusion_models, text_encoders, vae, ...)")
     ap.add_argument("--skip-models", action="store_true", help="install everything but the weights")
     args = ap.parse_args(argv)
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure:     # print each line as it comes, in step with pip's own output
+        reconfigure(line_buffering=True)
 
     cat = load_catalog()
     root = ROOT
@@ -727,12 +810,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  node packs:    {len(plan.nodes)}")
     print(f"  weights:       {len(todo)} file(s) to download, {need / GB:.1f} GB, into {root / 'models'}")
     venvs = [cat["trees"][t] for t in plan.trees if cat["trees"][t].get("venv")
-             and not venv_python(root, cat["trees"][t]).is_file()]
+             and venv_state(root, cat["trees"][t]) != "ok"]
     venv_gb = sum(t["venv"].get("size_gb", 0) for t in venvs)
     if venvs:
         print(f"  venvs:         {', '.join(t['dir'] for t in venvs)}, about {venv_gb:.1f} GB")
     if plan.manual:
-        print(f"  you bring:     {len(plan.manual)} file(s) yourself (listed at the end)")
+        where = "--check lists them" if args.skip_models else "listed at the end"
+        print(f"  you bring:     {len(plan.manual)} file(s) yourself ({where})")
     free = shutil.disk_usage(root).free
     print(f"  free space:    {free / GB:.1f} GB on {root.anchor}")
     licenses = []
@@ -754,6 +838,10 @@ def main(argv: list[str] | None = None) -> int:
 
     (root / "temp").mkdir(exist_ok=True)
     inst = Installer(root, cat, dry_run=args.dry_run)
+    # one step per tree, node pack, venv (a tree without one returns at once),
+    # ffmpeg and weight file
+    inst.total = (2 * len(plan.trees) + len(plan.nodes) + 1
+                  + (0 if args.skip_models else len(plan.models)))
     if plan.trees:
         print("\n== ComfyUI ==")
         for t in plan.trees:
@@ -772,7 +860,8 @@ def main(argv: list[str] | None = None) -> int:
                 p.is_file() and not p.name.endswith((".lock", ".metadata"))
                 for p in staging.rglob("*") if ".cache" not in p.parts):
             shutil.rmtree(staging, ignore_errors=True)
-    print_manual(root, cat, plan, extra)
+    if not args.skip_models:                    # --check lists them on request
+        print_manual(root, cat, plan, extra)
 
     print("\n== Result ==")
     if not args.dry_run:

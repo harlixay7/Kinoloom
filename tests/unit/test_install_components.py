@@ -5,6 +5,7 @@ against local fixture archives."""
 import importlib.util
 import json
 import re
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -65,8 +66,9 @@ def test_every_download_is_pinned(cat):
             assert m["size"] is None or (m["size"] > 0 and HEX64.match(m["sha256"])), mid
         else:
             assert m["size"] > 0 and HEX64.match(m["sha256"]) and m["sources"], mid
-    ff = cat["tools"]["ffmpeg"]
-    assert HEX64.match(ff["sha256"]) and ff["url"].startswith("https://")
+    assert {"python", "git", "ffmpeg"} <= set(cat["tools"])
+    for tid, t in cat["tools"].items():
+        assert t["url"].startswith("https://") and t["size"] > 0 and HEX64.match(t["sha256"]), tid
 
 
 def test_a_derived_file_comes_after_its_source_in_the_same_component(cat):
@@ -296,6 +298,61 @@ def test_a_derived_file_is_exported_and_its_shapes_checked(ic, tmp_path, monkeyp
     assert not (root / "ComfyUI" / "onnx" / "face.onnx").exists()
 
 
+def test_skip_models_installs_runtimes_without_listing_weights(ic, capsys):
+    """INSTALL.bat's plan (--components all --skip-models --yes): no weights,
+    and no 'bring your own' lists to confuse a first install."""
+    assert ic.main(["--components", "all", "--skip-models", "--yes", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "0 file(s) to download" in out and "== Weights ==" not in out
+    assert "Weights you bring yourself" not in out
+    assert "(--check lists them)" in out and "listed at the end" not in out
+    assert ic.main(["--components", "h3", "--yes", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "Weights you bring yourself" in out and "(listed at the end)" in out
+
+
+def test_steps_show_their_progress_and_slow_ones_their_time(ic, cat, tmp_path, monkeypatch,
+                                                            capsys):
+    """The window title counts the steps, so a long install visibly moves; a
+    step of 30 s or more says how long it took."""
+    import types
+    titles: list[str] = []
+    monkeypatch.setattr(ic, "set_title", titles.append)
+    clock = iter([0.0, 95.0, 100.0, 101.0])
+    monkeypatch.setattr(ic, "time", types.SimpleNamespace(monotonic=lambda: next(clock)))
+
+    def boom():
+        raise ic.InstallError("no")
+
+    inst = ic.Installer(tmp_path, cat)
+    inst.total = 2
+    assert inst.step("ComfyUI_LTX\\venv", lambda: None)
+    assert not inst.step("ffmpeg", boom)
+    out = capsys.readouterr().out
+    assert titles == ["Kinoloom install - 1 of 2: ComfyUI_LTX\\venv - keep this window open",
+                      "Kinoloom install - 2 of 2: ffmpeg - keep this window open"]
+    assert "took 1 min 35 s" in out and out.count("took") == 1
+    assert "FAIL ffmpeg: no" in out
+    assert ic.duration(12.4) == "12 s"
+
+
+def test_a_pinned_archive_of_the_wrong_size_is_deleted(ic, tmp_path, monkeypatch):
+    """tools.ffmpeg's zip is checked by size as well as SHA-256."""
+    import hashlib
+    data = b"not the pinned zip"
+
+    def fake_http(url, dest, size=None, tries=3):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+
+    monkeypatch.setattr(ic, "http_download", fake_http)
+    src = {"type": "archive", "url": "https://example.invalid/ffmpeg.zip",
+           "size": len(data) + 1, "sha256": hashlib.sha256(data).hexdigest()}
+    with pytest.raises(ic.InstallError, match="size"):
+        ic.fetch_source(src, tmp_path)
+    assert not (tmp_path / "ffmpeg.zip").exists()
+
+
 def test_the_manual_files_are_listed_with_where_they_go(ic, cat, tmp_path, capsys):
     plan = ic.resolve(cat, ["h3", "realvis"])
     ic.print_manual(tmp_path, cat, plan, [])
@@ -304,3 +361,160 @@ def test_the_manual_files_are_listed_with_where_they_go(ic, cat, tmp_path, capsy
     for mid in plan.manual:
         assert str(tmp_path / cat["models"][mid]["path"]) in out
     assert out.count("published at https://huggingface.co/") >= len(cat["components"]["h3"]["manual"])
+
+
+# ---------------------------------------------------------------- scripts
+def test_a_venv_counts_as_built_only_when_pip_finished_it(ic, tmp_path):
+    """No marker left, every package with its RECORD, every pin installed."""
+    (tmp_path / "req.txt").write_text("# pins\nTorch==2.13.0+cu126\npy-yaml==6.0\n",
+                                      encoding="utf-8")
+    tree = {"dir": "T", "venv": {"requirements": "req.txt"}}
+    assert ic.venv_state(tmp_path, tree) == "missing"
+    venv = tmp_path / "T" / "venv"
+    (venv / "Scripts").mkdir(parents=True)
+    (venv / "Scripts" / "python.exe").write_bytes(b"")
+    site = venv / "Lib" / "site-packages"
+    for d in ("torch-2.13.0+cu126.dist-info", "PY_yaml-6.0.dist-info"):
+        (site / d).mkdir(parents=True)
+        (site / d / "RECORD").write_text("", encoding="utf-8")
+    assert ic.venv_state(tmp_path, tree) == "ok"
+    (venv / ic.INCOMPLETE).write_text("", encoding="utf-8")
+    assert ic.venv_state(tmp_path, tree) == "incomplete"          # pip did not finish
+    (venv / ic.INCOMPLETE).unlink()
+    (site / "torch-2.13.0+cu126.dist-info" / "RECORD").unlink()
+    assert ic.venv_state(tmp_path, tree) == "incomplete"          # torch broke off part-way
+    (site / "torch-2.13.0+cu126.dist-info").rename(site / "torch-2.14.1+cu126.dist-info")
+    (site / "torch-2.14.1+cu126.dist-info" / "RECORD").write_text("", encoding="utf-8")
+    assert ic.venv_state(tmp_path, tree) == "incomplete"          # not the pinned torch
+
+
+def test_a_venv_pip_did_not_finish_is_built_again(ic, tmp_path, monkeypatch, capsys):
+    """A failed pip run leaves the marker and fails the step, with no unpinned
+    second try on top of the half-installed packages. The next run deletes the
+    venv and builds it from the pinned list again."""
+    import types
+    (tmp_path / "req.txt").write_text("torch==2.13.0+cu126\n", encoding="utf-8")
+    cat = {"trees": {"t": {"dir": "T", "venv": {"requirements": "req.txt",
+                                                "index": "https://example.invalid/whl"}}}}
+    venv = tmp_path / "T" / "venv"
+    calls: list[list[str]] = []
+    pip_rc = [1]
+
+    def fake_run(args, check=False, **kw):
+        args = [str(a) for a in args]
+        calls.append(args)
+        if args[1:3] == ["-m", "venv"]:
+            (Path(args[3]) / "Scripts").mkdir(parents=True)
+            (Path(args[3]) / "Scripts" / "python.exe").write_bytes(b"")
+        elif "-r" in args and pip_rc[0] == 0:
+            d = venv / "Lib" / "site-packages" / "torch-2.13.0+cu126.dist-info"
+            d.mkdir(parents=True)
+            (d / "RECORD").write_text("", encoding="utf-8")
+        return subprocess.CompletedProcess(args, pip_rc[0] if "-r" in args else 0)
+
+    monkeypatch.setattr(ic, "subprocess", types.SimpleNamespace(run=fake_run))
+    inst = ic.Installer(tmp_path, cat)
+    with pytest.raises(ic.InstallError, match="builds this venv again"):
+        inst.venv("t")
+    assert [c[-1] for c in calls if "-r" in c] == [str(tmp_path / "req.txt")]
+    assert ic.venv_state(tmp_path, cat["trees"]["t"]) == "incomplete"
+
+    (venv / "Lib").mkdir()
+    (venv / "Lib" / "left-over.txt").write_text("x", encoding="utf-8")
+    pip_rc[0] = 0
+    inst.venv("t")
+    assert "was not finished last time; building it again" in capsys.readouterr().out
+    assert not (venv / "Lib" / "left-over.txt").exists()
+    assert ic.venv_state(tmp_path, cat["trees"]["t"]) == "ok"
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the 260-character limit is Windows'")
+def test_remove_tree_reaches_files_past_260_characters(ic, tmp_path):
+    import os
+    import stat
+    venv = tmp_path / "venv"
+    deep = "\\\\?\\" + str(venv / ("d" * 120) / ("e" * 120))
+    os.makedirs(deep)
+    f = deep + "\\LICENSE.txt"
+    with open(f, "w", encoding="utf-8") as fh:
+        fh.write("x")
+    os.chmod(f, stat.S_IREAD)
+    assert len(f) - len("\\\\?\\") > 260
+    ic.remove_tree(venv)
+    assert not venv.exists()
+
+
+INSTALL_SCRIPTS = ("INSTALL.bat", "start.bat", "install/INSTALL-MAIN.bat", "install/bootstrap.ps1")
+
+
+def test_the_install_scripts_are_plain_ascii():
+    """cmd.exe and Windows PowerShell 5.1 read a file without a byte-order mark
+    in the PC's ANSI code page, where any other character can change meaning."""
+    for rel in INSTALL_SCRIPTS:
+        assert (REPO / rel).read_bytes().isascii(), rel
+
+
+def test_bootstrap_takes_its_pins_from_the_catalog():
+    text = (REPO / "install" / "bootstrap.ps1").read_text(encoding="ascii")
+    assert "$Cat.tools.python" in text and "$Cat.tools.git" in text
+    assert not re.search(r"[0-9a-fA-F]{64}", text)          # no hash of its own
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="needs Windows PowerShell")
+def test_bootstrap_parses_in_windows_powershell():
+    script = REPO / "install" / "bootstrap.ps1"
+    check = ("$errors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile("
+             f"'{script}', [ref]$null, [ref]$errors); $errors.Count")
+    r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", check],
+                       capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0 and r.stdout.strip() == "0", r.stdout + r.stderr
+
+
+LONG_PATH_HARNESS = r"""
+param([string]$Script, [string]$Root, [string]$Answer, [string]$Works)
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Script, [ref]$null, [ref]$null)
+$fn = $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+                     $a.Name -eq 'Assert-Machine' }, $true)[0].Extent.Text
+$MaxShortRoot = 45
+function Say([string]$t) { Write-Host $t }
+function Stop-Bootstrap([string]$t) { Write-Host "[FAIL] $t"; exit 1 }
+function Confirm-Step([string]$q, [bool]$d) { Write-Host "ASKED $q $d"; return $Answer -eq 'y' }
+function Test-LongPaths { return $false }
+function Enable-LongPaths { return $Works -eq 'y' }
+. ([scriptblock]::Create($fn))
+Assert-Machine
+Write-Host 'CONTINUES'
+"""
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="needs Windows PowerShell")
+@pytest.mark.parametrize("root, answer, works, code, shows", [
+    ("C:\\Users\\someone\\Desktop\\Kinoloom-main\\Kinoloom-main", "y", "y", 0, "long paths are on"),
+    ("C:\\Users\\someone\\Desktop\\Kinoloom-main\\Kinoloom-main", "n", "y", 1, "like C:\\Kinoloom"),
+    ("C:\\Users\\someone\\Desktop\\Kinoloom-main\\Kinoloom-main", "y", "n", 1, "was not changed"),
+    ("C:\\Kinoloom", "n", "n", 0, "CONTINUES"),
+])
+def test_a_long_folder_path_asks_to_turn_on_long_paths(tmp_path, root, answer, works, code, shows):
+    """bootstrap.ps1's own check, with the prompt and the registry stubbed: a long
+    path asks (default yes) and goes on once long paths are on; declined, or not
+    allowed, it stops with the move advice; a short path asks nothing."""
+    harness = tmp_path / "harness.ps1"
+    harness.write_text(LONG_PATH_HARNESS, encoding="ascii")
+    r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                        "-File", str(harness), "-Script", str(REPO / "install" / "bootstrap.ps1"),
+                        "-Root", root, "-Answer", answer, "-Works", works],
+                       capture_output=True, text=True, timeout=120)
+    out = r.stdout + r.stderr
+    assert r.returncode == code and shows in out, out
+    assert ("ASKED Turn on long paths? True" in out) == (root != "C:\\Kinoloom"), out
+    assert ("CONTINUES" in out) == (code == 0), out
+
+
+def test_the_resolve_job_uses_the_catalog_indexes(cat):
+    """dependency-audit.yml resolves each venv list with the index its tree uses."""
+    wf = (REPO / ".github" / "workflows" / "dependency-audit.yml").read_text(encoding="utf-8")
+    assert '"tool/requirements.txt"' in wf
+    for t in cat["trees"].values():
+        if t.get("venv"):
+            spec = t["venv"]
+            assert f'file = "{spec["requirements"]}"; index = "{spec["index"]}"' in wf, t["dir"]

@@ -133,6 +133,8 @@ ui:
   # and every remote browser must supply it (see SECURITY.md).
   host: 127.0.0.1
   port: 8080
+  # start.bat opens the web app in the default browser once it answers
+  open_browser: true
 security:
   # API token for remote clients (Authorization: Bearer / X-API-Token / the
   # login prompt). The KINOLOOM_API_TOKEN env var overrides it. Empty + a

@@ -1,10 +1,10 @@
 {
  "_readme": [
-  "What install/install_components.py installs. Every download is pinned: ComfyUI and the node",
-  "packs by git commit, weights by size and sha256 (my own copies, or the served file where I have",
+  "What install/install_components.py (and, under 'tools', install/bootstrap.ps1) installs. Every download is pinned: ComfyUI and the node",
+  "packs by git commit, weights and tools by size and sha256 (for weights, my own copies, or the served file where I have",
   "none). 'manual' files are never downloaded: MiniMax H3 (its license) and RealVisXL (no public",
   "copy I could check). 'derive' files are made locally from another file. A venv's size_gb is",
-  "what that venv takes on my PC (measured 2026-10-24)."
+  "what that venv took in a fresh install (10^9 bytes, measured 2026-10-25)."
  ],
  "schema": 1,
  "trees": {
@@ -29,8 +29,7 @@
    "venv": {
     "requirements": "install/requirements-frozen/ltx-venv.txt",
     "index": "https://download.pytorch.org/whl/cu130",
-    "fallback": "requirements.txt",
-    "size_gb": 4.17
+    "size_gb": 4.35
    }
   },
   "qwen": {
@@ -44,8 +43,7 @@
    "venv": {
     "requirements": "install/requirements-frozen/qwen21-venv.txt",
     "index": "https://download.pytorch.org/whl/cu126",
-    "fallback": "requirements.txt",
-    "size_gb": 5.5
+    "size_gb": 5.69
    }
   }
  },
@@ -961,6 +959,21 @@
   }
  },
  "tools": {
+  "python": {
+   "version": "3.12.15 (python-build-standalone 20261009, x86-64)",
+   "size": 46352482,
+   "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261009/cpython-3.12.15%2B20261009-x86_64-pc-windows-msvc-install_only.tar.gz",
+   "sha256": "194c8f0d9e0de6f1c4576e5dfa67819a48c764be87608b74b8ad43387a57b93b",
+   "subdir": "python",
+   "note": "install/bootstrap.ps1 unpacks it into tools/python for a new install; python.org has no Windows build of 3.12 after 3.12.10"
+  },
+  "git": {
+   "version": "MinGit 2.56.0.windows.3 (64-bit)",
+   "size": 39854943,
+   "url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.3/MinGit-2.56.0.3-64-bit.zip",
+   "sha256": "2e5619966e588fde5f8122c5557cad50c0fbafcaed736689f40ec1dfb1d78ea7",
+   "note": "install/bootstrap.ps1 unpacks it into tools/git when no git is on PATH: pip needs git for the two packages tool/requirements.txt installs from git"
+  },
   "ffmpeg": {
    "version": "9.0 essentials (gyan.dev)",
    "size": 111167378,

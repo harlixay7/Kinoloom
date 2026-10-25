@@ -36,7 +36,7 @@ source .venv/bin/activate
 python -m pip install -r tests/requirements-ci.txt
 # optional: mypy and type stubs as well (make install-dev)
 ```
-Kinoloom is not an installable package. `pyproject.toml` holds metadata and tool configuration only, so don't install it with `pip install -e .`. The modules in `tool/` use flat imports and run from the tree. The full runtime stack (CUDA torch, training libraries, packages built from git) is pinned in `tool/requirements.txt`. You only need it to run the studio (`make install`, or `install\INSTALL-MAIN.bat` on Windows).
+Kinoloom is not an installable package. `pyproject.toml` holds metadata and tool configuration only, so don't install it with `pip install -e .`. The modules in `tool/` use flat imports and run from the tree. The full runtime stack (CUDA torch, training libraries, packages built from git) is pinned in `tool/requirements.txt`. You only need it to run the studio (`make install`, or `INSTALL.bat` on Windows).
 
 ### First check
 These commands match the CI steps:

@@ -174,6 +174,70 @@
   cards are updated in place instead of rebuilt, and the sidebar's GPU meter
   repaints only when its reading changes.
 
+### One-click install
+- **`INSTALL.bat`.** On a fresh Windows 11 PC (x64; Windows 10 1803 or later
+  is untested), a double-click and one key press set up everything except
+  the model weights. Its first step, `install/bootstrap.ps1`, puts a private
+  Python 3.12.15 in `tools/python` and MinGit in `tools/git` (only when there
+  is no `git.exe` on the PATH), and installs the Visual C++ runtime when the
+  PC's is missing or older than 14.40 (it asks first, Windows asks for
+  administrator rights, and the installer runs only with a valid Microsoft
+  signature). Python and Git are pinned in `install/components.json` by size
+  and SHA-256. `INSTALL.bat` runs it as step 1 of `INSTALL-MAIN.bat /auto`,
+  whose other steps build the control room's venv and every part's runtime
+  (`--components all --skip-models`). Exit code 2 means some parts did not
+  install; the studio starts without them. Tested end to end on two PCs: one
+  where the Visual C++ runtime and ffmpeg were already installed, and one
+  set up from the GitHub ZIP, where it also downloaded ffmpeg. A second run
+  skips every finished step.
+- **The install shows its progress.** `INSTALL.bat` says up front roughly
+  how much it downloads and how long it takes. Each of the 5
+  steps prints its number and start time, the window title shows the step
+  (in the last one, which item of the list), the slow steps say what they
+  are doing, and `install_components.py` prints how long each step of 30 s
+  or more took. Its output is line-buffered, so it stays in order with pip's.
+- **Long folder paths.** torch puts files about 211 characters below the
+  studio folder, past Windows' default 260-character limit from a folder path
+  of about 50 characters (a ZIP unpacked on the Desktop is enough). When the
+  path is that long and Windows long paths are off, `bootstrap.ps1` says so in
+  a few lines and offers to turn them on (`LongPathsEnabled`; Windows asks for
+  administrator rights). Declined, it stops and suggests a short folder such
+  as `C:\Kinoloom`.
+- **A stopped install is repaired.** A venv that pip did not finish (the
+  `.kinoloom-incomplete` marker is still in it, a package lacks its `RECORD`,
+  or a pin of its list is missing) is deleted and built again on the next
+  run: `tool/.venv` by `INSTALL-MAIN.bat`, the two ComfyUI venvs by
+  `install_components.py`. **Fixed:** when a pinned list failed,
+  `install_components.py` tried ComfyUI's own unpinned `requirements.txt` on
+  top of the half-installed venv; that second try is gone.
+- **`start.bat` offers the install.** On a PC without `tool/.venv` it says
+  Kinoloom is not installed yet and runs `INSTALL.bat` on Enter, instead of
+  failing with a pointer to the restore guide. It no longer falls back to
+  whatever `python` is on the PATH.
+- **The address is easy to find.** Once `/api/health` answers, the launcher
+  prints a banner with the web app's address, puts it in the window title and
+  opens it in the default browser (`ui.open_browser: false` or
+  `start.bat --no-browser` turns that off). A `0.0.0.0` bind opens as
+  `127.0.0.1`. The banner also names parts that are not installed and says
+  when there are no model weights yet.
+- **Fixed:** `tool/requirements.txt` did not install on a new PC: `einops`
+  0.7.0 clashes with `rotary-embedding-torch` 0.9.1, which needs 0.8 or
+  later. It is now 0.8.2. A new `resolve` job in the dependency audit runs
+  `pip install --dry-run` on the lists the installer uses, on Windows, so a
+  clash like this fails CI.
+- **Fixed:** on a new install the launcher ignored `tool/settings.yaml`,
+  because the bare `tools/python` has no PyYAML. It now reads the settings
+  with `tool/.venv`'s PyYAML.
+- **Fixed:** `INSTALL-MAIN.bat` clears `PYTHONPATH` and `PYTHONHOME`, which
+  could leak another Python's packages into the venvs. It also sets
+  `SAM2_BUILD_CUDA=0`, so SAM-2 does not try to build its optional CUDA
+  extension.
+- `install_components.py --skip-models` no longer prints the list of weights
+  to download by hand; `--check` and an install with weights still do.
+- The ffmpeg download is checked by size as well as SHA-256. The venv sizes
+  in `install/components.json` are now those of a fresh install (4.35 and
+  5.69 GB).
+
 ### Component installer
 - **Choose what to install.** `install/install_components.py`, run by
   `INSTALL-MAIN.bat` mode [1] after the control room and by the new mode [3],

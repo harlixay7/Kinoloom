@@ -1,3 +1,4 @@
 # derived from *.dist-info in tools/python/Lib/site-packages
 # (pip freeze unavailable in this runtime)
 pip==26.2.2
+PyYAML==6.0.3

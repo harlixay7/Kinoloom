@@ -2,7 +2,7 @@
 
 # Setup and disaster recovery
 
-> **In short:** This guide is for installing Kinoloom on a Windows PC, or rebuilding it after a disk or machine is lost. The ComfyUI trees, their Python environments and the model weights are not in git. `install\INSTALL-MAIN.bat` installs them for the parts you choose (Step 2). Steps 3–7 describe what it does, as manual steps you can follow instead, and Step 8 runs the read-only checks.
+> **In short:** This guide is for installing Kinoloom on a Windows PC, or rebuilding it after a disk or machine is lost. The ComfyUI trees, their Python environments and the model weights are not in git. `INSTALL.bat` installs everything but the weights in one go, and `install\INSTALL-MAIN.bat` installs the parts you choose, weights included (Step 2). Steps 3–7 describe what it does, as manual steps you can follow instead, and Step 8 runs the read-only checks.
 
 The Python code finds its paths from the repository root (`Path(__file__).resolve().parent.parent`), and the batch files from their own folder (`%~dp0`). So the tree can live on any drive or in any folder. Two things stay specific to one machine: `tool/settings.yaml` (created from `tool/settings.example.yaml`; a local copy may hold absolute paths) and the model roots listed in `paths.extra_model_dirs`.
 
@@ -32,13 +32,14 @@ This is the tree after a full install. The folders marked untracked or "not in g
 
 ```text
 Kinoloom/
+├── INSTALL.bat                # One-click install of everything but the model weights (Step 2)
 ├── start.bat                  # Single-window launcher (Ctrl+C or closing the window stops every component)
 ├── tool/                      # FastAPI control room (api.py + routers/), orchestrator, web UI
 │   ├── settings.example.yaml  # Tracked template, copied to settings.yaml (gitignored) on first start
 │   ├── studio.db              # Shots, scene state, projects, story versions (created on first start)
 │   ├── queue.db               # Task queue, worker registry, shot assignments (created on first start)
 │   └── datasets.db            # Training-image provenance & generation runs (created on first start)
-├── install/                   # INSTALL-MAIN.bat, INSTALL-WORKER.bat, verify_install.py, frozen requirement lists
+├── install/                   # INSTALL-MAIN.bat, bootstrap.ps1, INSTALL-WORKER.bat, verify_install.py, frozen requirement lists
 ├── ComfyUI/                   # Render farm, port 8188 (ComfyUI v0.30.0)            [untracked except studio files]
 ├── ComfyUI_LTX/               # Port 8189 LTX-2.5 + port 8199 MiniMax H3 (v0.36.0)   [untracked except studio files]
 ├── ComfyUI_Qwen21/            # Port 8190 Qwen-Image 2.1 (v0.37.4)                   [untracked except studio files]
@@ -47,8 +48,11 @@ Kinoloom/
 ├── docs/                      # Architecture, pipeline, showcase, setup guides (setup/), research notes (research/)
 ├── models/                    # Model weights                                       [not in git]
 ├── bible/ roster/ shots/ output/                                                    [not in git]
-└── tools/                     # Optional portable runtimes on the golden machine:   [not in git]
-                               #   python (embedded 3.12.10), git, ffmpeg, sd-scripts, ai-toolkit
+└── tools/                     # Portable runtimes:                                   [not in git]
+                               #   python (3.12.10 on the golden machine; INSTALL.bat installs 3.12.15),
+                               #   git (Git for Windows 2.55.0 on the golden machine; INSTALL.bat
+                               #   installs MinGit only when there is no git.exe on PATH), ffmpeg;
+                               #   on the golden machine also sd-scripts and ai-toolkit
 ```
 
 ---
@@ -66,11 +70,12 @@ Kinoloom/
 ### Software
 
 1. **NVIDIA driver**: R560 or newer for the CUDA 12.6 runtimes (studio venv, render farm, Qwen venv). R580 or newer for the CUDA 13.0 runtime in `ComfyUI_LTX/venv` (LTX-2.5 / MiniMax H3). Tested on 616.64. The 581.57 pin in `tool/versions.txt` is historical.
-2. **Operating system**: Windows 11 64-bit, the only version tested (Windows 10 may work). The launcher uses Win32 APIs (Job Objects, console control handler) and does not run anywhere else.
-3. **Git for Windows**: on PATH, or `tools\git\cmd\git.exe`. You need it to clone the ComfyUI trees, and because `tool/requirements.txt` installs kohya sd-scripts from git.
-4. **Python**: 3.12 64-bit, exactly. The pinned numpy/scipy wheels need 3.12, and `install\INSTALL-MAIN.bat` refuses any other version. The golden machine also carries an embedded Python 3.12.10 in `tools\python` (optional).
-5. **ffmpeg**: the studio uses settings `paths.ffmpeg` (default `tools\ffmpeg\bin\ffmpeg.exe`), else `tools\ffmpeg\bin\ffmpeg.exe`, else `ffmpeg` on PATH (`tool/core.py` `ffmpeg_exe`). The golden machine uses the 9.0 "essentials" build (`tool/versions.txt`). Post and the assembler try NVENC (the NVIDIA hardware encoder) and fall back to libx264.
-6. **An LLM server** (optional; the story writer and "rewrite idea" in a project's Story tab use it): any server that speaks the OpenAI-compatible `/chat/completions` API. `tool\settings.example.yaml` (`architect:`) points at a local [Ollama](https://ollama.com/) on `http://127.0.0.1:11434/v1` with `llama3.1:70b`. Run `ollama pull llama3.1:70b`, or set `architect.model` to a smaller model you have pulled. The Image and Video Studio pages do not use it.
+2. **Operating system**: Windows 11 64-bit, the only version tested (Windows 10 may work; the installer needs version 1803 or later for its `tar.exe`, and on x64 only). The launcher uses Win32 APIs (Job Objects, console control handler) and does not run anywhere else.
+3. **Git**: `git.exe` on PATH, or `tools\git\cmd\git.exe`. `tool/requirements.txt` installs kohya sd-scripts and SAM-2 from git, and pip starts `git.exe` itself (a `git.cmd` wrapper does not count). When there is none, `install\bootstrap.ps1` (run by `INSTALL.bat` and by `INSTALL-MAIN.bat` mode [1]) puts MinGit 2.56.0.windows.3 in `tools\git`. The manual steps below also use git to clone the ComfyUI trees.
+4. **Python**: 3.12 64-bit, exactly; the pinned numpy/scipy wheels need 3.12. `install\bootstrap.ps1` puts Python 3.12.15 (python-build-standalone 20261009) in `tools\python` unless `tool\.venv` already exists, and every venv is made from it. A Python installed on the PC is not used. python.org has no Windows build of 3.12 after 3.12.10, which is what the golden machine's `tools\python` holds.
+5. **Microsoft Visual C++ Redistributable (x64)**, 14.40 or newer: torch needs it (binaries built with Visual Studio 2022 17.10 or later crash on an older `msvcp140.dll`). When it is missing or older, `install\bootstrap.ps1` offers to install the current one from Microsoft (`https://aka.ms/vc14/vc_redist.x64.exe`). It runs that installer only with a valid Microsoft Corporation signature, and Windows asks for administrator rights.
+6. **ffmpeg**: the studio uses settings `paths.ffmpeg` (default `tools\ffmpeg\bin\ffmpeg.exe`), else `tools\ffmpeg\bin\ffmpeg.exe`, else `ffmpeg` on PATH (`tool/core.py` `ffmpeg_exe`). The golden machine uses the 9.0 "essentials" build (`tool/versions.txt`). Post and the assembler try NVENC (the NVIDIA hardware encoder) and fall back to libx264.
+7. **An LLM server** (optional; the story writer and "rewrite idea" in a project's Story tab use it): any server that speaks the OpenAI-compatible `/chat/completions` API. `tool\settings.example.yaml` (`architect:`) points at a local [Ollama](https://ollama.com/) on `http://127.0.0.1:11434/v1` with `llama3.1:70b`. Run `ollama pull llama3.1:70b`, or set `architect.model` to a smaller model you have pulled. The Image and Video Studio pages do not use it.
 
 ---
 
@@ -94,7 +99,7 @@ git clone https://github.com/harlixay7/Kinoloom.git "%AIS%"
 
 `videolab/` is a plain folder in the repository, so the clone includes it.
 
-Keep `%AIS%` short, like `C:\Kinoloom`. In a full install the deepest file inside a venv sits 211 characters below the studio root, and Windows stops at 260 characters unless [long paths are enabled](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation). With a root longer than about 45 characters, `pip install` can fail partway.
+Keep `%AIS%` short, like `C:\Kinoloom`. In a full install the deepest file inside a venv sits 211 characters below the studio root, and Windows stops at 260 characters unless [long paths are enabled](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation). With a root longer than about 45 characters and long paths off, `pip install` fails partway; `install\bootstrap.ps1` then offers to turn long paths on (`LongPathsEnabled`, administrator rights) and stops if you decline.
 
 **Option B: mirror** a complete working tree from another PC with `install\INSTALL-MAIN.bat` mode [2] (Step 2).
 
@@ -102,20 +107,22 @@ Either way, no particular drive letter or NTFS junction is required.
 
 ### Step 2: Control room (`tool\.venv`) with `install\INSTALL-MAIN.bat`
 
-Run `install\INSTALL-MAIN.bat` and choose a mode:
+**`INSTALL.bat`** in the studio root does all of mode [1] below in one go. After its first key press it asks only before it installs the Visual C++ runtime, before it turns on long paths for a long folder path, and at the end whether to start Kinoloom. It runs `install\INSTALL-MAIN.bat /auto`, which is mode [1] in this tree with every part's runtime and no weights (`install_components.py --components all --skip-models --yes`). `start.bat` offers to run it when `tool\.venv` is missing. Exit code 2 means some parts did not install; run it again.
+
+Or run `install\INSTALL-MAIN.bat` and choose a mode:
 
 - **[1] Set up the control room in this tree** (a git clone). This mode:
-  - finds Python (`tools\python`, then `py -3.12`, then `python` on PATH) and refuses anything but 64-bit 3.12;
-  - checks for git;
-  - creates `tool\.venv` if it is missing;
-  - runs `pip install -r tool\requirements.txt` (torch 2.13.0+cu126 comes from the cu126 index named inside that file);
+  - runs `install\bootstrap.ps1` (Section 2): Python 3.12 in `tools\python` unless `tool\.venv` exists, MinGit in `tools\git` when there is no `git.exe` on PATH, the Visual C++ runtime check, and the long-path check above. Python and MinGit are pinned by URL, size and SHA-256 in `install\components.json` (`tools`), and a download that doesn't match is deleted;
+  - clears `PYTHONPATH` and `PYTHONHOME` for its own run, so packages from elsewhere on the PC don't leak into the venvs;
+  - creates `tool\.venv` from `tools\python` if it is missing;
+  - runs `pip install -r tool\requirements.txt` (torch 2.13.0+cu126 comes from the cu126 index named inside that file) with `SAM2_BUILD_CUDA=0`: SAM-2's optional CUDA extension needs the CUDA toolkit and a C++ compiler;
   - creates `temp`, `logs`, `output`, `shots`, `models` and `external_loras\VideoGeneration`;
   - copies `tool\settings.example.yaml` to `tool\settings.yaml` unless that file exists;
   - writes the colour-grade LUT `bible\luts\cinematic_teal_amber.cube` with `tool\lutgen.py` unless it exists (post skips the grade without it);
   - copies `install\overlay\progress_relay.html`, the live-progress page, into the `comfyui_frontend_package\static\` folder of `tool\.venv` (see `install\overlay\README.md`);
   - runs `install\install_components.py`, which lists the parts (LTX-2.5, MiniMax H3, Qwen-Image 2.1, post-processing, SeedVR2, Z-Image Turbo, CyberRealistic XL, RealVisXL, the legacy Wan 2.2) and installs the ones you choose: Steps 3–6 for each part, and ffmpeg 9.0 into `tools\ffmpeg` when there is none on PATH. Enter alone installs LTX-2.5, Qwen-Image 2.1 and post-processing.
 
-  Every download is pinned in `install\components.json`: each ComfyUI release and node pack by git commit, each weight file by its source repositories, size and SHA-256. A weight that doesn't match is deleted and reported. Files that already exist are never overwritten, so the files git tracks inside the ComfyUI trees stay as they are, and a re-run skips finished steps. MiniMax H3 and RealVisXL weights are never downloaded; the installer lists them with the full path each one goes to (Step 6).
+  Every download is pinned in `install\components.json`: each ComfyUI release and node pack by git commit, each weight file by its source repositories, size and SHA-256, and ffmpeg by size and SHA-256. A weight that doesn't match is deleted and reported. Files that already exist are never overwritten, so the files git tracks inside the ComfyUI trees stay as they are, and a re-run skips finished steps. A venv that pip did not finish (the run stopped part-way: the `.kinoloom-incomplete` marker is still in it, a package lacks its `RECORD`, or a pin of its list is not installed) is deleted and built again from its pinned list; `tool\.venv` gets the same marker from mode [1]. MiniMax H3 and RealVisXL weights are never downloaded; the installer lists them with the full path each one goes to (Step 6).
 - **[3] Add parts to an installed studio, or check what is installed.** It runs the same `install\install_components.py` with the existing `tool\.venv`. On the command line: `--list`, `--components ltx25,h3`, `--components all --dry-run`, `--check` (read-only), `--h3-dir <folder>` (Step 7), `--skip-models`.
 - **[2] Mirror a golden tree** from a path or share. It uses `robocopy /E`, which never deletes anything; re-run it to resume. It skips folders named `temp`, `output`, `logs`, `__pycache__`. This brings the ComfyUI trees, venvs and models too, and also `tool\settings.yaml` with its API and fleet tokens. Delete those two values to have new ones generated on the next start. A venv records the absolute path of the Python it was made from (`pyvenv.cfg`, `home =`). If that Python is not at the same path on the new PC, recreate the venv with the commands in Steps 2, 4 and 5.
 
@@ -125,15 +132,20 @@ The manual equivalent of mode [1], up to the parts menu, is:
 
 ```cmd
 cd /d "%AIS%"
-py -3.12 -m venv tool\.venv
+set PYTHONPATH=
+set PYTHONHOME=
+powershell -NoProfile -ExecutionPolicy Bypass -File install\bootstrap.ps1
+if exist tools\git\cmd\git.exe set "PATH=%AIS%\tools\git\cmd;%PATH%"
+tools\python\python.exe -m venv tool\.venv
 tool\.venv\Scripts\python.exe -m pip install --upgrade pip
+set SAM2_BUILD_CUDA=0
 tool\.venv\Scripts\python.exe -m pip install -r tool\requirements.txt
 if not exist tool\settings.yaml copy tool\settings.example.yaml tool\settings.yaml
 tool\.venv\Scripts\python.exe tool\lutgen.py
 copy /y install\overlay\progress_relay.html tool\.venv\Lib\site-packages\comfyui_frontend_package\static\
 ```
 
-`install\requirements-frozen\tool-venv.txt` is a snapshot of the golden `tool\.venv`. It differs from `tool\requirements.txt` in a few entries (wheel, dill, the torchaudio local tag). The installer uses `tool\requirements.txt`.
+`install\requirements-frozen\tool-venv.txt` is a snapshot of the golden `tool\.venv`. It differs from `tool\requirements.txt` in a few entries (wheel, dill, the torchaudio local tag, and einops: 0.7.0 in the snapshot, 0.8.2 in `tool\requirements.txt`, because rotary-embedding-torch 0.9.1 needs einops 0.8 or newer and pip refuses the pair on a fresh install). The installer uses `tool\requirements.txt`.
 
 ### Step 3: Render farm, `ComfyUI\` (port 8188)
 
@@ -196,7 +208,7 @@ robocopy "%TEMP%\mmh3" ComfyUI_LTX\custom_nodes\Comfyui_Minimax_h3_latent_Upscal
 
 ```cmd
 cd /d "%AIS%\ComfyUI_LTX"
-py -3.12 -m venv venv
+..\tools\python\python.exe -m venv venv
 venv\Scripts\python.exe -m pip install --upgrade pip
 venv\Scripts\python.exe -m pip install -r ..\install\requirements-frozen\ltx-venv.txt --extra-index-url https://download.pytorch.org/whl/cu130
 copy /y ..\install\overlay\progress_relay.html venv\Lib\site-packages\comfyui_frontend_package\static\
@@ -232,7 +244,7 @@ The installer does this step for the Qwen-Image 2.1 part. By hand: these files a
 
   ```cmd
   cd /d "%AIS%\ComfyUI_Qwen21"
-  py -3.12 -m venv venv
+  ..\tools\python\python.exe -m venv venv
   venv\Scripts\python.exe -m pip install --upgrade pip
   venv\Scripts\python.exe -m pip install -r ..\install\requirements-frozen\qwen21-venv.txt --extra-index-url https://download.pytorch.org/whl/cu126
   ```
@@ -244,7 +256,7 @@ The installer does this step for the Qwen-Image 2.1 part. By hand: these files a
 **The installer downloads the weights of the parts you choose** (Step 2): 29 files in `install\components.json`, each with its source repositories (the first one, then digest-identical mirrors), its size and its SHA-256. It downloads into `models\<folder>\` (post-processing files into `ComfyUI\`), checks each file and deletes one that doesn't match. The face detector's ONNX file has no public copy: the installer exports it from `face_yolov8m.pt` with Ultralytics, on the CPU, and checks its input and output shapes. To fetch the weights again, delete the file and re-run mode [3].
 
 - Several sources are community uploads and quantisations, not the model authors' own repositories (for example the W4A8 LTX-2.5 transformer and text encoder). The installer prints each part's licences before it downloads. Read each model card and licence ([THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md), section 3).
-- **MiniMax H3 is never downloaded.** The MiniMax H3 Community License grants use only outside the EU, the UK, South Korea and the USA. Where it allows you to use H3, get the ten files yourself (the [README](../../README.md#4-minimax-h3-bring-your-own-weights) and the installer list where each one is published) and put them in the folders below, or in a folder of your own with the same subfolders, which `--h3-dir <folder>` registers (Step 7). The installer then checks their sizes. The studio runs without H3: its default model is LTX-2.5.
+- **MiniMax H3 is never downloaded.** The MiniMax H3 Community License grants use only outside the EU, the UK, South Korea and the USA. Where it allows you to use H3, get the ten files yourself (the [README](../../README.md#5-minimax-h3-bring-your-own-weights) and the installer list where each one is published) and put them in the folders below, or in a folder of your own with the same subfolders, which `--h3-dir <folder>` registers (Step 7). The installer then checks their sizes. The studio runs without H3: its default model is LTX-2.5.
 - **RealVisXL is not downloaded either.** The four RealVisXL files the studio was tested with have no public copy to check against, so the installer lists them and leaves them to you. Without RealVisXL, keyframe stills use the first installed of Qwen-Image 2.1, Z-Image Turbo and CyberRealistic XL.
 - The videolab downloader is the older way to get the LTX-2.5 and Qwen-Image 2.1 files, from the same manifest the installer's entries come from: `set "VIDEOLAB_MODELS_DIR=%AIS%\models"`, then `tool\.venv\Scripts\python.exe videolab\videolab.py download --profile full --dry-run`, and again without `--dry-run`. Its `full` profile is about 65.5 GB by the manifest's sizes and doesn't cover the image models, the Qwen 8-step LoRA, Wan 2.2 or post-processing.
 
@@ -318,15 +330,16 @@ tool\.venv\Scripts\python.exe install\verify_install.py
 
 ## 4. Starting the studio
 
-Double-click `start.bat` in the studio root. It runs `tool\launcher.py` with `tools\python\python.exe` if present, else `tool\.venv\Scripts\python.exe`, else `python`.
+Double-click `start.bat` in the studio root. When `tool\.venv` is missing, it says Kinoloom is not installed and offers to run `INSTALL.bat`. Otherwise it runs `tool\launcher.py` with `tools\python\python.exe` if present, else `tool\.venv\Scripts\python.exe`.
 
 What happens on start:
 
-1. **Relative paths**: `start.bat` changes to its own folder (`%~dp0`). Nothing is written to the registry, and no fixed drive letter is needed.
+1. **Relative paths**: `start.bat` changes to its own folder (`%~dp0`). Nothing is written to the registry, and no fixed drive letter is needed. The launcher reads `tool\settings.yaml` with the base Python's PyYAML, or with the one in `tool\.venv` when the base Python has none (as on a new install), so the base Python needs no packages of its own.
 2. **Settings**: if `tool\settings.yaml` does not exist, the control room copies `tool\settings.example.yaml` to it (`tool/core.py` `load_config`). It also generates `workers.shared_token` when that is empty or still the placeholder, and `security.api_token` when `ui.host` is not a loopback address (an address only this PC can reach). It saves both (`tool/security.py` `ensure_secrets`).
 3. **Databases**: `tool\studio.db`, `tool\queue.db` and `tool\datasets.db` and their tables are created when missing (`CREATE TABLE IF NOT EXISTS`).
-4. **Components**: render farm (8188), control room (8080), LTX-2.5 (8189), MiniMax H3 (8199), Qwen-Image 2.1 (8190). Logs go to `logs\` (`comfyui_8188.log`, `ui.log`, `ltx_8189.log`, `h3_8199.log`, `qwen_8190.log`). LTX/H3/Qwen are skipped with a message when their venv is missing. A component that crashes three times in a row within 45 s of starting is not restarted again.
-5. **Shutdown**: children are assigned to a Windows Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, so closing the window or pressing `Ctrl+C` ends them. The port-conflict and shutdown sweeps only kill processes whose command line is one of the studio's own components (`launcher.is_studio_cmd`).
+4. **Components**: render farm (8188), control room (8080), LTX-2.5 (8189), MiniMax H3 (8199), Qwen-Image 2.1 (8190). Logs go to `logs\` (`comfyui_8188.log`, `ui.log`, `ltx_8189.log`, `h3_8199.log`, `qwen_8190.log`). A component whose ComfyUI tree or venv is missing is skipped with a message. A component that crashes three times in a row within 45 s of starting is not restarted again.
+5. **Ready**: the launcher polls the control room's `/api/health` for up to 300 s. When it answers, the window title shows the web app's address, a "Kinoloom is ready" banner prints it below the startup logs (with the components that were not installed, and a hint when no model weights are found), and the default browser opens it. `ui.open_browser: false` or `start.bat --no-browser` keeps the browser closed. With `ui.host: 0.0.0.0` the address is `http://127.0.0.1:<port>/`.
+6. **Shutdown**: children are assigned to a Windows Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, so closing the window or pressing `Ctrl+C` ends them. The port-conflict and shutdown sweeps only kill processes whose command line is one of the studio's own components (`launcher.is_studio_cmd`).
 
 ---
 

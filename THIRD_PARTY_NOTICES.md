@@ -20,8 +20,11 @@ The three modified files in the ComfyUI trees start with a header that names whe
 
 ## 2. Software the studio runs, but this repository does not include
 
-The installer (`install/install_components.py`) downloads these from their own repositories, or you install them yourself ([RESTORE_INSTRUCTIONS.md](docs/setup/RESTORE_INSTRUCTIONS.md)). Each one has its own license:
+The installers (`INSTALL.bat` with `install/bootstrap.ps1`, and `install/install_components.py`) download these from their own publishers, or you install them yourself ([RESTORE_INSTRUCTIONS.md](docs/setup/RESTORE_INSTRUCTIONS.md)). Each one has its own license:
 
+- **Python 3.12** (a [python-build-standalone](https://github.com/astral-sh/python-build-standalone) build, in `tools/python`): the Python Software Foundation License. `tools/python/LICENSE.txt` also holds the licenses of the bzip2 and Tcl/Tk code it ships. The other libraries in its `DLLs` folder come under their own licenses: OpenSSL (Apache-2.0), libffi (MIT), SQLite (public domain) and zlib (zlib License).
+- **Git** ([MinGit](https://github.com/git-for-windows/git), in `tools/git`, only when there is no `git.exe` on the PATH): GPL-2.0, text in `tools/git/LICENSE.txt`.
+- **Microsoft Visual C++ Redistributable** (from Microsoft, only when the runtime is missing or older than 14.40): Microsoft's license terms for the redistributable.
 - **ComfyUI** (all three trees): GPL-3.0.
 - **ComfyUI node packs** on the development machine: ComfyUI-Impact-Pack, ComfyUI-KJNodes, ComfyUI-Manager, ComfyUI-MultiGPU, ComfyUI-VideoHelperSuite, ComfyUI_CFGStar and ComfyUI_IPAdapter_plus are GPL-3.0; ComfyUI-GGUF, ComfyUI-SeedVR2_VideoUpscaler and ComfyUI-WanVideoWrapper are Apache-2.0; ComfyUI-Florence2 and ComfyUI-Frame-Interpolation are MIT; ComfyUI-LTX2.5-MSR is Apache-2.0 (its `pyproject.toml`; the LICENSE file is in the videolab copy). ComfyUI-PuLID ships no license file in the copy on the development machine; check its repository.
 - **Python packages** in `tool/requirements.txt` and `install/requirements-frozen/`, **FFmpeg**, and **ai-toolkit** for LoRA training: see each project.

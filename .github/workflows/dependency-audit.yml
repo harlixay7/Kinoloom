@@ -2,8 +2,9 @@ name: Dependency audit
 
 # Checks every pinned package list against the public advisory databases
 # (pip-audit: PyPI and OSV), so a pin with a known vulnerability fails here
-# before it reaches main. It runs when a list changes and once a week, because
-# a new advisory can land on a pin that has not changed.
+# before it reaches main, and checks that the lists the installer uses still
+# install as a whole on Windows. It runs when a list changes and once a week,
+# because a new advisory can land on a pin that has not changed.
 on:
   push:
     branches: [ main ]
@@ -60,4 +61,40 @@ jobs:
             pip-audit --no-deps --disable-pip --progress-spinner off -r "$f" || status=1
             echo "::endgroup::"
           done
+          exit $status
+
+  resolve:
+    # pip-audit above reads each pin on its own. A pin that clashes with another
+    # package's requirements (einops 0.7.0 under rotary-embedding-torch 0.9.1
+    # did) stops pip on a new PC before it installs anything, so resolve the
+    # lists INSTALL.bat installs, with the indexes install/components.json gives.
+    runs-on: windows-latest
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v5
+
+      - name: "Set up Python 3.12"
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: "Resolve the pinned lists (pip install --dry-run)"
+        shell: pwsh
+        env:
+          SAM2_BUILD_CUDA: "0"
+        run: |
+          python -m pip install --upgrade pip
+          $lists = @(
+            @{ file = "tool/requirements.txt"; index = $null },
+            @{ file = "install/requirements-frozen/ltx-venv.txt"; index = "https://download.pytorch.org/whl/cu130" },
+            @{ file = "install/requirements-frozen/qwen21-venv.txt"; index = "https://download.pytorch.org/whl/cu126" }
+          )
+          $status = 0
+          foreach ($l in $lists) {
+            Write-Host "::group::$($l.file)"
+            $extra = if ($l.index) { @("--extra-index-url", $l.index) } else { @() }
+            python -m pip install --dry-run --ignore-installed --quiet @extra -r $l.file
+            if ($LASTEXITCODE -ne 0) { $status = 1 }
+            Write-Host "::endgroup::"
+          }
           exit $status

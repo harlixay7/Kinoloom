@@ -42,7 +42,7 @@ cycler==0.12.1
 ddt==1.7.2
 diffusers==0.38.0
 docutils==0.23
-einops==0.7.0
+einops==0.8.2
 facexlib==0.3.0
 fastapi==0.141.1
 filelock==4.2.4

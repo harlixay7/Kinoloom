@@ -43,7 +43,7 @@ To see what it makes, start with the [showcase](#showcase). To try it on a simil
 
 Every video and still here was rendered on the RTX 3070 8 GB described under [Can I run it?](#can-i-run-it). Each video is a 1080p take from the seamless-chain engine, with its own sound, re-encoded at 1280x726 to keep the repository small; the previews are GIFs, and clicking one downloads its mp4. Nothing was retouched. There was some selection: one take (the letter) was re-prompted and one (a greenhouse scene) was dropped, and [SHOWCASE.md](docs/SHOWCASE.md) §14 lists every choice. How each sample was made, how long every step took, the QA numbers and what is wrong with each one: **[SHOWCASE.md](docs/SHOWCASE.md)**.
 
-> **MiniMax H3 is supported, but not shown here.** The studio has all 11 H3 tiers, with cast references and seamless chains, and the installer sets up everything H3 needs except its weights, which you bring yourself ([MiniMax H3: bring your own weights](#4-minimax-h3-bring-your-own-weights)). The clips are missing because of the licence. The [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) grants use of the model only outside the European Union, the United Kingdom, South Korea and the United States, and its §V.4 applies the same limit to displaying the model's outputs. I live in the EU, so my H3 renders are not published. Three H3 samples were rendered for this page: the same cliff walk, a kitchen scene with two speaking parts, and a 27-second, 4-link take on a forest road. Their timings and QA results are in [SHOWCASE.md](docs/SHOWCASE.md) as text, and the requests that made them are in [docs/showcase/inputs/](docs/showcase/inputs/).
+> **MiniMax H3 is supported, but not shown here.** The studio has all 11 H3 tiers, with cast references and seamless chains, and the installer sets up everything H3 needs except its weights, which you bring yourself ([MiniMax H3: bring your own weights](#5-minimax-h3-bring-your-own-weights)). The clips are missing because of the licence. The [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) grants use of the model only outside the European Union, the United Kingdom, South Korea and the United States, and its §V.4 applies the same limit to displaying the model's outputs. I live in the EU, so my H3 renders are not published. Three H3 samples were rendered for this page: the same cliff walk, a kitchen scene with two speaking parts, and a 27-second, 4-link take on a forest road. Their timings and QA results are in [SHOWCASE.md](docs/SHOWCASE.md) as text, and the requests that made them are in [docs/showcase/inputs/](docs/showcase/inputs/).
 
 ### 1. Long takes joined inside the model
 
@@ -177,7 +177,7 @@ Kinoloom has been tested on one machine, so the right-hand column is a reasoned 
 | **CPU** | Intel Core i9-10980XE (18 cores / 36 threads) | Qwen-Image 2.1 text encoding and InsightFace QA run on the CPU. The launcher sets `OMP_NUM_THREADS` for the render farm to the CPU's thread count (36 here). |
 | **PCIe** | 3.0 x16 | Weight streaming under DynamicVRAM crosses this bus. |
 | **OS** | Windows 11 Pro | The launcher uses Win32 APIs (Job Objects, console control handler). The studio itself is Windows-only; the worker agent and CI also run on Linux. |
-| **Python** | 3.12, 64-bit (embedded `tools/python` is 3.12.10) | The installer accepts only 3.12 (`install/INSTALL-MAIN.bat`), and the pinned scipy 1.18.0 needs at least 3.12. |
+| **Python** | 3.12, 64-bit (embedded `tools/python` is 3.12.10) | Nothing to install: `INSTALL.bat` puts its own Python 3.12 (3.12.15) in `tools\python`. Every runtime is 3.12; the pinned scipy 1.18.0 needs at least 3.12. |
 
 Other GPUs (the RTX 3060 12 GB and the RTX 40 series among them) and other memory setups have not been benchmarked.
 
@@ -189,63 +189,69 @@ If you run it on other hardware, a report helps a lot: see [Help test more hardw
 
 ## Quick start
 
-The model weights are not in this repository, and neither are the three ComfyUI trees' upstream files or their Python environments. The installer sets them up. You choose which parts you want: LTX-2.5, MiniMax H3, the image models, post-processing, each on its own. For every part it installs the ComfyUI tree it runs on, that tree's node packs and Python environment, and the part's weights.
+The model weights are not in this repository, and neither are the three ComfyUI trees' upstream files or their Python environments. `INSTALL.bat` installs everything except the weights. Then you choose the models you want: LTX-2.5, MiniMax H3, the image models, post-processing, each on its own.
 
-**Before you start** you need Windows, [Python 3.12 64-bit](https://www.python.org/downloads/) (`winget install -e --id Python.Python.3.12`), [Git for Windows](https://git-scm.com/) (`winget install -e --id Git.Git`) and an NVIDIA driver: R580 or newer for LTX-2.5 and MiniMax H3, R560 or newer for the rest. You also need disk space for the parts you pick (sizes below).
+**You need** 64-bit (x64) Windows 11, or Windows 10 version 1803 or later (untested), an NVIDIA driver (R580 or newer for LTX-2.5 and MiniMax H3, R560 or newer for the rest) and an internet connection. You don't need to install Python or Git first: the installer brings its own.
 
-### 1. Clone
+### 1. Get Kinoloom
 ```cmd
 git clone https://github.com/harlixay7/Kinoloom.git C:\Kinoloom
-cd /d C:\Kinoloom
+```
+Without Git, use **Code → Download ZIP** on this page, unpack it, and move the `Kinoloom-main` folder to `C:\Kinoloom`.
+
+Keep the folder path short, like `C:\Kinoloom`. In a full install the deepest file inside a venv sits 211 characters below the studio folder, and Windows stops at 260 characters unless [long paths are enabled](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation). With a folder path longer than about 45 characters and long paths off, `pip install` fails partway, so in that case the installer offers to turn long paths on (Windows asks for administrator rights); if you'd rather not, move the folder somewhere short and start again.
+
+### 2. Install
+Double-click `INSTALL.bat` in that folder and press a key. (If you downloaded the ZIP, Windows may first ask whether to run a file from the internet.) It installs everything except the model weights. It stops to ask only for the two steps that need administrator rights, installing the Visual C++ runtime and turning on long paths for a long folder path (step 1), and at the end it asks whether to start Kinoloom:
+
+- **Python 3.12 for Kinoloom alone**, in `tools\python`: 3.12.15 from [python-build-standalone](https://github.com/astral-sh/python-build-standalone), because python.org has no Windows build of 3.12 after 3.12.10. It doesn't use or change a Python you installed yourself.
+- **Git** ([MinGit](https://github.com/git-for-windows/git/releases)) in `tools\git`, if there is no `git.exe` on your PATH. pip needs it for two packages that install from git.
+- **The Microsoft Visual C++ runtime** that torch needs. If it is missing or older than 14.40, the installer asks before it installs the current one from Microsoft. This and turning on long paths (step 1) are the only steps that need administrator rights and, apart from pip's download cache (below), the only changes outside the Kinoloom folder.
+- **The web app**: `tool\.venv` from `tool\requirements.txt` (torch from the CUDA 12.6 index), the studio's folders, and `tool\settings.yaml`, a copy of `tool\settings.example.yaml`.
+- **The render engines**: the three ComfyUI trees at their pinned releases (`ComfyUI\` v0.30.0, `ComfyUI_LTX\` v0.36.0, `ComfyUI_Qwen21\` v0.37.4) without overwriting the files git tracks there, every node pack at a pinned commit, the Python environments of the LTX-2.5/H3 and Qwen-Image trees from the frozen lists in `install\requirements-frozen\`, and ffmpeg 9.0 in `tools\ffmpeg\` if none is on your PATH.
+
+Python, Git and ffmpeg are pinned in `install\components.json` by size and SHA-256, and a file that doesn't match is deleted, never used. ComfyUI and its node packs are pinned to git commits, and the Python packages to exact versions. The Visual C++ installer runs only with a valid Microsoft signature. The install downloads about 9 GB, uses about 17 GB of disk before any weights, and takes roughly 15 to 45 minutes, depending on your internet connection and your PC. pip also keeps a copy of what it downloads (most of those 9 GB) in `%LOCALAPPDATA%\pip\Cache`; you can delete that folder once the install has finished. While it runs, each of its 5 steps prints its number and the time it started, the window title shows the step (and, in the last one, which item of the list), and steps of half a minute or more say how long they took. pip's progress bars can stand still for a few minutes while a big package unpacks; that is normal. If the install stops, run it again: finished steps are skipped. (`start.bat` also offers to run `INSTALL.bat` when Kinoloom isn't installed yet.)
+
+### 3. Start the studio
+Double-click `start.bat`. It starts the web app and the four ComfyUI instances in one console window and tails their logs (`logs\*.log`). As soon as the web app answers, it opens in your browser, and its address stays in the window's title bar and in a banner under the startup logs:
+
+```
+   Kinoloom is ready:  http://127.0.0.1:8080/
 ```
 
-Keep the folder path short, like `C:\Kinoloom`. In a full install the deepest file inside a venv sits 211 characters below the studio folder, and Windows stops at 260 characters unless [long paths are enabled](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation). With a folder path longer than about 45 characters, `pip install` can fail partway.
+Keep the window open: closing it, or Ctrl+C, stops everything. To keep the browser from opening, set `ui.open_browser: false` in `tool\settings.yaml`, or start with `start.bat --no-browser`. The web app has two entry points:
 
-### 2. Run the installer and choose your parts
+- **Project:** [http://127.0.0.1:8080/](http://127.0.0.1:8080/) (also `/project`)
+- **Studio tools:** [http://127.0.0.1:8080/studio-tools](http://127.0.0.1:8080/studio-tools)
+
+Without weights, the web app opens and lists every model as not installed, and the banner says where to get them (step 4). The control room creates its SQLite databases (`tool/studio.db`, `tool/queue.db`, `tool/datasets.db`) on first use.
+
+### 4. Get the model weights
 ```cmd
 install\INSTALL-MAIN.bat
 ```
-Choose mode **[1]**. It sets up the control room first: it finds Python 3.12, creates `tool\.venv` from `tool\requirements.txt` (torch from the CUDA 12.6 index), creates the studio's folders and copies `tool\settings.example.yaml` to `tool\settings.yaml`. Then it lists the parts and asks which ones to install:
+Choose mode **[3]** and press Enter to keep the studio folder. It lists the parts and asks which ones to install:
 
 | # | Part (id) | Downloads | What it installs |
 | :---: | :--- | ---: | :--- |
 | 1 * | LTX-2.5 video (`ltx25`) | 28.8 GB | The default video model: every LTX-2.5 tier, cast references, seamless chains, sound. |
-| 2 | MiniMax H3 video (`h3`) | none: you bring 10 files (63.2 GB) | All 11 H3 tiers and the H3 seamless chains. It installs the runtime and checks your files; the weights are not downloaded (see [step 4](#4-minimax-h3-bring-your-own-weights)). |
+| 2 | MiniMax H3 video (`h3`) | none: you bring 10 files (63.2 GB) | All 11 H3 tiers and the H3 seamless chains. It installs the runtime and checks your files; the weights are not downloaded (see [step 5](#5-minimax-h3-bring-your-own-weights)). |
 | 3 * | Qwen-Image 2.1 images (`qwen21`) | 15.4 GB | Cast portraits and opening frames: quality and fast (8-step) modes, reference images, a 2K upscale. |
 | 4 * | Post-processing (`post`) | 0.1 GB | Frame interpolation (RIFE), 4x upscale (Real-ESRGAN), and the face detector that cast import, dataset curation and the face fix use (the face fix also needs Wan 2.2). |
 | 5 | SeedVR2 video upscaler (`seedvr2`) | 4.2 GB | The optional SeedVR2 3B upscale for post (`tiers.upscale: seedvr2`). Slower than Real-ESRGAN; off by default. |
 | 6 | Z-Image Turbo images (`zimage`) | 13.4 GB | A fast 8-step image model (no reference images, no LoRAs). |
 | 7 | CyberRealistic XL images (`cyberrealistic`) | 10.3 GB | A native SDXL checkpoint with LoRAs and reference images (IP-Adapter). |
-| 8 | RealVisXL V5 images (`realvis`) | 3.4 GB, and you bring 4 files | The runtime, IP-Adapter and the hires upscaler; the four RealVisXL files are not downloaded (see [step 5](#5-realvisxl-bring-your-own-weights)). |
+| 8 | RealVisXL V5 images (`realvis`) | 3.4 GB, and you bring 4 files | The runtime, IP-Adapter and the hires upscaler; the four RealVisXL files are not downloaded (see [step 6](#6-realvisxl-bring-your-own-weights)). |
 | 9 | Wan 2.2 video, legacy (`wan22`) | 8.8 GB | The first video model, kept for old projects, the post face fix and the V2V refine. Not recommended for new work. |
 
-Type the numbers or ids you want, separated by commas (`1,2,3,4`). **Enter alone installs the three marked \* (LTX-2.5, Qwen-Image 2.1 and post-processing)**, and `all` installs everything. GB here is 10⁹ bytes, and a file that two parts share is counted in both. The LTX-2.5/H3 and Qwen-Image trees each also get a Python environment: about 4.2 and 5.5 GB on the tested machine.
+Type the numbers or ids you want, separated by commas (`1,2,3,4`). **Enter alone installs the three marked \* (LTX-2.5, Qwen-Image 2.1 and post-processing)**, and `all` installs everything. GB here is 10⁹ bytes, and a file that two parts share is counted in both. The sizes are the weights only; the Python environments `INSTALL.bat` built for the LTX-2.5/H3 and Qwen-Image trees took another 4.4 and 5.7 GB in a fresh install.
 
-Before it changes anything, the installer shows the plan, the free disk space and the licence of every model in it, and asks you to confirm. Then, for each part, it:
+Before it changes anything, the installer shows the plan, the free disk space and the licence of every model in it, and asks you to confirm. Then it downloads the weights from Hugging Face (Real-ESRGAN and RIFE from GitHub), checks each file's size and SHA-256 against `install\components.json`, and deletes and reports a file that doesn't match. On a studio that `INSTALL.bat` did not set up, it first installs each part's ComfyUI tree, node packs and Python environment, as `INSTALL.bat` does.
 
-- copies the pinned ComfyUI release into the part's tree (`ComfyUI\` v0.30.0, `ComfyUI_LTX\` v0.36.0 or `ComfyUI_Qwen21\` v0.37.4) without overwriting the files git tracks there;
-- adds the node packs it needs, each at a pinned commit;
-- builds the tree's venv from the frozen package list in `install\requirements-frozen\`;
-- downloads the weights from Hugging Face (Real-ESRGAN and RIFE from GitHub), checks each file's size and SHA-256 against `install\components.json`, and deletes and reports a file that doesn't match;
-- downloads ffmpeg 9.0 into `tools\ffmpeg\` if none is on your PATH.
+The downloads are big: LTX-2.5 alone is 28.8 GB. If a step fails, or you stop the installer, run it again: finished steps are skipped, and the studio starts with whatever is installed. The launcher skips a ComfyUI instance whose tree or venv is missing, and the web app lists a model as not installed until its files are there.
 
-The downloads are big: LTX-2.5 alone is 28.8 GB. If a step fails, or you stop the installer, run it again: finished steps are skipped, and the studio starts with whatever is installed. The launcher skips a ComfyUI instance whose tree or venv is missing, and lists a model as not installed until its files are there.
-
-### 3. Where everything goes
-The installer prints the full path of every file it installs. With the clone at `C:\Kinoloom`:
-
-| What | Where |
-| :--- | :--- |
-| Model weights | `C:\Kinoloom\models\<folder>\`, for example `models\diffusion_models\`, `models\text_encoders\`, `models\vae\`, `models\loras\` ([the full tree](#model-files)) |
-| Post-processing models | inside `C:\Kinoloom\ComfyUI\`: RIFE in `custom_nodes\ComfyUI-Frame-Interpolation\ckpts\rife\`, the face detector in `models\ultralytics\bbox\` and `models\onnx\bbox\`, SeedVR2 in `models\SEEDVR2\` |
-| ComfyUI | `C:\Kinoloom\ComfyUI\` (render farm, runs on `tool\.venv`), `C:\Kinoloom\ComfyUI_LTX\` and `C:\Kinoloom\ComfyUI_Qwen21\`, each with its own `venv\` |
-| ffmpeg | `C:\Kinoloom\tools\ffmpeg\bin\` |
-| Settings | `C:\Kinoloom\tool\settings.yaml` |
-
-All three ComfyUI trees read their weights from `models\`. To keep weights on another drive, give that folder the same subfolders and list it in `paths.extra_model_dirs` in `tool\settings.yaml`.
-
-### 4. MiniMax H3: bring your own weights
-The studio supports MiniMax H3 alongside LTX-2.5, but the installer never downloads its weights. The [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) grants no use in the EU, the UK, South Korea or the USA, and the installer can't know where you are. Part 2 (`h3`) installs everything else H3 needs: the `ComfyUI_LTX` tree, its venv and node packs. Then:
+### 5. MiniMax H3: bring your own weights
+The studio supports MiniMax H3 alongside LTX-2.5, but the installer never downloads its weights. The [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) grants no use in the EU, the UK, South Korea or the USA, and the installer can't know where you are. `INSTALL.bat` installs everything else H3 needs: the `ComfyUI_LTX` tree, its venv and node packs (part 2, `h3`, does the same on a studio set up another way). Then:
 
 1. Read the licence, and check that it allows you to use H3 where you live.
 2. Download the files from where they are published. These are the builds the studio was tested with; the installer checks their sizes.
@@ -271,10 +277,23 @@ The studio supports MiniMax H3 alongside LTX-2.5, but the installer never downlo
 
 You don't need all ten: a tier is available as soon as the files it uses are there. The first three serve every tier. With them plus the Singularity DiT and the upscaler you have the two tiers the studio marks as recommended, Singularity 1080p (`minimax_h3_singularity32`) and its 544p draft. Several of these repositories are community quantisations of MiniMax H3; whatever licence their cards show, the MiniMax H3 Community License applies to the model.
 
-### 5. RealVisXL: bring your own weights
-RealVisXL V5 is an optional SDXL image model, and the default model for keyframe stills. The four RealVisXL files the studio was tested with have no public copy to check against, so part 8 installs everything around it (the render farm, IP-Adapter, the hires upscaler) but not the files themselves: `models\diffusion_models\RealVisXL_V5.0-Q5_K_M.gguf` (a Q5_K_M GGUF of the [RealVisXL V5](https://huggingface.co/SG161222/RealVisXL_V5.0) UNet), `models\clip\clip_l.safetensors` and `models\clip\clip_g.safetensors` (the SDXL text encoders) and `models\vae\xlVAEC_c91.safetensors` (an SDXL VAE). Without them, keyframes use the first installed of Qwen-Image 2.1, Z-Image Turbo and CyberRealistic XL instead.
+### 6. RealVisXL: bring your own weights
+RealVisXL V5 is an optional SDXL image model, and the default model for keyframe stills. The four RealVisXL files the studio was tested with have no public copy to check against, so the installer sets up everything around it (the render farm; part 8 adds IP-Adapter and the hires upscaler) but not the files themselves: `models\diffusion_models\RealVisXL_V5.0-Q5_K_M.gguf` (a Q5_K_M GGUF of the [RealVisXL V5](https://huggingface.co/SG161222/RealVisXL_V5.0) UNet), `models\clip\clip_l.safetensors` and `models\clip\clip_g.safetensors` (the SDXL text encoders) and `models\vae\xlVAEC_c91.safetensors` (an SDXL VAE). Without them, keyframes use the first installed of Qwen-Image 2.1, Z-Image Turbo and CyberRealistic XL instead.
 
-### 6. Add parts later, or check what you have
+### 7. Where everything goes
+The installer prints the full path of every file it installs. With the clone at `C:\Kinoloom`:
+
+| What | Where |
+| :--- | :--- |
+| Model weights | `C:\Kinoloom\models\<folder>\`, for example `models\diffusion_models\`, `models\text_encoders\`, `models\vae\`, `models\loras\` ([the full tree](#model-files)) |
+| Post-processing models | inside `C:\Kinoloom\ComfyUI\`: RIFE in `custom_nodes\ComfyUI-Frame-Interpolation\ckpts\rife\`, the face detector in `models\ultralytics\bbox\` and `models\onnx\bbox\`, SeedVR2 in `models\SEEDVR2\` |
+| ComfyUI | `C:\Kinoloom\ComfyUI\` (render farm, runs on `tool\.venv`), `C:\Kinoloom\ComfyUI_LTX\` and `C:\Kinoloom\ComfyUI_Qwen21\`, each with its own `venv\` |
+| Python, Git, ffmpeg | `C:\Kinoloom\tools\python\`, `C:\Kinoloom\tools\git\` (only when there was no `git.exe` on the PATH), `C:\Kinoloom\tools\ffmpeg\bin\` (only when there was no ffmpeg on the PATH) |
+| Settings | `C:\Kinoloom\tool\settings.yaml` |
+
+All three ComfyUI trees read their weights from `models\`. To keep weights on another drive, give that folder the same subfolders and list it in `paths.extra_model_dirs` in `tool\settings.yaml`.
+
+### 8. Add parts later, or check what you have
 Run `install\INSTALL-MAIN.bat` again and choose mode **[3]**, or call the installer directly:
 ```cmd
 tool\.venv\Scripts\python install\install_components.py --list
@@ -284,20 +303,10 @@ tool\.venv\Scripts\python install\install_components.py --check
 ```
 `--check` changes nothing. It reports each part as installed, partly installed or not installed, lists every missing file with its full path, and ends with the video tiers and image models the studio can see.
 
-Mode **[2]** of `INSTALL-MAIN.bat` is the other way in: it mirrors a complete studio from another PC or a share with `robocopy /E` ([RESTORE_INSTRUCTIONS.md](docs/setup/RESTORE_INSTRUCTIONS.md) has the details, and the manual steps behind the installer).
+`INSTALL-MAIN.bat` has two more ways in. Mode **[1]** installs in two stages: the web app first, then only the parts you choose, with their weights. Mode **[2]** mirrors a complete studio from another PC or a share with `robocopy /E` ([RESTORE_INSTRUCTIONS.md](docs/setup/RESTORE_INSTRUCTIONS.md) has the details, and the manual steps behind the installer).
 
-### 7. Configure
+### 9. Configure
 Look through `tool/settings.yaml`: `paths.*` (including `paths.extra_model_dirs` for weights outside the tree), `ui.host`/`ui.port`, and `architect.*` for the Story Architect, which can use any OpenAI-compatible `/chat/completions` endpoint (the default `base_url` is a local Ollama at `http://127.0.0.1:11434/v1`). `ui.host: 127.0.0.1` keeps the studio on this PC. Read [SECURITY.md](SECURITY.md) before you set `0.0.0.0`.
-
-### 8. Start the studio
-```cmd
-start.bat
-```
-`start.bat` runs `tool\launcher.py` with `tools\python` (or `tool\.venv`, or `python` on PATH). The launcher starts the control room and the four ComfyUI instances in one console window, tails their logs (`logs\*.log`), and stops everything on Ctrl+C or when you close the window. The control room creates its SQLite databases (`tool/studio.db`, `tool/queue.db`, `tool/datasets.db`) on first use.
-
-### 9. Open the web app
-- **Project:** [http://127.0.0.1:8080/](http://127.0.0.1:8080/) (also `/project`)
-- **Studio tools:** [http://127.0.0.1:8080/studio-tools](http://127.0.0.1:8080/studio-tools)
 
 ---
 
@@ -511,7 +520,6 @@ The studio does not import anything from it. It is there for the manifest, and s
 - **Seamless chains are experimental.** Movie takes start their chains through the same code as Video Studio, which has rendered LTX-2.5 chains end to end on the GPU in landscape (3 links, 12.0 s at 1920x1088, in about 29 minutes) and portrait (2 links, 7.4 s at 1088x1920, in about 15 minutes); [SEAMLESS_CHAINS_04](docs/research/SEAMLESS_CHAINS_04_STUDIO_INTEGRATION.md) §6 has their records and seam QA. An H3 chain has not been started from Video Studio yet; the H3 engine has run through the lab harness that made the H3 showcase takes.
 - **One project renders at a time.** The orchestrator has a single global `project_filter`, so starting a project's render scopes the whole render loop to that project.
 - **The LAN worker installer sets up the render farm only.** `install/INSTALL-WORKER.bat` sets up the `ComfyUI/` farm (image, legacy Wan, post/upscale jobs). MiniMax H3 and LTX-2.5 graphs need the `ComfyUI_LTX` tree, which it does not install. When a worker reports its node classes, the control room refuses to send it a graph that needs nodes its ComfyUI lacks.
-- **The installer has been tested on one PC.** In a fresh clone, post-processing installed end to end: the render farm's ComfyUI, three node packs, ffmpeg, three weight files and the face detector's ONNX export. The LTX and Qwen-Image trees installed with their node packs and venvs, and all three ComfyUI copies started (on the CPU) and loaded their node packs. That test did not download the big weights, and no GPU render ran from that clone. Every download source in `install/components.json` was checked separately: each serves the pinned size, and each Hugging Face file the pinned SHA-256 (GitHub doesn't publish one; the installer hashes those after download). Weights you bring yourself are checked by size only (MiniMax H3), or only for being there (RealVisXL).
 - **Fleet authentication is one shared secret.** Every worker uses the same `workers.shared_token`, and anyone who holds it can register a worker. See [SECURITY.md](SECURITY.md).
 - **The full ruff style set is not clean yet.** CI enforces only the definite-bug subset (`E9,F63,F7,F82,F601`). The broader `E/F/W/B/I` selection in `pyproject.toml` still reports findings.
 
@@ -536,6 +544,7 @@ Everything else is in the **[docs map](docs/README.md)**.
 ## Repository layout
 
 ```
+INSTALL.bat            installs everything but the model weights (start.bat offers to run it)
 start.bat              starts everything: the launcher, the four ComfyUI instances, the web app
 tool/                  the control room (Python, FastAPI)
   routers/             the web API, one module per area

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import http.client
 import json
 import os
 import signal
@@ -24,12 +25,19 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
+import webbrowser
 from ctypes import wintypes
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE_PY = (ROOT / "tools" / "python" / "python.exe") if (ROOT / "tools" / "python" / "python.exe").exists() else Path(sys.executable)
 VENV_SITE = ROOT / "tool" / ".venv" / "Lib" / "site-packages"
+# start.bat runs this on the base Python, which a new install keeps bare: read
+# settings.yaml with the studio venv's PyYAML, the packages the children get
+# through PYTHONPATH (_base_env). Appended, so the base's own packages win.
+if VENV_SITE.is_dir() and str(VENV_SITE) not in sys.path:
+    sys.path.append(str(VENV_SITE))
 LOG_DIR = ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -58,6 +66,8 @@ QWEN_PY = ROOT / "ComfyUI_Qwen21" / "venv" / "Scripts" / "python.exe"
 COMFY_PORTS = (COMFY_PORT, LTX_PORT, H3_PORT, QWEN_PORT)
 RESTART_CAP = 3          # consecutive fast crashes before giving up
 RESTART_WINDOW_S = 45    # a crash is "fast" if it dies within this window
+READY_TIMEOUT_S = 300    # how long to wait for the web app before saying so
+WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".pth", ".ckpt")
 
 # Generated from settings paths.extra_model_dirs and passed to EVERY ComfyUI
 # instance, so the farms see exactly the model roots the studio's
@@ -131,6 +141,48 @@ def say(tag: str, color: str, line: str) -> None:
 def port_in_use(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def browser_url(host: str, port: int) -> str:
+    """The web app's address on this PC. A wildcard bind answers on loopback,
+    where the studio also skips the API token (security.local_bypass)."""
+    h = (host or "").strip()
+    if h in ("", "0.0.0.0", "::", "[::]"):
+        h = "127.0.0.1"
+    elif ":" in h and not h.startswith("["):
+        h = f"[{h}]"                        # an IPv6 address in a URL
+    return f"http://{h}:{port}/"
+
+
+def set_title(text: str) -> None:
+    """The console window's title stays in view however far the logs scroll."""
+    try:
+        ctypes.windll.kernel32.SetConsoleTitleW(text)
+    except (AttributeError, OSError):
+        pass
+
+
+def web_app_answers(url: str, timeout: float = 3.0) -> bool:
+    """Does the control room's unauthenticated /api/health answer?"""
+    # no proxy: a system-wide proxy must not stand between us and 127.0.0.1
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(url.rstrip("/") + "/api/health", timeout=timeout) as r:
+            return r.status == 200
+    except (OSError, ValueError, http.client.HTTPException):
+        return False
+
+
+def has_weights(dirs: list[Path]) -> bool:
+    """Is there a model weight file under any of these folders?"""
+    for d in dirs:
+        try:
+            for p in d.rglob("*"):
+                if p.suffix.lower() in WEIGHT_SUFFIXES and p.is_file():
+                    return True
+        except OSError:
+            continue
+    return False
 
 
 # ------------------------------------------------------------ job object
@@ -237,7 +289,8 @@ class JobKiller:
 
 # -------------------------------------------------------------- launcher
 class Launcher:
-    def __init__(self, host: str | None = None, port: int | None = None) -> None:
+    def __init__(self, host: str | None = None, port: int | None = None,
+                 open_browser: bool | None = None) -> None:
         self.job = JobKiller()
         self.procs: dict[str, subprocess.Popen] = {}
         self.stop = threading.Event()
@@ -247,6 +300,8 @@ class Launcher:
         self._shutting_down = False
         self.host = host
         self.port = port
+        self.open_browser = open_browser    # None = ui.open_browser
+        self.not_installed: list[str] = []  # components launch() skipped
 
     @staticmethod
     def _load_ui_settings() -> tuple[str, int]:
@@ -261,6 +316,13 @@ class Launcher:
         except (TypeError, ValueError):
             pass
         return host, port
+
+    @staticmethod
+    def _open_browser_setting() -> bool:
+        value = (_settings().get("ui") or {}).get("open_browser", True)
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() not in ("false", "no", "off", "0")
 
     def _resolve_host_port(self, host: str | None = None, port: int | None = None) -> tuple[str, int]:
         cfg_host, cfg_port = self._load_ui_settings()
@@ -449,17 +511,17 @@ class Launcher:
             # a clone has no ComfyUI trees until they are set up
             say(name, "yellow",
                 f"!! {script} not found — component not started "
-                f"(see docs/setup/RESTORE_INSTRUCTIONS.md section 3)")
+                "(INSTALL.bat installs it)")
+            if name not in self.not_installed:
+                self.not_installed.append(name)
             return
         if python is not None and not Path(python).exists():
-            # INSTALL-MAIN.bat builds only tool\.venv; the LTX/H3 and Qwen
-            # venvs are built by hand (docs/setup/RESTORE_INSTRUCTIONS.md section 3)
-            guide = ("docs/research/PROVEN_CONFIGS_QWEN21.md section 8 (Setup)"
-                     if name == "qwen-render"
-                     else "docs/setup/RESTORE_INSTRUCTIONS.md section 3, step 4")
+            # install/install_components.py builds the LTX/H3 and Qwen venvs
             say(name, "yellow",
                 f"!! venv not found: {python} — component not started "
-                f"(see {guide})")
+                "(INSTALL.bat installs it)")
+            if name not in self.not_installed:
+                self.not_installed.append(name)
             return
         self.spawn(name, args, logfile, env, cwd=cwd, python=python)
 
@@ -535,6 +597,47 @@ class Launcher:
         except Exception as e:  # noqa: BLE001
             say("warm", "yellow", f"warm-up failed to start: {e}")
 
+    def _announce_ready(self, url: str) -> None:
+        """Once the web app answers, show where it is where nobody misses it:
+        the window title, a banner below the startup logs, and the default
+        browser (ui.open_browser; --no-browser)."""
+        deadline = time.time() + READY_TIMEOUT_S
+        while not web_app_answers(url):
+            if self.stop.is_set():
+                return
+            if time.time() > deadline:
+                say("studio", "yellow", "!! the web app did not answer within "
+                                        f"{READY_TIMEOUT_S} s — see logs\\ui.log")
+                return
+            time.sleep(1)
+        if self.stop.is_set():
+            return
+        set_title(f"Kinoloom - open {url} - closing this window stops Kinoloom")
+        rule = f" {C['green']}{'━' * 66}{C['reset']}"
+        where = ("It opens in your browser." if self.open_browser
+                 else "Open it in your browser.")
+        lines = ["", rule,
+                 f"   {C['bold']}{C['green']}Kinoloom is ready:{C['reset']}  "
+                 f"{C['bold']}{url}{C['reset']}",
+                 f"   {where} Keep this window open: closing it stops Kinoloom."]
+        if self.not_installed:
+            lines.append(f"   {C['yellow']}Not installed, so not started: "
+                         f"{', '.join(self.not_installed)}. INSTALL.bat installs "
+                         f"them.{C['reset']}")
+        model_dirs = [ROOT / "models", *map(Path, extra_model_dirs())]
+        if not has_weights(model_dirs):
+            lines.append(f"   {C['yellow']}No model weights yet: "
+                         "install\\INSTALL-MAIN.bat, mode [3], downloads "
+                         f"them.{C['reset']}")
+        lines += [rule, ""]
+        print("\n".join(lines), flush=True)
+        if self.open_browser:
+            try:
+                webbrowser.open(url)
+            except Exception as e:  # noqa: BLE001 - no browser is not fatal
+                say("studio", "yellow", f"could not open a browser ({e}); "
+                                        f"open {url} yourself")
+
     def run(self, host: str | None = None, port: int | None = None) -> None:
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("--host", default=None)
@@ -547,8 +650,12 @@ class Launcher:
             port = cli_args.port
 
         host, port = self._resolve_host_port(host, port)
+        url = browser_url(host, port)
+        if self.open_browser is None:
+            self.open_browser = self._open_browser_setting()
 
         enable_vt()
+        set_title(f"Kinoloom - starting - {url}")
         conflicts = [(p, n) for p, n in ((COMFY_PORT, "render farm"),
                                          (port, "control room"),
                                          (LTX_PORT, "ltx render farm"),
@@ -576,8 +683,7 @@ class Launcher:
                     choice = "r"
                 if choice != "r":
                     say("studio", "green",
-                        "keeping the running instance — open "
-                        f"http://{host}:{port}")
+                        f"keeping the running instance — open {url}")
                     return
                 say("studio", "yellow",
                     "restarting: killing old instance (in-progress renders "
@@ -622,7 +728,7 @@ class Launcher:
  {C['magenta']}[ltx-render]{C['reset']}  LTX-2.5 farm (RTX 3070, isolated runtime)        → http://127.0.0.1:{LTX_PORT}
  {C['yellow']}[h3-render]{C['reset']}   MiniMax H3 farm (RTX 3070, isolated runtime)     → http://127.0.0.1:{H3_PORT}
  {C['cyan']}[qwen-render]{C['reset']} Qwen-Image-2.1 farm (RTX 3070, isolated runtime) → http://127.0.0.1:{QWEN_PORT}
- {C['green']}[control-room]{C['reset']} web UI                                          → http://{host}:{port}
+ {C['green']}[control-room]{C['reset']} web UI                                          → {url}
  {C['yellow']}Stop:{C['reset']} press {C['bold']}Ctrl+C{C['reset']} or close this window — everything shuts down.
  {C['dim']}──────────────────────────────────────────────────────────{C['reset']}""")
 
@@ -647,6 +753,8 @@ class Launcher:
         # and self-disables; closing this window kills ComfyUI, which releases
         # everything it cached.
         threading.Thread(target=self._warm_default_models,
+                         daemon=True).start()
+        threading.Thread(target=self._announce_ready, args=(url,),
                          daemon=True).start()
 
         while not self.stop.is_set():
@@ -711,9 +819,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Kinoloom launcher")
     parser.add_argument("--host", default=None, help="Host to bind control room web UI")
     parser.add_argument("--port", type=int, default=None, help="Port to bind control room web UI")
+    parser.add_argument("--no-browser", action="store_true",
+                        help="Don't open the web UI in the browser (ui.open_browser)")
     args, _ = parser.parse_known_args()
 
-    launcher = Launcher(host=args.host, port=args.port)
+    launcher = Launcher(host=args.host, port=args.port,
+                        open_browser=False if args.no_browser else None)
     global _HANDLER
 
     PHANDLER = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint32)
