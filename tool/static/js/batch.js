@@ -104,8 +104,10 @@
           '<label class="studio-field">Model' +
             '<select id="bf-model">' +
               (r.models || []).map(function (m) {
-                return '<option value="' + esc(m.id || "") + '">' +
-                  esc(m.name || m.id || "?") + "</option>";
+                return '<option value="' + esc(m.id || "") + '"' +
+                  (m.id && m.id === r.default_model ? " selected" : "") + (m.gpu ? " disabled" : "") +
+                  (m.gpu ? ' title="' + esc(m.gpu) + '"' : "") + ">" +
+                  esc(m.name || m.id || "?") + (m.gpu ? " (not on this graphics card)" : "") + "</option>";
               }).join("") +
             "</select></label>" +
           '<label class="studio-field">Count per shot' +
@@ -123,10 +125,12 @@
                   esc(w.name || w.id) + "</option>";
               }).join("") +
             "</select></label>" +
-          '<div class="studio-section-head">LoRAs <span class="muted small">up to 6</span></div>' +
-          '<div id="bf-loras">' + loraRow(null) + "</div>" +
-          '<button class="btn small" type="button" id="bf-lora-add" ' +
-            'data-tip="Add another LoRA (up to 6)">' + Icon.get("plus") + "Add a LoRA</button>" +
+          '<div id="bf-lora-box">' +
+            '<div class="studio-section-head">LoRAs <span class="muted small">up to 6</span></div>' +
+            '<div id="bf-loras">' + loraRow(null) + "</div>" +
+            '<button class="btn small" type="button" id="bf-lora-add" ' +
+              'data-tip="Add another LoRA (up to 6)">' + Icon.get("plus") + "Add a LoRA</button>" +
+          "</div>" +
           '<div class="studio-section-head">Advanced</div>' +
           '<div class="studio-row">' +
             '<label class="studio-field">Steps<input id="bf-steps" type="number" min="1" max="60" placeholder="auto"></label>' +
@@ -171,23 +175,26 @@
       wireLr(box.lastElementChild);
     };
 
-    /* hires availability follows the selected model's capability flags —
-       a model that cannot use it never shows it (server refuses otherwise) */
+    /* hires and LoRAs follow the selected model's capability flags — a
+       model that cannot use one never shows it (server refuses hires) */
     var modelSel = body.querySelector("#bf-model");
     var hiresChk = body.querySelector("#bf-hires");
-    function syncHires() {
+    var loraBox = body.querySelector("#bf-lora-box");
+    function syncCaps() {
       var mi = null;
       (curOpts.models || []).forEach(function (m) {
         if ((m.id || "") === modelSel.value) mi = m;
       });
-      var ok = !!(mi && mi.capabilities && mi.capabilities.hires);
+      var caps = (mi && mi.capabilities) || {};
+      var ok = !!caps.hires;
       hiresChk.disabled = !ok;
       if (!ok) hiresChk.checked = false;
       var lbl = hiresChk.closest("label");
       if (lbl) lbl.classList.toggle("hidden", !ok);
+      loraBox.classList.toggle("hidden", !caps.loras);
     }
-    modelSel.onchange = syncHires;
-    syncHires();
+    modelSel.onchange = syncCaps;
+    syncCaps();
 
     /* scene select-all + shot selection */
     body.querySelectorAll(".batch-scene").forEach(function (sc) {
@@ -237,7 +244,8 @@
                        strength: Number(lr.querySelector(".lr-str").value) || 0.7 });
         }
       });
-      config.loras = loras;
+      /* hidden LoRA rows (a model without LoRAs) are not sent */
+      config.loras = loraBox.classList.contains("hidden") ? [] : loras;
       var steps = body.querySelector("#bf-steps").value;
       if (steps !== "") config.steps = Number(steps);
       var cfg = body.querySelector("#bf-cfg").value;

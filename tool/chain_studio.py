@@ -438,14 +438,18 @@ def _qa_brief(res: dict) -> dict:
 def run_chain(rec: dict, entry: dict, client, prompts: list[str], *, negative: str, base_seed: int,
               frames: int, start_image: Path | None, cast: list[dict], draft_only: bool = False,
               tier_graph: dict | None = None, width: int | None = None,
-              height: int | None = None) -> None:
+              height: int | None = None, seeds: list[int] | None = None) -> None:
     """Render a seamless chain into rec (mutated + persisted). Raises on failure.
     tier_graph: the studio's built single-clip graph for this model (H3: the tier's
     recipe is read from it). width/height: the requested size; LTX takes only its
-    orientation (ltx_draft_size), H3 reads its size from tier_graph."""
+    orientation (ltx_draft_size), H3 reads its size from tier_graph. seeds: one per
+    link (default base_seed + the link's index)."""
     kind = seamless_kind(entry)
     if kind is None:
         raise ValueError("model has no seamless chain support")
+    seeds = [int(s) for s in seeds] if seeds else [base_seed + i for i in range(len(prompts))]
+    if len(seeds) != len(prompts):
+        raise ValueError(f"{len(seeds)} seeds for {len(prompts)} links")
     cid = rec["id"]
     comfy_out = ROOT / str(entry.get("comfy_root") or "ComfyUI_LTX") / "output"
     timeout = int(entry.get("timeout_s") or 2700)
@@ -472,7 +476,7 @@ def run_chain(rec: dict, entry: dict, client, prompts: list[str], *, negative: s
         lf = ltx_link_frames(frames, n)
         dw, dh = ltx_draft_size(width, height)
         spec = ce.LtxChainSpec(chain_id=f"studio_{cid}",
-                               links=[ce.Link(prompt=with_cast_line(str(p), descs), seed=base_seed + i,
+                               links=[ce.Link(prompt=with_cast_line(str(p), descs), seed=seeds[i],
                                               frames=lf[i], negative=negative)
                                       for i, p in enumerate(prompts)],
                                refs={s: up(p) for s, p in slots.items()}, width=dw, height=dh)
@@ -509,7 +513,7 @@ def run_chain(rec: dict, entry: dict, client, prompts: list[str], *, negative: s
         order = h3_reference_order(cast)
         anchor = start_image or (order[0] if order else None)
         spec = ce.H3ChainSpec(chain_id=f"studio_{cid}",
-                              links=[ce.Link(prompt=str(p), seed=base_seed + i, frames=lf[i])
+                              links=[ce.Link(prompt=str(p), seed=seeds[i], frames=lf[i])
                                      for i, p in enumerate(prompts)],
                               refs=[up(p) for p in order], start_image=up(anchor) if anchor else None,
                               link={**link_over, "decode_draft": False},

@@ -57,7 +57,17 @@ tiers:
     hero: esrgan
     standard: esrgan
     volume: esrgan
+# Shot QA. clip_score_min and face_sim judge the Wan shots. A movie shot on
+# LTX-2.5 or H3 is judged on its cast's portraits instead: a face at least
+# cast_face_size of the frame's short side (smaller faces cannot be told
+# apart) that is less like the cast than cast_face_min sends the shot to
+# review. On the 17 links of 5 approved takes, the 16 faces that large scored
+# 0.31-0.61; the movie clips that lost the cast scored 0.28 and lower. Its CLIP
+# score is recorded only (approved links: 0.22-0.38, as high against the next
+# link's prompt).
 qa:
+  cast_face_min: 0.25
+  cast_face_size: 0.12
   clip_score_min: 0.28
   face_sim:
     main: 0.75
@@ -121,14 +131,20 @@ automation:
   auto_post: true
   auto_assemble: true
 architect:
-  # any OpenAI-compatible /chat/completions server; the default is a local
-  # Ollama (`ollama pull llama3.1:70b`, or any smaller model you prefer)
-  base_url: http://127.0.0.1:11434/v1
-  api_key: ollama
-  model: llama3.1:70b
+  # The AI that writes the story and the movie's video prompts: any
+  # OpenAI-compatible /chat/completions server, set up in the app (AI writer:
+  # a provider preset such as Ollama on this PC or a cloud key, and a model).
+  # None is set up at first: the story and the prompts can also be written
+  # with any chat AI by copy and paste.
+  base_url: ""
+  api_key: ""
+  model: ""
   max_tokens: 32000
   timeout_s: 600
   retries: 2
+  # auto = offer the prompt writer its tools (look up shots, scenes and cast,
+  # check and hand in prompts) when the server takes them; off = never
+  tools: auto
 ui:
   # 127.0.0.1 = this PC only. 0.0.0.0 exposes the studio to the LAN; on the
   # first start with a non-loopback host an api_token is generated (below)
@@ -172,7 +188,7 @@ render_profiles:
     cfg: 5.0
     fps: 24
 keyframes:
-  # Images-tab model that renders keyframe stills, with its own steps/CFG at
+  # Image Studio model that renders keyframe stills, with its own steps/CFG at
   # its size nearest width x height. `wan` = the legacy Wan 2.2 graphs (not as
   # good; `steps` below applies only to them).
   model: realvis
@@ -238,8 +254,36 @@ video_studio:
   seamless_chains: true
 # Movie projects: on a seamless model, a run of CONTINUE shots renders as ONE
 # take and is cut back into its shots (tool/movie_takes.py); needs
-# seamless_chains above. Projects can opt out on their Render page. At most
-# take_max_shots shots per take (4 = 20 s; an H3 1080p take of 4 ~2 h 40 min).
+# seamless_chains above. Projects can opt out on their Render page. A take
+# holds at most this many shots, and a longer run goes on in a new take that
+# opens on a new angle made from the last frame of the one before (on that last
+# frame itself when opening_frames is off):
+#   ltx_take_max_shots: 6 by default. An 8-shot LTX-2.5 take kept the cast's
+#     identity in every shot; shots 7-8 added seam steps larger than any before
+#     them, though none showed. Raise it if your takes look fine longer.
+#   h3_take_max_shots: 4 (its 1080p refine holds the whole take in memory; 4 is
+#     the longest H3 take rendered, ~2 h 40 min). An older take_max_shots key
+#     applies to H3 only.
+# A project's own take length (the Movie side's Render page) overrides the LTX
+# value and can only shorten the H3 one.
+# opening_frames: a shot that opens on a cut and has no start image of its own
+# gets one made first with Qwen-Image 2.1 fast, from its cast's pictures and
+# the opening image prompt its prompt writer wrote (tool/opening_frames.py).
+#   key_image_candidates: 2 frames with different seeds; the one whose faces
+#     look most like the cast's pictures is kept (needs InsightFace, else 1).
+#   key_image_min_likeness: 0.25. When the best is under it, two more are
+#     tried, and a frame still under it is marked weak on the Shots page. In
+#     the key-image tests every frame made this way scored 0.31 or more and
+#     kept the cast's look. It judges faces only, not the outfit.
+# prompt_segments_per_reply: the most video prompts one AI reply writes (the AI
+# writer and each chat brief). A longer take is written in parts, each with
+# the whole brief and the prompts written before it; then the whole take is
+# checked. Raise it for a strong AI, lower it for a small local model.
 movie:
   seamless_takes: true
-  take_max_shots: 4
+  ltx_take_max_shots: 6
+  h3_take_max_shots: 4
+  opening_frames: true
+  key_image_candidates: 2
+  key_image_min_likeness: 0.25
+  prompt_segments_per_reply: 4

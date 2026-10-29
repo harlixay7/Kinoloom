@@ -322,10 +322,14 @@ def import_character(pid: str, name: str, opts: dict | None = None,
         char["emotion_palette"] = palette
     body = _identity_text(params)
     outfit = _outfit_text(params, {})
+    wrote = False
     if body and (overwrite or not char.get("body")):
-        char["body"] = body
+        char["body"], wrote = body, True
     if outfit and (overwrite or not char.get("outfit")):
-        char["outfit"] = outfit
+        char["outfit"], wrote = outfit, True
+    if wrote:
+        # the batch's own prompt: a later main look rewrites it (cast_look)
+        char["look_source"] = f"casting:{dtype}/{name}"
 
     # ---- weapons: configs from the batch (descriptor = the prompt language)
     weapons = dict(char.get("weapons") or {})

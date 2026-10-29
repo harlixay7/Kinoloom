@@ -21,7 +21,7 @@
     const c = m.catalog || {};
     return (c.recommended ? "★ " : "") + (c.label || m.display_name || m.id) +
       (m.seamless ? "  ⛓" : "") +
-      (m.available ? "" : "  (unavailable)");
+      (m.available ? "" : m.gpu ? "  (not on this graphics card)" : "  (unavailable)");
   }
 
   function tooltip(m) {
@@ -36,8 +36,9 @@
       m.note || "",
       m.vram_note || "",
       m.experimental && m.declared_status !== "production" ? "Experimental (not promoted to production)" : "",
-      m.available ? "" : "Unavailable — missing: " + (m.missing || []).join(", "),
-      m.available ? "" : "Already have these files, under any name? Settings › Model files finds them.",
+      m.available ? "" : m.gpu ? "Unavailable on this PC: " + m.gpu
+        : "Unavailable — missing: " + (m.missing || []).join(", "),
+      m.available || m.gpu ? "" : "Already have these files, under any name? Settings › Model files finds them.",
       "id: " + m.id,
     ].filter(Boolean).join("\n");
   }

@@ -106,6 +106,48 @@ def cast_drift(video: Path, link_starts: list[int], cast: dict[str, Path], *, ev
     return {"every": every, "width": width, "links": links, "summary": summary}
 
 
+_REFS: dict[tuple[str, int, int], object] = {}    # (path, size, mtime) -> embedding or None
+
+
+def _ref_embedding(app, p: Path):
+    import cv2
+    p = Path(p)
+    try:
+        st = p.stat()
+    except OSError:
+        return None
+    key = (str(p), st.st_size, int(st.st_mtime))
+    if key not in _REFS:
+        img = cv2.imread(str(p))
+        faces = app.get(img) if img is not None else []
+        _REFS[key] = (_norm(max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1])).embedding)
+                      if faces else None)
+    return _REFS[key]
+
+
+def available() -> bool:
+    """InsightFace and its buffalo_l models load (on the CPU)."""
+    return _app() is not None
+
+
+def likeness(image: Path, cast: dict[str, Path], *, width: int = 1344) -> dict[str, float | None] | None:
+    """How much each cast member looks like themselves in a still: the ArcFace
+    cosine of their reference picture to the best-matching face in `image`.
+    A member whose picture shows no face is left out; one with a face but
+    none in the still scores None. None when InsightFace is not available."""
+    app = _app()
+    if app is None:
+        return None
+    import cv2
+    refs = {name: e for name, p in cast.items() if (e := _ref_embedding(app, Path(p))) is not None}
+    if not refs:
+        return {}
+    img = cv2.imread(str(image))
+    faces = [_norm(f.embedding) for f in app.get(_scaled(img, width))] if img is not None else []
+    return {name: (round(max(float(f @ e) for f in faces), 3) if faces else None)
+            for name, e in refs.items()}
+
+
 def summarize(d: dict | None) -> str:
     if not d:
         return ""

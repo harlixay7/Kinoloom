@@ -1,6 +1,7 @@
 /* dialogs.js — styled confirm/prompt dialogs replacing native
    window.confirm() / window.prompt(). Promise-based:
-     Dlg.confirm({title, message, okLabel, danger}) -> Promise<boolean>
+     Dlg.confirm({title, message, okLabel, danger, tone}) -> Promise<boolean>
+       (tone "need" | "bad": a mark before the title, in the warn/danger colour)
      Dlg.prompt({title, label, value, placeholder, okLabel}) -> Promise<string|null>
    Cancel / Esc / backdrop click resolve exactly like the native dialogs
    did: confirm -> false, prompt -> null. */
@@ -15,12 +16,14 @@
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  function build(title, bodyHtml, okLabel, okClass, cancelLabel) {
+  function build(title, bodyHtml, okLabel, okClass, cancelLabel, tone) {
     var veil = document.createElement("div");
     veil.className = "dlg-veil";
+    var mark = tone && window.Icon
+      ? '<span class="dlg-mark ' + escAttr(tone) + '">' + window.Icon.get("warning") + "</span>" : "";
     veil.innerHTML =
       '<div class="dlg-card" role="dialog" aria-modal="true">' +
-        '<div class="dlg-head"><h3>' + escHtml(title || "Confirm") + "</h3></div>" +
+        '<div class="dlg-head">' + mark + "<h3>" + escHtml(title || "Confirm") + "</h3></div>" +
         '<div class="dlg-body">' + bodyHtml + "</div>" +
         '<div class="dlg-actions">' +
           '<button type="button" class="btn" data-dlg-cancel>' + escHtml(cancelLabel || "Cancel") + "</button>" +
@@ -60,7 +63,7 @@
           opts.title,
           "<p>" + (opts.message || "Are you sure?") + "</p>",
           opts.okLabel || "Confirm", opts.danger ? "danger" : "primary",
-          opts.cancelLabel);
+          opts.cancelLabel, opts.tone);
         veil._resolve = resolve;
         wire(veil);
         veil.querySelector("[data-dlg-ok]").onclick = function () { finish(veil, true); };

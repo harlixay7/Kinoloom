@@ -56,13 +56,33 @@ def project_shot_get(pid: str, sid: str) -> dict:
 class ShotPromptBody(BaseModel):
     prompt: str = ""
     negative: str = ""
+    image: str | None = None             # the opening image's prompt (LTX-2.5 / H3)
+
+
+def _movie_model(row: dict, pid: str) -> str:
+    """The LTX-2.5 / H3 model the shot renders with; "" for Wan 2.2."""
+    from movie_request import NoVideoModel, shot_model
+    j = row.get("json")
+    try:
+        return shot_model(db, row, j if isinstance(j, dict) else {}, pid)
+    except NoVideoModel:
+        return ""
 
 
 @router.post("/api/projects/{pid}/shots/{sid}/prompt")
 def project_shot_prompt(pid: str, sid: str, body: ShotPromptBody) -> dict:
+    """Edit a shot's prompt and render it again with it. An LTX-2.5 / H3
+    shot's prompt is checked for the request it renders with first
+    (movie_prompts.save_hand); a Wan 2.2 prompt overrides the built one."""
     row = db.get(sid, pid)
     if not row:
         raise FileNotFoundError(sid)
+    if _movie_model(row, pid):
+        import movie_prompts
+        res = movie_prompts.save_hand(db, Bible(pid), pid, sid, body.prompt, image=body.image)
+        if res.get("ok") and row.get("status") != "rendering":
+            db.set_status(sid, "queued", project=pid)
+        return res
     db.set_status(sid, "queued", prompt=body.prompt, negative=body.negative,
                   qa_stage=max(1, row.get("qa_stage") or 0), project=pid)
     return {"ok": True}
@@ -139,7 +159,13 @@ def project_shot_rerender(pid: str, sid: str, body: RerenderBody) -> dict:
     row = db.get(sid, pid)
     if not row:
         raise FileNotFoundError(sid)
-    kw = {"status": "queued", "qa_stage": 0, "prompt": None, "negative": None}
+    kw: dict[str, Any] = {"status": "queued", "qa_stage": 0, "prompt": None, "negative": None}
+    if _movie_model(row, pid):
+        # LTX-2.5 / H3: the same written prompt, the next seed (a failed
+        # render's retries keep theirs, so a take reuses its finished steps)
+        from orchestrator import REROLL_SEED
+        seed = int(row["seed"]) if row.get("seed") is not None else db.stable_seed(row)
+        kw["seed"] = (seed + REROLL_SEED) % (2 ** 31)
     if body.profile:
         sjson = dict(row.get("json") or {})
         sjson["render_profile"] = body.profile
@@ -149,24 +175,41 @@ def project_shot_rerender(pid: str, sid: str, body: RerenderBody) -> dict:
     return {"ok": True}
 
 
+class DryRunBody(BaseModel):
+    # only report the shots with a clip the change renders again
+    dry_run: bool = False
+
+
+def _rerenders(pid: str, sid: str, sjson: dict) -> list[str]:
+    try:
+        import movie_prompts
+        return movie_prompts.rerenders(db, pid, sid, sjson)
+    except Exception as e:  # noqa: BLE001 - a planning problem shows on the Shots page
+        log.warning(f"{sid}: shots rendered again not known: {e}")
+        return []
+
+
 @router.post("/api/projects/{pid}/shots/{sid}/continue")
-def project_shot_continue(pid: str, sid: str) -> dict:
+def project_shot_continue(pid: str, sid: str, body: DryRunBody | None = None) -> dict:
     """CONTINUE from the previous shot's tail frame."""
     row = db.get(sid, pid)
     if not row:
         raise FileNotFoundError(sid)
     sjson = dict(row.get("json") or {})
     sjson["continuity"] = "CONTINUE"
+    again = _rerenders(pid, sid, sjson)
+    if body is not None and body.dry_run:
+        return {"ok": True, "rerenders": again}
     db.set_json(sid, sjson, project=pid)
     db.set_status(sid, "queued", qa_stage=0, project=pid)
-    return {"ok": True}
+    return {"ok": True, "rerenders": again}
 
 
 class LoraChainBody(BaseModel):
     chain: list[dict] = []
 
 
-class ContinuityBody(BaseModel):
+class ContinuityBody(DryRunBody):
     continuity: str
 
 
@@ -182,9 +225,12 @@ def project_shot_continuity(pid: str, sid: str,
                                       "MATCH_ACTION"}
     sjson = dict(row.get("json") or {})
     sjson["continuity"] = body.continuity
+    again = _rerenders(pid, sid, sjson)
+    if body.dry_run:
+        return {"ok": True, "continuity": body.continuity, "rerenders": again}
     db.set_json(sid, sjson, project=pid)
     db.set_status(sid, "queued", project=pid)
-    return {"ok": True, "continuity": body.continuity}
+    return {"ok": True, "continuity": body.continuity, "rerenders": again}
 
 
 @router.post("/api/projects/{pid}/shots/{sid}/loras")
@@ -248,9 +294,14 @@ def project_eta(pid: str) -> dict:
             "remaining_per_scene": per_scene}
 
 
+# seconds Start production waits for the director's first outcome: a run
+# that stops at once (a step waits for something) answers with the reason
+RUN_WAIT_S = 4.0
+
+
 @router.post("/api/projects/{pid}/run")
 def project_run(pid: str) -> dict:
-    return director.start(pid)
+    return director.start(pid, wait=RUN_WAIT_S)
 
 
 @router.post("/api/projects/{pid}/stop")
@@ -264,10 +315,17 @@ def project_resume(pid: str) -> dict:
     proj = store.get(pid)
     if proj and proj.get("status") == "gate_pending":
         stage = proj.get("stage") or "story"
-        nxt = {"story": "cast", "shots": "keyframes", "keyframes": "render",
-               "review": "assemble"}.get(stage, stage)
+        nxt = {"story": "cast", "shots": "prompts", "prompts": "keyframes",
+               "keyframes": "render", "review": "assemble"}.get(stage, stage)
+        if stage == "keyframes":
+            # the frames looked at stay passed after a Stop and Start
+            try:
+                import opening_frames
+                opening_frames.looked_at(db, pid, cfg)
+            except Exception as e:  # noqa: BLE001 - the project goes on; a later Start shows them again
+                log.warning(f"{pid}: the opening frames were not marked looked at: {e}")
         store.set_status(pid, "running", stage=nxt)
-    return director.resume(pid)
+    return director.resume(pid, wait=RUN_WAIT_S)
 
 
 @router.post("/api/projects/{pid}/shots/{sid}/refs/upload")
@@ -318,7 +376,7 @@ def shot_ref_clear(pid: str, sid: str) -> dict:
 
 
 class ShotImgBody(BaseModel):
-    model: str = "realvis"
+    model: str = ""             # "" = models.default_still_model()
     count: int = 1
     steps: int | None = None
     cfg: float | None = None

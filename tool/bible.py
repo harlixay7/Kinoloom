@@ -158,7 +158,18 @@ class Bible:
         if not isinstance(eid, str) or not is_safe_component(eid):
             raise InvalidInput(f"invalid {sub[:-1]} id: {eid!r} (letters, digits, "
                                "space, '_' or '-'; max 64 chars)")
-        return self.dir / sub / f"{eid}.yaml"
+        # Windows and macOS file names ignore case: "sara.yaml" IS "Sara.yaml".
+        # An id that differs from another only in capitals would write over it.
+        d = self.dir / sub
+        if d.is_dir():
+            for q in d.glob("*.yaml"):
+                if q.stem != eid and q.stem.lower() == eid.lower():
+                    held = self._load_yaml(q, {})
+                    if isinstance(held, dict) and held.get("id") == eid:
+                        return q          # the file that already holds this record
+                    raise InvalidInput(f"{sub[:-1]} '{q.stem}' already exists: '{eid}' differs "
+                                       "from it only in capitals")
+        return d / f"{eid}.yaml"
 
     def save_character(self, char: dict[str, Any]) -> None:
         p = self._entity_path("characters", char)

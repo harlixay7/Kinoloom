@@ -774,6 +774,11 @@ class _Broker:
     def _set_current(self, lease: Lease | None) -> None:
         self._tls.lease = lease
 
+    def busy(self) -> bool:
+        """A lease holds the GPU or one is waiting for it (no HTTP)."""
+        with self._cond:
+            return self._active is not None or bool(self._waiters) or self._reconciling
+
     def acquire(self, model: str | None = None, port: int | None = None,
                 purpose: str = "", timeout: float | None = None,
                 wait: bool = True, hold_s: float | None = None,
@@ -1051,6 +1056,10 @@ def release_by_id(lease_id: str) -> bool:
 
 def current_lease() -> Lease | None:
     return broker.current_lease()
+
+
+def busy() -> bool:
+    return broker.busy()
 
 
 def lease_scope(model: str | None = None, port: int | None = None,

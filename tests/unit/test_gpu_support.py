@@ -173,8 +173,13 @@ def test_an_image_model_the_card_cannot_run_is_unavailable_with_the_reason(smi, 
     info = models.model_info("qwen21_fast")
     assert info["available"] is False and "RTX 20-series" in info["gpu"]
     assert models.model_info("realvis")["available"] is True and models.model_info("realvis")["gpu"] == ""
+    # start pictures and the opening frames then use the render farm's models
+    assert models.default_still_model() == "realvis"
+    import opening_frames
+    assert opening_frames.enabled({"movie": {"opening_frames": True}}) is False
     qwen_venv("12.6")                       # the build the installer gives this card
     assert models.model_info("qwen21_fast")["available"] is True
+    assert models.default_still_model() == "qwen21_fast"
     smi(**RTX_5090)
     assert models.model_info("realvis")["available"] is False
     assert "built on CUDA 12.6" in models.model_info("realvis")["gpu"]

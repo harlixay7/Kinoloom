@@ -2833,6 +2833,7 @@ function setSettingsPane(pane) {
   // shown again unedited: the current settings (model folders may have changed)
   if (pane === "config" && $("settings-yaml").value === SETTINGS_TEXT) loadSettings();
   if (pane === "access") renderTokenSettings();
+  if (pane === "ai" && window.AiSettings) AiSettings.mount($("set-ai-body"));
 }
 
 function renderTokenSettings() {
@@ -3354,7 +3355,7 @@ function renderImsModels() {
       <span class="m-dot"></span>
       <span class="m-body">
         <span class="m-top"><span class="m-name">${escapeHtml(imsShortName(m))}</span>
-          ${m.family === "wan" ? '<span class="m-meta"><i>legacy</i></span>' : ""}${ok ? "" : '<span class="m-meta"><i class="bad">not installed</i></span>'}${seg}</span>
+          ${m.family === "wan" ? '<span class="m-meta"><i>legacy</i></span>' : ""}${ok ? "" : `<span class="m-meta"><i class="bad">${m.gpu ? "not on this graphics card" : "not installed"}</i></span>`}${seg}</span>
         <span class="m-tag">${escapeHtml(m.best_for || "")}</span>
       </span>
     </div>`;
@@ -3363,7 +3364,8 @@ function renderImsModels() {
     const st = IMS_STACKS[key];
     if (!st) return;
     if (st.available === false) {
-      toast(imsShortName(st) + " is not installed. Install it, or point Settings at the file you already have.", true);
+      toast(st.gpu ? imsShortName(st) + " does not run on this PC: " + st.gpu + "."
+        : imsShortName(st) + " is not installed. Install it, or point Settings at the file you already have.", true);
       return;
     }
     IMS_MODEL = key;

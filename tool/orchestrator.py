@@ -1,8 +1,13 @@
 """Orchestrator + queue. Tier routing, pipelined post
-(post of shot N runs while shot N+1 renders), retries, resume-safe."""
+(post of shot N runs while shot N+1 renders), retries, resume-safe.
+
+Project shots on LTX-2.5 / MiniMax H3 render unit by unit (movie_prompts:
+one shot, or a seamless take of CONTINUE shots) with exactly the Video
+Studio's request (movie_request) and the prompts written for it by an AI or
+by hand (movie_prompts), in story order. Wan 2.2 (legacy) and shots without
+a project keep their own path."""
 from __future__ import annotations
 
-import json
 import queue
 import re
 import threading
@@ -12,15 +17,44 @@ from typing import Any, Callable
 
 from core import ROOT, ffmpeg_exe, load_config, log_setup
 from linter import Linter
+from movie_request import NoVideoModel
 from prompts import PromptBuilder
 from renderer import Renderer
 from shots_db import ShotsDB
 
 log = log_setup("orchestrator")
 
+__all__ = ["NoVideoModel", "Orchestrator", "waits_for"]
+# A retake's seed step. Never a multiple of the chain engine's seam re-roll step
+# (chain_engine.REROLL_SEED_OFFSET, 7919): a retaken shot of a take renders under
+# the take's chain id, and must not land on a seed its re-roll already tried.
+REROLL_SEED = 104729
+_DONE = ("rendered", "post", "qa", "passed", "review", "assembled")
+# the record of an LTX-2.5 / H3 render (_provenance, _render_chain)
+_MOVIE_RECORD = ("applied_model", "applied_references", "take", "request", "opening_frame",
+                 "reference_warnings", "continuation_frame")
 
-class NoVideoModel(RuntimeError):
-    """A project shot has no installed model to render with."""
+
+def waits_for(r: dict, by_key: dict) -> dict | None:
+    """The shot `r` opens on and so renders after, or None when it opens on
+    its own. A CONTINUE shot opens on the last frame of the shot before it;
+    so does a MATCH_ACTION in the same place (its opening frame is made from
+    that frame). A shot before it in another scene or place is a cut
+    (movie_request). `by_key`: the rows by (project_id, shot_id)."""
+    j = r.get("json")
+    sj: dict = j if isinstance(j, dict) else {}
+    mode = str(sj.get("continuity") or "").upper()
+    if mode not in ("CONTINUE", "MATCH_ACTION") or not sj.get("prev_shot"):
+        return None
+    prev = by_key.get((r.get("project_id"), str(sj["prev_shot"])))
+    if prev is None or prev.get("scene") != r.get("scene"):
+        return None
+    pj = prev.get("json")
+    locs = {str((pj if isinstance(pj, dict) else {}).get("location") or ""),
+            str(sj.get("location") or "")}
+    if mode == "MATCH_ACTION" and len(locs - {""}) > 1:
+        return None
+    return prev
 
 
 class Orchestrator:
@@ -158,22 +192,30 @@ class Orchestrator:
 
     # --------------------------------------------------------------- order
     def _next_shot(self) -> dict | None:
-        rows = self.db.all(status="queued", project=self.project_filter)
-        if rows:
-            rows.sort(key=lambda r: (r["scene"], r["shot_id"]))
-            return rows[0]
-        rows = self.db.all(status="pending", project=self.project_filter)
-        if rows:
-            rows.sort(key=lambda r: (r["scene"], r["shot_id"]))
-            s = rows[0]
-            self.db.set_status(s["shot_id"], "queued",
-                               project=s.get("project_id"))
-            return self.db.get(s["shot_id"], s.get("project_id"))
-        # retries
-        rows = self.db.all(status="failed", project=self.project_filter)
-        if rows:
-            rows.sort(key=lambda r: r["attempts"])
-            return rows[0]
+        """The next shot to render, in story order (scenes in order, each in
+        its prev_shot order): queued and pending shots first, then failed
+        ones. A CONTINUE shot waits until the shot before it has rendered: it
+        opens on that shot's last frame. So does a MATCH_ACTION: its opening
+        frame is made from that last frame (opening_frames)."""
+        from shots_db import story_order
+        rows = self.db.all(project=self.project_filter)
+        by_key = {(r.get("project_id"), r["shot_id"]): r for r in rows}
+        groups: dict[tuple, list[dict]] = {}
+        for r in rows:
+            groups.setdefault((str(r.get("project_id") or ""), str(r.get("scene") or "")), []).append(r)
+        ordered = [r for k in sorted(groups) for r in story_order(groups[k])]
+
+        def ready(r: dict) -> bool:
+            prev = waits_for(r, by_key)
+            return prev is None or prev.get("status") in _DONE
+
+        for wanted in (("queued", "pending"), ("failed",)):
+            for r in ordered:
+                if r.get("status") in wanted and ready(r):
+                    if r["status"] == "pending":
+                        self.db.set_status(r["shot_id"], "queued", project=r.get("project_id"))
+                        return self.db.get(r["shot_id"], r.get("project_id"))
+                    return r
         return None
 
     # ----------------------------------------------------------------- loop
@@ -238,6 +280,25 @@ class Orchestrator:
         sjson = shot["json"] or {}
         pid = shot.get("project_id") or sjson.get("project_id")
         is_project = bool(pid)
+        if is_project:
+            # the LTX-2.5 / H3 model id; "" = the legacy Wan 2.2 path, which
+            # only a project that picks Wan and the API-only shots without a
+            # project (/api/shots/ingest) still render on
+            try:
+                mid = self._video_family(shot, sjson, pid)
+            except NoVideoModel as e:
+                self.last_error = str(e)
+                self.db.set_status(sid, "review", error=str(e), project=pid)
+                self._emit({"shot_id": sid, "event": "error", "error": str(e),
+                            "attempts": 0})
+                log.error(f"{sid}: {e} - sent to review")
+                return
+            if mid:
+                self._render_unit(shot, pid)
+                return
+            # rendered on LTX-2.5 / H3 before the project moved to Wan: the
+            # movie's record goes, the QA and the retakes read it
+            sjson = {k: v for k, v in sjson.items() if k not in _MOVIE_RECORD}
         seed = self.db.assign_seed(sjson)
         state = self._scene_state(sid, sjson, pid)
 
@@ -252,37 +313,21 @@ class Orchestrator:
 
         force_t2v = bool(sjson.get("t2v"))
 
-        # ---- project path: continuity keyframes, LoRA chain, profiles ----
+        # ---- project path (Wan 2.2): continuity keyframes, LoRA chain, profiles
         lora_names: list[str] = []
         profile = "production_fast"
         p_bible = None
-        # the LTX-2.5 / H3 model id; "" = the legacy Wan 2.2 path, which only
-        # a project that picks Wan and the API-only shots without a project
-        # (/api/shots/ingest) still render on
-        family = ""
         if is_project:
             from bible import Bible
             from continuity import start_image_for
             from lora_video import pick_profile
             p_bible = Bible(pid)
-            # LTX-2.5 shots are reference-driven: the Wan continuity tail is
-            # deliberately NOT resolved or injected for them (different model,
-            # different graph, and the tail would fight the cast references).
-            try:
-                family = self._video_family(shot, sjson, pid)
-            except NoVideoModel as e:
-                self.last_error = str(e)
-                self.db.set_status(sid, "review", error=str(e), project=pid)
-                self._emit({"shot_id": sid, "event": "error", "error": str(e),
-                            "attempts": 0})
-                log.error(f"{sid}: {e} - sent to review")
-                return
             prev_row = None
             prev_id = sjson.get("prev_shot")
             if prev_id:
                 prev_row = self.db.get(prev_id, pid)
             start = None
-            if not force_t2v and not family:
+            if not force_t2v:
                 ref = shot.get("ref_image")
                 if ref and Path(ref).exists():
                     start = Path(ref)
@@ -328,45 +373,19 @@ class Orchestrator:
         w, h = map(int, res.split("x"))
         frames = 5 * fps + 1
 
-        # LTX-2.5 / MiniMax H3 shots render at the model's own native
-        # resolution on the model's own frame grid. The movie pipeline's Wan
-        # profile ladder (832x480 stage-1 + AI upscale in post) must NOT apply
-        # to them: LTX renders 1920x1088 directly (refs at stage 1, DFR), and
-        # H3 hero shots render 1920x1088 via the two-phase latent-upscale
-        # pipeline (H3 lab record PROVEN_CONFIGS_H3) — output is final for both.
-        if is_project and family:
-            nw, nh = self._family_dims(family, w, h)
-            if (nw, nh) != (w, h):
-                log.info(f"{sid}: {family} render resolution {w}x{h} -> "
-                         f"{nw}x{nh} (profile '{profile}')")
-            w, h = nw, nh
-            nframes = self._family_frames(family, frames)
-            if nframes != frames:
-                log.info(f"{sid}: {family} frames {frames} -> {nframes}")
-            frames = nframes
-            # a run of CONTINUE shots on a seamless model is ONE camera take:
-            # it renders as a seamless chain and every shot gets its own cut
-            run = self._take_run(shot, pid, family)
-            if len(run) > 1:
-                self._render_take(run, pid, family, w, h, frames)
-                return
-
         # ----------------------------------------------------------- prompt
         if is_project:
             prompt, negative = self._project_prompt(
-                shot, sjson, state, p_bible, family,
+                shot, sjson, state, p_bible,
                 is_i2v=start is not None and not force_t2v, lora_names=lora_names)
         else:
             prompt = self.builder.build(sjson, state)
             negative = self.builder.negative(sjson)
 
         # --------------------------------------------------------- workflow
-        # LTX-2.5 shots take a different render path (second ComfyUI instance,
-        # cast reference images, no start-image/tail chaining). A project that
-        # picks the legacy Wan 2.2 model keeps its templates byte-identically.
-        # family was resolved with the project block; shots without a project
-        # always use the legacy Wan path.
-        if is_project and not family:
+        # A project that picks the legacy Wan 2.2 model keeps its templates
+        # byte-identically; shots without a project use the renderer's tiers.
+        if is_project:
             from workflows import WorkflowBuilder
             from lora_video import chain_to_extra
             base = "wan2.2_ti2v_dynamic" if (start is not None
@@ -377,13 +396,11 @@ class Orchestrator:
                                 frames, cfg,
                                 extra={"SHOT_ID": sid,
                                        "LORA_CHAIN": chain_to_extra(chain)})
-        elif not is_project:
+        else:
             workflow = self.renderer.build_workflow(
                 tier=tier, prompt=prompt, negative=negative, seed=seed,
                 width=w, height=h, steps=steps, frames=frames, shot_id=sid,
                 sjson=sjson)
-        else:
-            workflow = None      # LTX: video_studio builds its own graph
 
         # ------------------------------------------------- worker routing
         # The pipeline stays strictly sequential (each
@@ -410,7 +427,7 @@ class Orchestrator:
         else:
             shot_client = self.renderer.client
 
-        if start is not None and not family:
+        if start is not None:
             resized = self._resize_keyframe(start, w, h)
             fname = shot_client.upload_image(resized)
             workflow = self._set_start_image(workflow, fname)
@@ -427,21 +444,16 @@ class Orchestrator:
             self.db.set_json(sid, prov, project=pid)
         t0 = time.time()
         try:
-            if is_project and family:
-                video = self._render_family_shot(
-                    sid, sjson, prompt, negative, w, h, frames, steps, seed,
-                    family, pid)
-            else:
-                prompt_id = shot_client.queue_prompt(workflow)
-                log.info(f"render {sid} ({tier}{'/' + profile if is_project else ''})"
-                         f" submitted: {prompt_id}"
-                         + (f" @ {shot_worker}" if shot_worker != "local" else ""))
-                result = shot_client.wait_for(prompt_id, timeout_s=2400)
-                if result is None:
-                    raise TimeoutError(f"{sid} render timeout")
-                video = self._fetch_output(result, client=shot_client)
+            prompt_id = shot_client.queue_prompt(workflow)
+            log.info(f"render {sid} ({tier}{'/' + profile if is_project else ''})"
+                     f" submitted: {prompt_id}"
+                     + (f" @ {shot_worker}" if shot_worker != "local" else ""))
+            result = shot_client.wait_for(prompt_id, timeout_s=2400)
+            if result is None:
+                raise TimeoutError(f"{sid} render timeout")
+            video = self._fetch_output(result, client=shot_client)
             render_s = time.time() - t0
-            self.db.record_render(sid, render_s, video,
+            self.db.record_render(sid, render_s, str(video),
                                   project=pid if is_project else None)
             self._transient.pop(sid, None)
             self._emit({"shot_id": sid, "event": "rendered", "time_s": render_s,
@@ -450,10 +462,6 @@ class Orchestrator:
             # before the clip is handed to post. With post ON and a worker PC
             # upscaling, the tail used to exist only after the worker finished
             # — the next shot then had no start frame and the chain stalled.
-            # EVERY family gets a tail now: LTX/H3 shots honour CONTINUE /
-            # MATCH_ACTION by opening on the previous shot's final frame
-            # (H3 frame-0 anchor / LTX MSR slot), so the tail is their
-            # continuity currency too — not just Wan's start image.
             try:
                 from continuity import extract_tail
                 tail = extract_tail(video, sid, pid=pid)
@@ -538,161 +546,276 @@ class Orchestrator:
         return chain
 
     def _project_prompt(self, shot: dict, sjson: dict, state: dict, p_bible,
-                        family: str, is_i2v: bool,
-                        lora_names: list[str]) -> tuple[str, str]:
-        """(prompt, negative) of a project shot before the family recipes."""
+                        is_i2v: bool, lora_names: list[str]) -> tuple[str, str]:
+        """(prompt, negative) of a Wan 2.2 project shot."""
         from videoprompt import VideoPromptBuilder
         vb = VideoPromptBuilder(p_bible, self.db)
         if shot.get("prompt") and shot.get("qa_stage", 0) > 0:
             # QA ladder override (simplified prompt / manual edit)
             return shot["prompt"], shot.get("negative") or vb.negative(sjson)
-        if self._is_h3(family):
-            # MiniMax H3 prompts follow docs/H3_PROMPT_GUIDE.md — a structured
-            # text (integrated_multimodal_description + overall_soundscape +
-            # non_diegetic_music), NOT the comma prompt the LTX/Wan builders
-            # produce. CFG 1.0 (distilled) ignores negatives, so none is passed.
-            return vb.build_h3(sjson, state), ""
         return vb.build(sjson, state, is_i2v, lora_names), vb.negative(sjson)
 
-    @staticmethod
-    def _is_h3(mid: str) -> bool:
-        try:
-            import video_models
-            return str((video_models.VIDEO_MODELS.get(mid) or {}).get("family", "")).startswith("h3")
-        except Exception:  # noqa: BLE001
-            return False
+    # ---------------------------------------------------- LTX-2.5 / H3 units
+    def _render_unit(self, shot: dict, pid: str) -> None:
+        """Render the unit `shot` starts (movie_prompts.unit_for): one clip, or
+        a seamless take of CONTINUE shots, with exactly the request the Video
+        Studio page sends (movie_request: the cast as references with names
+        and looks, the start image or the previous clip's last frame, the
+        page's size and frames, no negative, the model's own steps), refused
+        by the same prompt check, with the prompts written for it
+        (movie_prompts). A take is cut back into one clip per shot, and
+        renders whole: a retake inside it renders the take again under its
+        chain id, where the shots before the retaken one reuse their steps.
 
-    # ---------------------------------------------------- continuous takes
-    def _take_run(self, shot: dict, pid: str, mid: str) -> list[dict]:
-        """`shot` and the CONTINUE shots that render with it as one seamless
-        take (movie_takes.plan_take); [shot] when it renders alone."""
+        A unit without ready prompts gets them written now when an AI is set
+        up; otherwise, or when the AI cannot write them, its shots still to
+        render wait (status "prompt") with the reason. A failure retries like
+        any shot: a transient one without using the budget, any other uses
+        one attempt and keeps the seeds, so a take reuses its finished steps."""
+        import movie_prompts
         import movie_takes
-        import video_studio
-        on, max_shots = movie_takes.settings(self.cfg)
-        if not (on and self._project_takes_on(pid) and video_studio.seamless_engine(mid)):
-            return [shot]
+        import opening_frames
+        from bible import Bible
+        bible = Bible(pid)
+        unit = movie_prompts.unit_for(self.db, pid, shot["shot_id"], self.cfg)
+        if unit is None:
+            msg = "the shot's model changed while it was queued: queue it again"
+            self.db.set_status(shot["shot_id"], "review", error=msg, project=pid)
+            return
+        tag = (f"take {movie_takes.take_id(pid, unit.model, unit.sids)[:8]} "
+               f"({' -> '.join(unit.sids)})" if unit.chain else unit.sids[0])
         try:
-            rows = self.db.all(scene=shot.get("scene") or None, project=pid)
-            return movie_takes.plan_take(
-                shot, rows, lambda r: self._video_family(r, r.get("json") or {}, pid), max_shots)
-        except Exception as e:  # noqa: BLE001 - planning must never block the shot itself
-            log.warning(f"{shot['shot_id']}: take planning failed ({e}) - rendering the shot alone")
-            return [shot]
+            opening_frames.ensure(self.db, bible, unit, self.cfg)
+            req = movie_prompts.request_for(self.db, bible, unit, planning=False, cfg=self.cfg)
+            prompts, why = movie_prompts.prompts_for(self.db, req)
+            if prompts is None and movie_prompts.ai_ready(self.cfg):
+                log.info(f"{tag}: writing its prompts ({next(iter(why.values()), '')})")
+                # written for the request with its opening frame (the AI
+                # writes the frame's prompt too), which is made next
+                res = movie_prompts.write_unit(self.db, bible, self._project(pid), unit,
+                                               cfg=self.cfg, stop=lambda: not self.running)
+                if not self.running:
+                    return                    # stopped while writing: the unit stays queued
+                opening_frames.ensure(self.db, bible, unit, self.cfg)
+                req = movie_prompts.request_for(self.db, bible, unit, planning=False, cfg=self.cfg)
+                prompts, why = movie_prompts.prompts_for(self.db, req)
+                if prompts is None and not res.get("ok"):
+                    why = {s: f"the AI could not write it ({res.get('error')})" for s in why}
+            if prompts is None:
+                self._wait_for_prompts(unit, why)
+                return
+            refused = req.refusal(prompts)
+            if refused:
+                self._wait_for_prompts(unit, {s: refused["error"] for s in unit.sids})
+                return
+        except movie_prompts.Unreachable as e:
+            self._wait_for_prompts(unit, {s: f"{movie_prompts.UNREACHED} ({e})" for s in unit.sids})
+            return
+        except movie_prompts.WriteError as e:
+            self._wait_for_prompts(unit, {s: f"the AI could not write it ({e})" for s in unit.sids})
+            return
+        except Exception as e:  # noqa: BLE001
+            self._unit_failed(unit, tag, e)
+            return
+        # every shot keeps its own seed: a retried unit (failed or transient)
+        # renders with the same ones, so the chain engine reuses every finished
+        # step; a retake moves only its shot's (the rerender endpoint and the
+        # QA ladder), so in a take the steps before it are reused too
+        seeds = [int(r["seed"]) if r.get("seed") is not None else self.db.stable_seed(r)
+                 for r in unit.rows]
+        if unit.chain:
+            self._render_chain(unit, req, prompts, seeds, tag)
+        else:
+            self._render_clip(unit, req, prompts[0], seeds[0], tag)
 
-    def _render_take(self, run: list[dict], pid: str, mid: str, w: int, h: int,
-                     frames: int) -> None:
-        """Render a run of CONTINUE shots as one seamless take (movie_takes):
-        one chain under one broker lease (video_studio.start_chain), one
-        reference set and opening frame for the take, then the delivered take
-        is cut at its seams and every shot continues alone (render record, tail
-        frame, post + QA). The engines sample with their own recipes (H3: the
-        tier's registry schedule), never the movie tier's step count.
+    def _project(self, pid: str) -> dict:
+        from projects import ProjectStore
+        return ProjectStore(self.db).get(pid) or {"id": pid}
 
-        Failures match a single shot's: a transient one retries without using
-        the budget; otherwise every shot of the take uses one attempt and the
-        take is re-queued with the same seeds under its stable chain id. The
-        retry reuses every finished step: the references are uploaded again
-        under content-derived names (renderer.upload_name), so the step
-        digests stay the same."""
+    @staticmethod
+    def _mode(req) -> str:
+        """The page's mode: Start from Image when there is a start image, else
+        text (references still ride the model's reference graph)."""
+        import video_models
+        modes = (video_models.VIDEO_MODELS.get(req.model) or {}).get("supported_modes") or []
+        return "i2v" if req.start_image or "t2v" not in modes else "t2v"
+
+    def _wait_for_prompts(self, unit, why: dict[str, str]) -> None:
+        """The unit's shots still to render wait (status "prompt") until the
+        prompts are written or fixed (movie_prompts.release_waiting queues them
+        again); its rendered shots keep their clips meanwhile."""
+        import movie_prompts
+        first_sid, first = next(iter(why.items()), (unit.sids[0], "no prompt yet"))
+        for sid in movie_prompts.to_render(unit):
+            msg = why.get(sid) or f"it renders in one take with {first_sid}, whose prompt is not ready"
+            self.db.set_status(sid, movie_prompts.WAITING, error=f"needs its prompt: {msg}"[:500],
+                               project=unit.pid)
+        self._emit({"shot_id": unit.sids[0], "event": "prompt", "shots": unit.sids, "why": first})
+        log.info(f"{' -> '.join(unit.sids)}: waiting for prompts ({first_sid}: {first})")
+
+    def _render_clip(self, unit, req, prompt: str, seed: int, tag: str) -> None:
+        """One shot: Video Studio Generate with one prompt."""
+        import video_models
+        import video_studio
+        pid, row, sjson = unit.pid, unit.head, unit.sjsons()[0]
+        sid = row["shot_id"]
+        entry = video_models.VIDEO_MODELS.get(req.model) or {}
+        self.db.set_status(sid, "rendering", seed=seed, prompt=prompt, negative="", project=pid)
+        t0 = time.time()
+        try:
+            dfr = sjson.get("dfr")
+            rec = video_studio.start(
+                req.model, prompt, mode=self._mode(req), negative="", seed=seed,
+                width=req.width, height=req.height, frames=req.frames,
+                references=req.references, start_image=req.start_image,
+                continuation=req.continuation, dfr=bool(dfr) if dfr is not None else None,
+                worker="local")
+            log.info(f"{tag}: rendering on {req.model}, {req.opening}"
+                     + (f" from the {req.start_source}" if req.start_source else ""))
+            job = self._wait_job(rec["id"], int(entry.get("timeout_s") or 3600))
+            if job.get("status") != "completed":
+                raise RuntimeError(f"render failed: {job.get('error') or 'unknown error'}")
+            outs = job.get("outputs") or []
+            path = Path(job.get("output_dir") or (ROOT / "output" / "videostudio")) / outs[0] if outs else None
+            if path is None or not path.is_file():
+                raise RuntimeError(f"the render completed without its video ({outs[:1]})")
+        except Exception as e:  # noqa: BLE001
+            self._unit_failed(unit, tag, e)
+            return
+        prov = self._provenance(req, sjson, 0)
+        if job.get("continuation"):
+            prov["continuation_frame"] = job["continuation"]
+        self.db.set_json(sid, prov, project=pid)
+        self._delivered(row, prov, path, prompt, time.time() - t0)
+        self._cascade(unit)
+        log.info(f"{tag}: rendered in {job.get('seconds')}s")
+
+    def _render_chain(self, unit, req, prompts: list[str], seeds: list[int], tag: str) -> None:
+        """A seamless take: Video Studio Generate with one prompt per shot (one
+        chain under one broker lease, each shot's own seed), cut back at its
+        seams into one clip per shot. The take id is the shots', so a re-run
+        (a retry, a retake inside it) reuses every step whose seed, prompt and
+        inputs are unchanged; every shot is delivered again, because the
+        shot before a retaken one ends in the joined decode of both."""
+        import movie_prompts
         import movie_takes
         import video_models
         import video_studio
-        from bible import Bible
-        from ltx_refs import resolve_reference_set
-
-        sids = [r["shot_id"] for r in run]
-        sjsons = [r.get("json") or {} for r in run]
-        entry = video_models.VIDEO_MODELS.get(mid) or {}
-        fam = str(entry.get("family") or "")
-        h3 = fam.startswith("h3")
-        bible = Bible(pid)
-        cid = movie_takes.take_id(pid, mid, sids)
-        tag = f"take {cid[:8]} ({' -> '.join(sids)})"
+        pid, sids, sjsons = unit.pid, unit.sids, unit.sjsons()
+        entry = video_models.VIDEO_MODELS.get(req.model) or {}
+        cid = movie_takes.take_id(pid, req.model, sids)
+        todo = movie_prompts.to_render(unit)
         t0 = time.time()
         try:
-            # one reference set and cast line for the take, and the opening
-            # frame: the previous shot's tail when the take itself continues one
-            merged = movie_takes.take_shot(sjsons)
-            refs, warnings = resolve_reference_set(merged, bible, family=fam)
-            refs = movie_takes.slot_sorted(refs)
-            opening, tail = self._continuation_tail(sjsons[0], pid, warnings)
-            start = Path(tail) if tail else None
-            # a retried take (failed or transient) keeps the seeds of its last
-            # attempt (stored on the head row), so the chain engine reuses every
-            # finished step; assign_seed would drift with the scene's statuses
-            head = run[0]
-            retry = head.get("attempts") or self._transient.get(head["shot_id"])
-            base_seed = (int(head["seed"]) if retry and head.get("seed") is not None
-                         else self.db.assign_seed(sjsons[0]))
-            prompts, negative = [], ""
-            for i, (row, sj) in enumerate(zip(run, sjsons)):
-                chain = [] if h3 else self._lora_chain(row, sj, bible, is_i2v=False)
-                body, neg = self._project_prompt(
-                    row, sj, self._scene_state(row["shot_id"], sj, pid), bible, mid, is_i2v=False,
-                    lora_names=[c["name"] for c in chain if c.get("enabled", True)])
-                if h3:
-                    prompts.append(self._h3_take_prompt(body, refs, sj, bible, continues=i > 0))
-                    continue
-                legend = self._ltx_reference_legend(
-                    ([{"source": "continuation:prev_tail"}] if start else []) + refs)
-                body = self._ltx_prompt_recipe(body, sj)
-                prompts.append(f"{legend} {body}" if legend else body)
-                if i == 0:
-                    negative = self._ltx_negative_recipe(neg)
             for i, sid in enumerate(sids):
-                self.db.set_status(sid, "rendering", seed=base_seed + i, prompt=prompts[i],
-                                   negative=negative, project=pid)
+                if sid in todo:
+                    self.db.set_status(sid, "rendering", seed=seeds[i], prompt=prompts[i],
+                                       negative="", project=pid)
             if video_studio.chain_running(cid):
                 # an earlier wait gave up while the take still renders: wait for it
                 log.info(f"{tag}: already rendering - waiting for it")
             else:
-                log.info(f"{tag}: rendering {len(run)} shots as one seamless {mid} take"
-                         + (f", opening on {start.name}" if start else ""))
+                again = [s for s in sids if s not in todo]
+                log.info(f"{tag}: rendering {len(sids)} shots as one seamless {req.model} take, "
+                         f"{req.opening}" + (f" from the {req.start_source}" if req.start_source else "")
+                         + (f"; {', '.join(again)} reuse their finished steps" if again else ""))
                 video_studio.start_chain(
-                    mid, prompts, mode="i2v" if (refs or start) else "t2v", negative=negative,
-                    seed=base_seed, width=w, height=h, frames=frames,
-                    references=movie_takes.take_cast(refs, bible, merged), chain_id=cid,
-                    start_path=start, origin={"project": pid, "shots": sids})
-            rec = self._wait_take(cid, 8 * len(run) * int(entry.get("timeout_s") or 2700))
+                    req.model, prompts, mode=self._mode(req), negative="", seed=seeds[0],
+                    width=req.width, height=req.height, frames=req.frames,
+                    start_image=req.start_image, references=req.references, chain_id=cid,
+                    origin={"project": pid, "shots": sids}, seeds=seeds)
+            rec = self._wait_take(cid, 8 * len(sids) * int(entry.get("timeout_s") or 2700))
             out_dir = ROOT / "output" / "videostudio"
             clips = movie_takes.split_take(
                 Path(rec["final_video"]), list(rec.get("seam_frames") or []),
                 [out_dir / f"take_{cid[:8]}_{i + 1}_{re.sub(r'[^A-Za-z0-9_-]', '_', s)}.mp4"
                  for i, s in enumerate(sids)], ffmpeg_exe(self.cfg))
         except Exception as e:  # noqa: BLE001
-            self._take_failed(run, pid, tag, e)
+            self._unit_failed(unit, tag, e)
             return
-
-        render_s = (time.time() - t0) / len(run)
+        render_s = (time.time() - t0) / len(sids)
         qa = rec.get("qa") or {}
-        for i, (row, sj, clip) in enumerate(zip(run, sjsons, clips)):
-            sid = row["shot_id"]
-            prov = dict(sj)
-            prov.update(applied_model=mid, applied_references=refs,
-                        take={"id": cid, "index": i + 1, "shots": sids, "engine": rec.get("engine"),
-                              "video": rec.get("final_video"), "seam_qa_passed": qa.get("passed")})
-            if i > 0:
-                prov["continuity_applied"] = "CONTINUE (seamless take)"
-            elif start is not None:
-                prov["continuity_applied"] = opening
-                prov["continuation_frame"] = str(start)
-            if warnings:
-                prov["reference_warnings"] = warnings
-            self.db.set_json(sid, prov, project=pid)
-            self.db.record_render(sid, render_s, str(clip), project=pid)
-            self._transient.pop(sid, None)
-            self._emit({"shot_id": sid, "event": "rendered", "time_s": render_s,
-                        "video": str(clip), "take": cid})
-            try:
-                from continuity import extract_tail
-                tail_png = extract_tail(clip, sid, pid=pid)
-                if tail_png is not None:
-                    self.db.set_status(sid, "rendered", tail_frame=str(tail_png), project=pid)
-            except Exception as e:  # noqa: BLE001
-                log.warning(f"{sid}: tail extraction failed: {e}")
-            self._post_queue.put((row, prov, clip, prompts[i]))
-        log.info(f"{tag}: done in {render_s * len(run):.0f}s, seam QA "
+        # the cast's identity and apparent age per link of the take (face_drift)
+        links = list(((rec.get("cast") or {}).get("links")) or [])
+        for i, (row, sj, clip) in enumerate(zip(unit.rows, sjsons, clips)):
+            prov = self._provenance(req, sj, i)
+            prov["take"] = {"id": cid, "index": i + 1, "shots": sids, "engine": rec.get("engine"),
+                            "video": rec.get("final_video"), "seam_qa_passed": qa.get("passed")}
+            faces = {k: v for k, v in next((lk for lk in links if lk.get("link") == i + 1), {}).items()
+                     if k != "link"}
+            if faces:
+                prov["take"]["cast"] = faces
+            self.db.set_json(row["shot_id"], prov, project=pid)
+            self._delivered(row, prov, clip, prompts[i], render_s, take=cid)
+        self._cascade(unit)
+        log.info(f"{tag}: done in {render_s * len(sids):.0f}s, seam QA "
                  f"{'PASS' if qa.get('passed') else 'FAIL'}")
+
+    @staticmethod
+    def _provenance(req, sjson: dict, i: int) -> dict:
+        """The shot record of a render: the model, the references, the request
+        and how the shot opened (earlier renders' entries are replaced)."""
+        prov = {k: v for k, v in sjson.items()
+                if k not in ("take", "continuity_applied", "continuation_frame", "opening_frame",
+                             "reference_warnings", "request", "applied_loras")}
+        prov.update(applied_model=req.model, applied_references=req.references)
+        if i:
+            prov["continuity_applied"] = "CONTINUE (seamless take)"
+            return prov
+        prov["request"] = req.summary()
+        if req.opening != "cut":
+            prov["continuity_applied"] = {"continue": "CONTINUE",
+                                          "match_action": "MATCH_ACTION (a new angle)"}[req.opening]
+        if req.start_source == "opening frame":
+            prov["opening_frame"] = req.start_image
+        if req.warnings:
+            prov["reference_warnings"] = list(req.warnings)
+        return prov
+
+    def _delivered(self, row: dict, prov: dict, clip: Path, prompt: str, render_s: float,
+                   take: str | None = None) -> None:
+        """A shot's clip is in: its render record, its last frame (the next
+        CONTINUE opens on it), then post + QA on the post worker."""
+        sid, pid = row["shot_id"], row.get("project_id")
+        self.db.record_render(sid, render_s, str(clip), project=pid)
+        self._transient.pop(sid, None)
+        self._emit({"shot_id": sid, "event": "rendered", "time_s": render_s, "video": str(clip),
+                    **({"take": take} if take else {})})
+        try:
+            from continuity import extract_tail
+            tail = extract_tail(clip, sid, pid=pid)
+            if tail is not None:
+                self.db.set_status(sid, "rendered", tail_frame=str(tail), project=pid)
+        except Exception as e:  # noqa: BLE001
+            log.warning(f"{sid}: tail extraction failed: {e}")
+        self._post_queue.put((row, prov, clip, prompt))
+
+    def _cascade(self, unit) -> None:
+        """A shot that rendered before the unit and opens on its last frame (it
+        CONTINUEs the unit's last shot, or is a match cut made from that
+        frame) opens on a frame that no longer exists: it renders again."""
+        import movie_prompts
+        last = self.db.get(unit.sids[-1], unit.pid) or unit.rows[-1]
+        for r in movie_prompts.follow_ons(self.db, last, unit.pid, self.cfg):
+            if r.get("status") in _DONE:
+                self.db.set_status(r["shot_id"], "queued", project=unit.pid,
+                                   error=f"renders again: {last['shot_id']}, the shot it follows on "
+                                         f"from, was rendered again")
+                log.info(f"{r['shot_id']}: queued again (it follows on from {last['shot_id']})")
+
+    def _wait_job(self, jid: str, timeout_s: int) -> dict:
+        """Block until a Video Studio job ends. The job waits for the GPU (up
+        to an hour) and then renders within its own deadline, so it always
+        ends; the deadline here only guards against a hung job thread."""
+        import video_studio
+        deadline = time.time() + 3600 + int(timeout_s) + 900
+        while True:
+            job = video_studio.job(jid) or {}
+            if job.get("status") in ("completed", "failed"):
+                return job
+            if time.time() > deadline:
+                raise RuntimeError(f"render {jid} did not end (status {job.get('status')!r})")
+            time.sleep(5)
 
     def _wait_take(self, cid: str, timeout_s: int) -> dict:
         """Block until the take's chain completes; raises with its error.
@@ -720,11 +843,15 @@ class Orchestrator:
                 raise RuntimeError(f"take {cid[:8]} still rendering after {timeout_s}s")
             time.sleep(10)
 
-    def _take_failed(self, run: list[dict], pid: str, tag: str, e: Exception) -> None:
-        """A failed take goes back to the queue whole (same seeds: the retry
-        resumes it), or to review once the tightest budget among its shots is
-        spent. Transient failures (server restarting) do not use the budget."""
-        sids = [r["shot_id"] for r in run]
+    def _unit_failed(self, unit, tag: str, e: Exception) -> None:
+        """A failed unit's shots still to render go back to the queue (same
+        seeds: the retry resumes a take), or to review once the tightest
+        budget among them is spent; its rendered shots keep their clips.
+        Transient failures (a server restarting) do not use the budget."""
+        import movie_prompts
+        todo = set(movie_prompts.to_render(unit)) or set(unit.sids)
+        run = [r for r in unit.rows if r["shot_id"] in todo]
+        pid, sids = unit.pid, [r["shot_id"] for r in run]
         self.last_error = str(e)
         transient = "10061" in str(e) or "refused" in str(e) or isinstance(e, TimeoutError)
         if transient:
@@ -748,131 +875,10 @@ class Orchestrator:
 
     def _video_family(self, shot: dict, sjson: dict, pid: str) -> str:
         """The LTX-2.5 / MiniMax H3 model id this project shot renders with,
-        or "" for the legacy Wan 2.2 path.
-
-        Selection is per shot override first (`video_model` in the shot json),
-        then the project's per-tier override, then its `video_family` column.
-        No model, an unknown id or an unavailable one resolves to the studio
-        default (video_models.default_model_id: LTX-2.5 s6 CQ) with a logged
-        warning, so a stale id can never brick a project. Wan 2.2 is legacy:
-        it renders only when the shot or project names an installed Wan
-        entry. Raises NoVideoModel when no LTX-2.5 / H3 model is installed.
-        """
-        mid = str(shot.get("video_model") or sjson.get("video_model") or "")
-        if not mid:
-            try:
-                row = self.db.con.execute(
-                    "SELECT video_family, video_models FROM projects WHERE id=?",
-                    (pid,)).fetchone()
-                mid = str((row[0] if row else "") or "")
-                # per-tier override: hero / standard / volume each may run a
-                # different model (e.g. H3 for hero shots, LTX for the rest)
-                try:
-                    per_tier = json.loads((row[1] if row and len(row) > 1
-                                           else "") or "{}")
-                except Exception:  # noqa: BLE001
-                    per_tier = {}
-                tier = str(shot.get("tier") or "standard")
-                mid = str((per_tier or {}).get(tier) or mid or "")
-            except Exception:
-                mid = ""
-        import video_models
-        if mid:
-            try:
-                st = video_models.model_status(mid)
-            except Exception as e:  # noqa: BLE001
-                st = {"available": False, "missing": [f"registry error: {e}"]}
-            fam = str(st.get("family") or "")
-            if st.get("available") and fam.startswith("wan"):
-                return ""       # legacy Wan 2.2, picked explicitly
-            if st.get("available") and (fam.startswith("ltx") or fam.startswith("h3")):
-                return mid
-            why = (f"unavailable ({st.get('missing') or st.get('reason')})"
-                   if not st.get("available") else "not a movie model")
-            log.warning(f"{pid}: video model '{mid}' is {why} - using the "
-                        f"default model")
-        default = video_models.default_model_id()
-        if default:
-            return default
-        raise NoVideoModel(
-            "no LTX-2.5 or MiniMax H3 model is installed (docs/setup/RESTORE_INSTRUCTIONS.md "
-            "step 6), and the project does not pick the legacy Wan 2.2 model")
-
-    # ------------------------------------------------- family render helpers
-    def _family_dims(self, mid: str, w: int, h: int) -> tuple[int, int]:
-        """The RENDER resolution for a non-Wan family.
-
-        `defaults.width/height` wins when declared: MiniMax H3's hero tier runs
-        its phase 1 at HALF the output (960x544 -> refine to 1920x1088), so the
-        registry carries the phase-1 size while `resolution_limits.native`
-        describes the final output. Without defaults, LTX-2.5 uses its native
-        resolution (the historical behaviour).
-        """
-        try:
-            import video_models
-            st = video_models.model_status(mid)
-            d = st.get("defaults") or {}
-            dw, dh = d.get("width"), d.get("height")
-            if dw and dh:
-                return int(dw), int(dh)
-        except Exception:
-            pass
-        return self._family_native_dims(mid, w, h)
-
-    def _family_native_dims(self, mid: str, w: int, h: int) -> tuple[int, int]:
-        """Nearest native resolution declared by the model's registry entry.
-
-        The registry declares e.g. native: ["1920x1088"]; a shot whose aspect
-        ratio matches within +-10% is rendered at that native size instead of
-        the movie pipeline's Wan profile resolution. Anything else (vertical
-        shots, panoramas) keeps the incoming dims untouched.
-        """
-        try:
-            import video_models
-            st = video_models.model_status(mid)
-            names = (st.get("resolution_limits") or {}).get("native") or []
-        except Exception:
-            names = []
-        if not h or not w:
-            return w, h
-        best = None
-        for name in names:
-            try:
-                nw, nh = (int(x) for x in str(name).lower().split("x"))
-            except Exception:
-                continue
-            if not nh:
-                continue
-            ratio = (nw / nh) / (w / h)
-            if 0.9 <= ratio <= 1.1 and (best is None or abs(ratio - 1) < best[0]):
-                best = (abs(ratio - 1), nw, nh)
-        return (best[1], best[2]) if best else (w, h)
-
-    def _family_frames(self, mid: str, frames: int) -> int:
-        """Snap a frame count to the model's declared frame grid.
-
-        LTX-2.5 uses N = 1 + 8k (floor snap, the historical behaviour). MiniMax
-        H3 uses N = 5 + 17k and declares `frame_snap: "nearest"` - the movie
-        pipeline's 5 s target (121 frames) sits between H3's 107 and 124, and
-        the intended 5.17 s clip is 124, so H3 snaps to the NEAREST grid point.
-        """
-        try:
-            import video_models
-            st = video_models.model_status(mid)
-            lim = (st.get("frame_limits") or {})
-            snap = str(st.get("frame_snap") or (lim.get("snap") or "floor"))
-        except Exception:
-            lim, snap = {}, "floor"
-        mx = int(lim.get("max", 121) or 121)
-        stp = int(lim.get("step", 8) or 8)
-        lo = int(lim.get("min", 9) or 9)
-        n = min(int(frames), mx)
-        if (n - lo) % stp:
-            if snap == "nearest":
-                n = lo + round((n - lo) / stp) * stp
-            else:
-                n = lo + ((n - lo) // stp) * stp
-        return max(n, lo)
+        or "" for the legacy Wan 2.2 path (movie_request.shot_model). Raises
+        NoVideoModel when no LTX-2.5 / H3 model is installed."""
+        from movie_request import shot_model
+        return shot_model(self.db, shot, sjson, pid)
 
     def _project_post_on(self, pid: str) -> bool:
         """Per-project post-processing switch (upscale / face-fix / RIFE /
@@ -887,16 +893,6 @@ class Orchestrator:
                 else False
         except Exception:
             return False
-
-    def _project_takes_on(self, pid: str) -> bool:
-        """Per-project seamless-takes switch (projects.seamless_takes, the
-        Generate tab toggle). Defaults ON."""
-        try:
-            row = self.db.con.execute(
-                "SELECT seamless_takes FROM projects WHERE id=?", (pid,)).fetchone()
-            return bool(int(row[0])) if row is not None and row[0] is not None else True
-        except Exception:  # noqa: BLE001 - a DB without the column predates the switch
-            return True
 
     def _project_post_worker(self, pid: str) -> str:
         """Which worker PC runs this project's upscale/post stage ("" = local).
@@ -913,457 +909,6 @@ class Orchestrator:
             return str((row[0] if row else "") or "").strip()
         except Exception:
             return ""
-
-    # "high shutter speed" was in the proven phrase, but it strips motion blur
-    # and reads as stroboscopic/choppy at 24fps — one of the cues that makes a
-    # render look animated. Natural motion blur keeps the real-time intent.
-    _LTX_MOTION_PHRASE = ("natural real-time speed, natural motion blur, "
-                          "live-action photography")
-    # ---- LTX photographic translation (measured 2026-09-22, BENCH_2026-09-22)
-    # Identical scene, refs, seed and 1920x1088 config:
-    #   fantasy language  -> glossy CG game-art still ("Frozen" look)
-    #   photographic rewrite -> real-location film still
-    # The model's prior for fantasy nouns (magical city / rune-light / arcane)
-    # IS illustration; translating the same scene into real-world equivalents
-    # is the fix. LTX-ONLY: H3 renders the fantasy language photoreal already.
-    _LTX_PHOTO_SUBS = (
-        ("rune-lit", "lamp-lit"),
-        ("rune-carved", "carved stone"),
-        ("rune-light", "warm carved stone detail"),
-        ("glowing runes", "carved stone patterns"),
-        ("rune foundry", "stone workshop"),
-        ("runes", "carved stone details"),
-        ("magical city", "historic stone city"),
-        ("magical", "grand"),
-        ("royal palace", "grand stone palace"),
-        ("arcane", "old stone"),
-        ("ethereal", "soft"),
-        ("celestial", "bright"),
-        ("enchanted", "grand"),
-        ("luminous", "bright"),
-        ("floating structures", "tall towers"),
-        ("crystalline", "clear"),
-        ("sorceress", "woman in dark robes"),
-        ("aura", "soft glow"),
-    )
-    _LTX_PHOTO_LEAD = ("live-action film still on a real location, real "
-                       "actress, practical set, documentary-style location "
-                       "cinematography — ")
-
-    def _ltx_photographic(self, prompt: str) -> str:
-        """Translate fantasy vocabulary into real-world photographic language
-        and lead with a real-location anchor (LTX only)."""
-        p = str(prompt or "")
-        for a, b in self._LTX_PHOTO_SUBS:
-            if a in p.lower():
-                p = re.sub(re.escape(a), b, p, flags=re.IGNORECASE)
-        if "real location" not in p.lower():
-            p = self._LTX_PHOTO_LEAD + p
-        return p
-    _LTX_NEG_EXTRA = ("slow motion", "slow-mo", "frozen pose", "static",
-                      "motionless", "stiff movement", "un-photorealistic",
-                      "unrealistic", "cartoon", "anime", "cgi", "3d render",
-                      "illustration", "plastic skin", "game art",
-                      "concept art", "stylized", "oversaturated",
-                      "doll-like", "wax figure", "video game",
-                      "flat lighting", "smooth plastic")
-
-    def _ltx_prompt_recipe(self, prompt: str, shot: dict | None = None) -> str:
-        """LTX prompt recipe (LTX lab record PROVEN_CONFIGS, rules 4-5). LTX renders only
-        — Wan prompts stay untouched.
-
-        Motion-first: LTX conditions hardest on the prompt's LEADING tokens.
-        The shared legacy assembly opens with film-stock/location preamble and
-        buries the action behind it (measured: shots drifted to ambient
-        posing — "stands at the entrance", "walks past..."). The primary
-        action is therefore hoisted to the very front, unless it already
-        leads. The identity block still carries it verbatim further in, which
-        reinforces rather than contradicts (same words, earlier position).
-        """
-        p = (prompt or "").strip().rstrip(",")
-        try:
-            act = str((shot or {}).get("primary_action") or "").strip()
-            if act and act.lower() not in p.lower()[:160]:
-                p = act.rstrip(".,") + ", " + p
-        except Exception:  # noqa: BLE001
-            pass
-        # photographic translation BEFORE the motion phrase so the real-world
-        # anchor lands right after the action (leading tokens weight most)
-        p = self._ltx_photographic(p)
-        low = p.lower()
-        if "real-time speed" not in low and "real time speed" not in low:
-            p = (p + ", " + self._LTX_MOTION_PHRASE).strip(", ")
-        return p
-
-    def _ltx_negative_recipe(self, negative: str) -> str:
-        """Append every missing term of the proven negative set
-        (LTX lab record PROVEN_CONFIGS, rule 5). LTX renders only."""
-        items = [x.strip() for x in (negative or "").split(",") if x.strip()]
-        low = {x.lower() for x in items}
-        for term in self._LTX_NEG_EXTRA:
-            if term not in low:
-                items.append(term)
-                low.add(term)
-        return ", ".join(items)
-
-    def _h3_reference_legend(self, refs: list[dict]) -> str:
-        """One-line <Picture N> role legend for H3 Ref2VA prompts.
-
-        H3's ref_images fill sequentially, so <Picture 1..N> map to the order
-        of `refs` — the legend is generated from the RESOLVED set (not from
-        assumptions), which ensures the tags match the submission
-        order. Roles follow the guide's explicit-role sentences.
-        """
-        parts: list[str] = []
-        lead_done = False
-        for i, r in enumerate(refs):
-            src = str(r.get("source") or "")
-            tag = f"<Picture {i + 1}>"
-            if src.startswith("character:"):
-                who = src.split(":")[1] if ":" in src else src
-                if not lead_done:
-                    parts.append(
-                        f"{tag} is the lead character ({who}); face, hair, "
-                        f"wardrobe and colors preserved exactly as referenced")
-                    lead_done = True
-                else:
-                    parts.append(
-                        f"{tag} is another character ({who}), identity "
-                        f"preserved exactly")
-            elif src.startswith("weapon:"):
-                parts.append(f"{tag} shows the weapon's exact design and "
-                             f"materials")
-            elif src.startswith("power:"):
-                parts.append(f"{tag} defines the power's look and VFX style")
-            elif src.startswith("location:"):
-                parts.append(f"{tag} is the environment")
-            else:
-                parts.append(f"{tag} is a reference image")
-        if not parts:
-            return ""
-        return "Reference images: " + "; ".join(parts) + "."
-
-    def _h3_ref2va_prompt(self, body: str, refs: list[dict],
-                          shot: dict, bible, continues: bool = False) -> str:
-        """Official H3 Ref2VA six-section prompt (ref-en guide).
-
-        Field order: subject_definitions -> summary -> retention_analysis ->
-        detailed_description -> overall_soundscape -> non_diegetic_music.
-        Pictures of ONE character are GROUPED under a single <Subject N> — the
-        official guide: several photos of one person grouped = one defended
-        identity, ungrouped = lookalikes/drift. The frame-0 anchor is declared
-        explicitly ("the shot begins from <Picture 1>") because a reference is
-        not the first frame unless the prompt says so; `continues` (a later
-        link of a seamless take, opening on the carried frames) says the shot
-        carries on instead.
-        """
-        from ltx_refs import resolve_presentation
-        chars = {}
-        try:
-            chars = bible.characters() or {}
-        except Exception:  # noqa: BLE001
-            chars = {}
-        by_id = {str(c.get("id")): c for c in (shot.get("characters") or [])
-                 if isinstance(c, dict)}
-        # group refs: one subject per character (identity+outfit+weapon),
-        # then power, then environment
-        subjects: list[dict] = []
-        idx_of: dict[str, int] = {}
-
-        def _subject(key: str, label: str) -> dict:
-            if key not in idx_of:
-                idx_of[key] = len(subjects)
-                subjects.append({"key": key, "label": label, "pics": [],
-                                 "retention": ""})
-            return subjects[idx_of[key]]
-
-        pic_no = 0
-        for r in refs:
-            src = str(r.get("source") or "")
-            pic_no += 1
-            if src.startswith("character:"):
-                parts = src.split(":")
-                cid = parts[1] if len(parts) > 1 else "?"
-                char = chars.get(cid) or {}
-                name = str(char.get("name") or cid)
-                sc = by_id.get(cid) or {}
-                pres = resolve_presentation(char, sc, shot)
-                feats = [str(char.get("body") or "").strip()]
-                if pres.get("outfit"):
-                    feats.append(f"wearing {pres['outfit']}")
-                if pres.get("weapon_txt"):
-                    feats.append(f"carrying {pres['weapon_txt']}")
-                s = _subject(f"char:{cid}", name)
-                s["pics"].append(pic_no)
-                feats_txt = ", ".join(x for x in feats if x)
-                s["text"] = (f"<Subject {idx_of[f'char:{cid}'] + 1}> is "
-                             f"{name} in <Picture {pic_no}>"
-                             + (f", {feats_txt}" if feats_txt else ""))
-                # retention is CONDITIONAL on what the shot actually shows: a
-                # weapon-less presentation must not ask the model to preserve
-                # a weapon it is not supposed to carry.
-                ret = "fully_preserved - face, hair and wardrobe colors"
-                if pres.get("weapon_txt"):
-                    ret += ", and the weapon's design and materials"
-                s["retention"] = ret
-            elif src.startswith("weapon:"):
-                parts = src.split(":")
-                cid = parts[1] if len(parts) > 1 else "?"
-                wid = parts[2] if len(parts) > 2 else "weapon"
-                char = chars.get(cid) or {}
-                w = ((char.get("weapons") or {}).get(wid) or {})
-                s = _subject(f"char:{cid}", str(char.get("name") or cid))
-                s["pics"].append(pic_no)
-                s.setdefault("extra", []).append(
-                    f"<Picture {pic_no}> shows the exact design of "
-                    f"{wid}: {str(w.get('descriptor') or wid)}")
-            elif src.startswith("power:"):
-                parts = src.split(":")
-                pw = parts[2] if len(parts) > 2 else "power"
-                lvl = next((x for x in parts if x.startswith("lv")), "")
-                s = _subject(f"power:{pw}", f"the {pw} power")
-                s["pics"].append(pic_no)
-                s["text"] = (f"<Subject {idx_of[f'power:{pw}'] + 1}> is the "
-                             f"{pw} power's manifestation in "
-                             f"<Picture {pic_no}>"
-                             + (f" at intensity {lvl[2:]}" if lvl else ""))
-                s["retention"] = "fully_preserved - colors, materials and VFX look"
-            elif src.startswith("location:"):
-                parts = src.split(":")
-                lid = parts[1] if len(parts) > 1 else "?"
-                loc = (bible.locations() or {}).get(lid) or {}
-                s = _subject(f"loc:{lid}", str(loc.get("descriptor") or lid))
-                s["pics"].append(pic_no)
-                s["text"] = (f"<Subject {idx_of[f'loc:{lid}'] + 1}> is the "
-                             f"environment in <Picture {pic_no}>: "
-                             f"{str(loc.get('descriptor') or lid)}")
-                s["retention"] = "fully_preserved - layout, materials and lighting"
-
-        if not subjects:
-            return self._h3_reference_legend(refs)
-
-        lines: list[str] = ["subject_definitions:"]
-        for i, s in enumerate(subjects):
-            base = s.get("text") or (f"<Subject {i + 1}> is defined by "
-                                     f"<Picture {s['pics'][0]}>")
-            if len(s["pics"]) > 1:
-                base += (", further defined by "
-                         + ", ".join(f"<Picture {n}>" for n in s["pics"][1:]))
-            lines.append(base + ".")
-            for extra in s.get("extra") or []:
-                lines.append(extra + ".")
-
-        # summary: one line, the task and the reference roles
-        lead = subjects[0]["label"] if subjects else "the scene"
-        n_char = sum(1 for s in subjects if s["key"].startswith("char:"))
-        has_env = any(s["key"].startswith("loc:") for s in subjects)
-        summary = (f"[reference generation] The target video follows {lead}"
-                   + (f" and {n_char - 1} other character(s)" if n_char > 1 else "")
-                   + (" in the referenced environment" if has_env else "")
-                   + ".")
-        lines += ["", "summary:", summary]
-
-        lines += ["", "retention_analysis:"]
-        for i, s in enumerate(subjects):
-            if s.get("retention"):
-                lines.append(f"<Subject {i + 1}>: {s['retention']}.")
-
-        opening = ("the shot carries on from the previous moment without a cut."
-                   if continues else "the shot begins from <Picture 1>.")
-        lines += ["", "detailed_description:", opening, body]
-
-        return "\n".join(lines)
-
-    def _ltx_reference_legend(self, refs: list[dict]) -> str:
-        """MSR usage-tip reference line for LTX prompts.
-
-        The official MSR guidance: describe each reference in the prompt, use
-        consistent labels ("Image 1", "Image 2"), and specify which reference
-        provides the character, garment, object or background. LTX has no
-        <Picture N> tags — plain "Image N" labels are the convention.
-        """
-        parts: list[str] = []
-        lead_done = False
-        for i, r in enumerate(refs):
-            src = str(r.get("source") or "")
-            tag = f"Image {i + 1}"
-            if src.startswith("character:"):
-                who = src.split(":")[1] if ":" in src else src
-                if not lead_done:
-                    parts.append(f"{tag} provides {who}'s face, hair and "
-                                 f"outfit exactly as shown")
-                    lead_done = True
-                else:
-                    parts.append(f"{tag} provides {who}'s identity")
-            elif src.startswith("weapon:"):
-                parts.append(f"{tag} provides the weapon's exact design and "
-                             f"materials")
-            elif src.startswith("power:"):
-                parts.append(f"{tag} provides the power's look and VFX style")
-            elif src.startswith("location:"):
-                parts.append(f"{tag} provides the environment")
-        if not parts:
-            return ""
-        return "References: " + "; ".join(parts) + "."
-
-    def _continuation_tail(self, sjson: dict, pid: str,
-                           warnings: list[str]) -> tuple[str, str | None]:
-        """(effective continuity, the previous shot's tail frame or None).
-
-        Continuity bridging is LLM-authored and per-shot overridable: a
-        CONTINUE / MATCH_ACTION shot opens on the PREVIOUS shot's final frame.
-        A scene/location change is always a hard cut, never a bridge, and a
-        bridge without a tail frame renders as a cut; both are noted in
-        `warnings`."""
-        try:
-            from shotspec import continuity_of
-            mode = continuity_of(sjson)
-        except Exception:  # noqa: BLE001
-            mode = str(sjson.get("continuity") or "CUT").upper()
-        if mode not in ("CONTINUE", "MATCH_ACTION"):
-            return mode, None
-        prev_id = str(sjson.get("prev_shot") or "")
-        prev_row = self.db.get(prev_id, pid) if prev_id else None
-        try:
-            pj = (prev_row or {}).get("json")
-            if isinstance(pj, str):
-                pj = json.loads(pj or "{}")
-            prev_loc = str((pj or {}).get("location") or "")
-        except Exception:  # noqa: BLE001
-            prev_loc = ""
-        cur_loc = str(sjson.get("location") or "")
-        if prev_loc and cur_loc and prev_loc != cur_loc:
-            warnings.append(f"continuity {mode} forced to CUT "
-                            f"(location changed {prev_loc} -> {cur_loc})")
-            return "CUT", None
-        tail = (prev_row or {}).get("tail_frame") if prev_row else None
-        if not tail:
-            warnings.append(f"continuity {mode} but no tail frame "
-                            f"from '{prev_id or '?'}' — rendering as a cut")
-            return mode, None
-        return mode, str(tail)
-
-    def _h3_take_prompt(self, body: str, refs: list[dict], shot: dict, bible,
-                        continues: bool) -> str:
-        """The H3 Ref2VA prompt of one link of a take (later links continue
-        the take instead of opening on <Picture 1>)."""
-        try:
-            return self._h3_ref2va_prompt(body, refs, shot, bible, continues=continues)
-        except Exception as e:  # noqa: BLE001
-            log.warning("H3 ref2va sections failed, using legend: %s", e)
-            legend = self._h3_reference_legend(refs)
-            return f"{legend}\n\n{body}" if legend else body
-
-    def _render_family_shot(self, sid: str, sjson: dict, prompt: str, negative: str,
-                            w: int, h: int, frames: int, steps: int, seed: int,
-                            mid: str, pid: str) -> Path:
-        """Render one non-Wan shot (LTX-2.5 / MiniMax H3) through its isolated
-        ComfyUI runtime.
-
-        Delegates to video_studio - which owns the family's ComfyUI instance
-        (registry `comfy_port`), reference uploading, output copying and the
-        crash-safe job store - then blocks until the job is terminal and
-        returns the finished mp4. Raises RuntimeError on failure or timeout so
-        the caller's existing retry/review ladder handles it unchanged.
-
-        References come from the cast (ltx_refs.resolve_reference_set): chosen
-        stills first, then the existing selected.png / roster fall backs. A
-        CONTINUE / MATCH_ACTION shot rendered on its own also opens on the
-        previous shot's tail frame (_continuation_tail); a run of CONTINUE
-        shots on a seamless model renders as one take instead (_render_take).
-
-        Family-specific behaviour:
-        * LTX: the proven real-time motion + negative prompt recipe is
-          appended (LTX lab record PROVEN_CONFIGS, rules 4-5); DFR applies.
-        * H3: prompts follow docs/H3_PROMPT_GUIDE.md and are passed through
-          UNCHANGED (the guide structure IS the recipe; CFG 1.0 ignores
-          negatives, and the distilled model must not inherit LTX's negative
-          list). No DFR. The timeout comes from the registry entry
-          (`timeout_s`, hero tier 2700 s - measured 18-23 min per clip).
-        """
-        import video_models
-        import video_studio
-        from bible import Bible
-        from ltx_refs import resolve_reference_set
-
-        fam = str((video_models.VIDEO_MODELS.get(mid) or {}).get("family", ""))
-        bible = Bible(pid)
-        refs, warnings = resolve_reference_set(sjson, bible, family=fam)
-        # continuity bridging: H3 pins the previous shot's tail as the frame-0
-        # anchor; LTX takes a free picture slot and the legend names it
-        cont_mode, tail = self._continuation_tail(sjson, pid, warnings)
-        if tail:
-            from ltx_refs import add_continuation
-            refs, note = add_continuation(refs, tail, fam)
-            if note:
-                warnings.append(note)
-        if fam.startswith("ltx"):
-            # agreed prompt recipe (LTX lab record PROVEN_CONFIGS, rules 4-5): motion-first
-            # ordering + explicit real-time motion language + the proven
-            # negative set. Applied to LTX renders only; the Wan templates
-            # keep their prompts as-is.
-            prompt = self._ltx_prompt_recipe(prompt, sjson)
-            negative = self._ltx_negative_recipe(negative)
-        if fam.startswith("ltx") and refs:
-            # MSR usage tips: name each reference and its role in the prompt
-            legend = self._ltx_reference_legend(refs)
-            if legend:
-                prompt = legend + " " + (prompt or "")
-        if fam.startswith("h3") and refs:
-            # Official Ref2VA six-section format (grouped subjects, retention
-            # lines, declared frame-0 anchor). Falls back to the one-line
-            # legend if the section builder hits missing data.
-            prompt = self._h3_take_prompt(prompt or "", refs, sjson, bible, continues=False)
-        dfr_raw = sjson.get("dfr")
-        dfr = bool(dfr_raw) if dfr_raw is not None else None
-        entry = video_models.VIDEO_MODELS.get(mid) or {}
-        if fam.startswith("h3"):
-            # The H3 templates run the proven schedule baked into the graph +
-            # registry defaults (20 steps phase 1, 5-step refine). The movie
-            # pipeline's tier step counts must never override it.
-            try:
-                steps = int((entry.get("defaults") or {}).get("steps") or 20)
-            except Exception:
-                steps = 20
-        timeout_s = int(entry.get("timeout_s")
-                        or (self.cfg.get("ltx", {}) or {}).get("timeout_s", 1800))
-
-        rec = video_studio.start(
-            mid, prompt, mode="i2v" if refs else "t2v", negative=negative,
-            seed=seed, width=w, height=h, frames=frames, steps=steps,
-            references=refs, dfr=dfr, worker="local", timeout=timeout_s)
-        deadline = time.time() + timeout_s + 120
-        job = None
-        while time.time() < deadline:
-            job = video_studio.job(rec["id"])
-            if job and job.get("status") in ("completed", "failed"):
-                break
-            time.sleep(5)
-        if not job or job.get("status") != "completed":
-            err = (job or {}).get("error") or "render did not reach a terminal state"
-            raise RuntimeError(f"{fam} render failed: {err}")
-        outs = job.get("outputs") or []
-        if not outs:
-            raise RuntimeError(f"{fam} render completed but produced no output file")
-        out_dir = Path(job.get("output_dir") or (ROOT / "output" / "videostudio"))
-        path = out_dir / outs[0]
-        if not path.exists():
-            raise RuntimeError(f"{fam} output missing on disk: {path}")
-
-        # provenance: pin the exact model and reference set into the shot record
-        prov = dict(sjson)
-        prov["applied_model"] = mid
-        prov["applied_references"] = refs
-        if cont_mode and cont_mode != "CUT":
-            prov["continuity_applied"] = cont_mode
-        if (job or {}).get("continuation"):
-            prov["continuation_frame"] = job.get("continuation")
-        if warnings:
-            prov["reference_warnings"] = warnings
-        self.db.set_json(sid, prov, project=pid)
-        log.info(f"{sid}: {fam} render {mid} finished in {job.get('seconds')}s "
-                 f"refs={[r['slot'] for r in refs] or 'none'}")
-        return path
 
     def _pick_keyframe(self, shot: dict):
         """Keyframe for I2V: main character's roster keyframe, else location still."""
@@ -1489,7 +1034,7 @@ class Orchestrator:
 
             if pid:
                 from qa_director import QADirector
-                qa = QADirector(cfg).evaluate(sjson, str(final), prompt)
+                qa = QADirector(cfg).evaluate(sjson, str(final), prompt, refs=self._cast_portraits(sjson))
             else:
                 from face_qa import FaceQA
                 qa_shot = {**sjson, "prompt": prompt}
@@ -1505,6 +1050,12 @@ class Orchestrator:
                     self.db.set_status(sid, "passed", tail_frame=tail_frame,
                                        project=pid)
                 return
+            if pid and sjson.get("applied_model") and qa.get("face_fail"):
+                # a shot that lost the cast goes to review with its score, not
+                # into retakes (in a take, a retake renders the shots after it)
+                self.db.set_status(sid, "review", qa_notes=str(qa),
+                                   tail_frame=tail_frame, project=pid)
+                return
             # QA failed -> intelligent retry ladder (project shots) or
             # plain next-seed retry (legacy)
             attempts = self.db.increment_attempts(sid, project=pid)
@@ -1514,7 +1065,15 @@ class Orchestrator:
                 self.db.set_status(sid, "review", qa_notes=str(qa),
                                    tail_frame=tail_frame, project=pid)
                 return
-            if pid:
+            if pid and sjson.get("applied_model"):
+                # LTX-2.5 / H3: the prompt is the one written for the shot,
+                # never a template; a retake takes the next seed (with a take,
+                # the shots after it in the take render again with it)
+                row = self.db.get(sid, pid) or shot
+                seed = int(row["seed"]) if row.get("seed") is not None else self.db.stable_seed(row)
+                self.db.set_status(sid, "queued", project=pid, seed=(seed + REROLL_SEED) % (2 ** 31),
+                                   qa_stage=int(shot.get("qa_stage") or 0) + 1)
+            elif pid:
                 from qa_director import QADirector
                 from keyframe_gen import KeyframeGen
                 stage = int(shot.get("qa_stage") or 0)
@@ -1568,8 +1127,8 @@ class Orchestrator:
         sid = shot["shot_id"]
         pid = shot.get("project_id") or sjson.get("project_id")
         # Continuity tail: one extracted frame, no re-encode. Every family
-        # gets one — LTX/H3 shots honour CONTINUE / MATCH_ACTION by opening
-        # on the previous shot's final frame.
+        # gets one — an LTX/H3 CONTINUE shot opens on the previous shot's
+        # final frame (movie_request).
         tail_frame = None
         try:
             from continuity import extract_tail
@@ -1579,7 +1138,7 @@ class Orchestrator:
             log.warning(f"{sid}: tail extraction failed: {e}")
         try:
             from qa_director import QADirector
-            qa = QADirector(cfg).evaluate(sjson, str(video), prompt)
+            qa = QADirector(cfg).evaluate(sjson, str(video), prompt, refs=self._cast_portraits(sjson))
         except Exception as e:
             log.warning(f"{sid} raw QA failed, keeping raw: {e}")
             self.db.set_status(sid, "passed", project=pid)
@@ -1599,6 +1158,32 @@ class Orchestrator:
             self.db.set_status(sid, "review", qa_notes=str(qa),
                                tail_frame=tail_frame, project=pid)
             log.info(f"{sid}: raw render flagged for review (post-processing off)")
+
+    @staticmethod
+    def _cast_portraits(sjson: dict) -> list[str]:
+        """The identity stills of the people an LTX-2.5 / H3 shot rendered
+        with (its "character:" references), for the QA's likeness check;
+        empty for other shots."""
+        if not sjson.get("applied_model"):
+            return []
+        pid = str(sjson.get("project_id") or "")
+        try:
+            from bible import Bible
+            chars = Bible(pid).characters() or {} if pid else {}
+        except Exception:  # noqa: BLE001 - the request's own still is used then
+            chars = {}
+        from ltx_refs import character_refs
+        out: list[str] = []
+        for r in sjson.get("applied_references") or []:
+            parts = str(r.get("source") or "").split(":")
+            if parts[0] != "character" or len(parts) < 2:
+                continue
+            # the identity still, not a loadout still where the face is small
+            own = character_refs(pid, parts[1], chars.get(parts[1])) if chars.get(parts[1]) else []
+            p = str(own[0] if own else r.get("path") or "")
+            if p and p not in out and Path(p).is_file():
+                out.append(p)
+        return out
 
     def _fetch_output(self, result: dict, client=None) -> Any:
         from core import ROOT

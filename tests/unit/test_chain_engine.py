@@ -534,6 +534,24 @@ def test_a_link_failing_its_carry_end_is_rerolled_once_and_the_better_kept(tmp_p
     assert _nodes(again.draft_graph(2), "StudioLoadLatent")[0]["inputs"]["relpath"] == f"{ch.base}/link2_s1_video"
 
 
+def test_a_kept_reroll_seed_belongs_to_the_spec_seed_it_was_rolled_from(tmp_path, monkeypatch):
+    _checks(monkeypatch, [2.0, 0.6])                   # the re-roll is kept
+    run = FakeRunner(tmp_path)
+    ch = ce.LtxChain(_ltx_spec(), run, tmp_path)
+    ch.draft(0)
+    seed = ch.spec.links[1].seed
+    ch.draft(1)
+    assert ch.link_seed(1) == seed + ce.REROLL_SEED_OFFSET
+    assert ce.LtxChain(_ltx_spec(), run, tmp_path).link_seed(1) == seed + ce.REROLL_SEED_OFFSET
+    # a movie retake moves the link's own seed under the same chain id: it drafts
+    # from the new seed, and the link before it keeps its finished draft
+    spec = _ltx_spec()
+    spec.links[1].seed = seed + 104729
+    again = ce.LtxChain(spec, run, tmp_path)
+    assert again.link_seed(1) == seed + 104729 and _seed_of(again.draft_graph(1)) == seed + 104729
+    assert again.draft(0)["skipped"] and run.calls.count("draft_l1") == 1
+
+
 def test_a_passing_carry_end_or_reroll_off_drafts_once(tmp_path, monkeypatch):
     calls = _checks(monkeypatch, [0.4])
     run = FakeRunner(tmp_path)

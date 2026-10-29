@@ -342,15 +342,15 @@ class PostPipeline:
         draft.parent.mkdir(parents=True, exist_ok=True)
         self._nvenc(out_final, draft)
 
-        from continuity import extract_tail
-        try:
-            tail = extract_tail(draft if draft.exists() else out_final,
-                                shot["shot_id"],
-                                pid=shot.get("project_id"))
-            if tail is not None:
-                _tail_note = str(tail)
-        except Exception as e:
-            log.warning(f"tail extraction failed: {e}")
+        # an LTX-2.5 / H3 shot keeps the raw render's last frame (taken by the
+        # orchestrator): the next CONTINUE opens on what the model rendered
+        if not shot.get("applied_model"):
+            from continuity import extract_tail
+            try:
+                extract_tail(draft if draft.exists() else out_final,
+                             shot["shot_id"], pid=shot.get("project_id"))
+            except Exception as e:
+                log.warning(f"tail extraction failed: {e}")
 
         if cfg["post"].get("temp_cleanup", True):
             shutil.rmtree(work, ignore_errors=True)

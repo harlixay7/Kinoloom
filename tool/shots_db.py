@@ -150,6 +150,19 @@ class ShotsDB:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id TEXT, stage TEXT, version INTEGER, content TEXT, created TEXT
         );
+        CREATE TABLE IF NOT EXISTS shot_prompts(
+            project_id TEXT NOT NULL,
+            shot_id TEXT NOT NULL,
+            text TEXT NOT NULL DEFAULT '',
+            source TEXT NOT NULL DEFAULT '',
+            sig TEXT NOT NULL DEFAULT '',
+            image TEXT NOT NULL DEFAULT '',
+            unit TEXT NOT NULL DEFAULT '[]',
+            model TEXT NOT NULL DEFAULT '',
+            issues TEXT NOT NULL DEFAULT '[]',
+            updated TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (project_id, shot_id)
+        );
         """)
             self.con.commit()
             self._migrate()
@@ -273,6 +286,61 @@ class ShotsDB:
             self.con.execute(
                 "DELETE FROM shots WHERE shot_id=? AND project_id IS ?",
                 (sid, project))
+            self.con.execute(
+                "DELETE FROM shot_prompts WHERE shot_id=? AND project_id IS ?",
+                (sid, project))
+            self.con.commit()
+
+    # --------------------------------------------------------- movie prompts
+    # The video prompt of a project shot rendered on LTX-2.5 / MiniMax H3,
+    # written by an AI or by hand (movie_prompts). `sig` is what it was written
+    # for (movie_prompts.shot_sigs), `unit` the shot ids written together,
+    # `image` the opening image's prompt (a unit's first shot), `issues` the
+    # prompt check's warnings when it was stored.
+    _PROMPT_FIELDS = ("text", "source", "sig", "image", "unit", "model", "issues")
+
+    def prompts(self, project: str, sids: list[str] | None = None) -> dict[str, dict]:
+        """shot id -> its stored prompt, for the whole project or `sids`."""
+        q, args = "SELECT * FROM shot_prompts WHERE project_id=?", [project]
+        if sids is not None:
+            if not sids:
+                return {}
+            q += f" AND shot_id IN ({', '.join(['?'] * len(sids))})"
+            args += list(sids)
+        with self._lock:
+            rows = self.con.execute(q, args).fetchall()
+        out = {}
+        for r in rows:
+            d = dict(r)
+            d["unit"] = _decode(d.get("unit") or "[]") or []
+            d["issues"] = _decode(d.get("issues") or "[]") or []
+            out[d["shot_id"]] = d
+        return out
+
+    def prompt(self, sid: str, project: str) -> dict | None:
+        return self.prompts(project, [sid]).get(sid)
+
+    def save_prompt(self, sid: str, project: str, **kw: Any) -> None:
+        """Insert or update one shot's prompt; fields left out keep their value."""
+        vals = {k: kw[k] for k in self._PROMPT_FIELDS if k in kw}
+        for k in ("unit", "issues"):
+            if k in vals and not isinstance(vals[k], str):
+                vals[k] = json.dumps(vals[k], ensure_ascii=False)
+        from core import now
+        vals["updated"] = now()
+        with self._lock:
+            self.con.execute(
+                f"INSERT INTO shot_prompts(project_id, shot_id, {', '.join(vals)})"
+                f" VALUES(?, ?, {', '.join(['?'] * len(vals))})"
+                f" ON CONFLICT(project_id, shot_id) DO UPDATE SET "
+                + ", ".join(f"{k}=excluded.{k}" for k in vals),
+                [project, sid, *vals.values()])
+            self.con.commit()
+
+    def delete_prompt(self, sid: str, project: str) -> None:
+        with self._lock:
+            self.con.execute("DELETE FROM shot_prompts WHERE shot_id=? AND project_id=?",
+                             (sid, project))
             self.con.commit()
 
     # --------------------------------------------------------------- queries
@@ -417,6 +485,20 @@ class ShotsDB:
     def retry_seed(self, shot: dict, attempt: int) -> int:
         base = self.assign_seed(shot)
         return (base + attempt * 10000) % (2 ** 31)
+
+    def stable_seed(self, shot: dict) -> int:
+        """A shot's own first seed: the scene's base seed (6.8) plus the
+        shot's place in the scene's story order. Unlike assign_seed it does
+        not move with the statuses of the other shots. `shot` is a row or a
+        shot json."""
+        j = shot.get("json")
+        sj: dict = j if isinstance(j, dict) else shot
+        scene = str(shot.get("scene") or sj.get("scene") or "")
+        pid = shot.get("project_id") or sj.get("project_id")
+        sid = shot.get("shot_id") or sj.get("shot_id")
+        base = int(hashlib.md5(scene.encode("utf-8")).hexdigest()[:8], 16) % (2 ** 31)
+        order = [r["shot_id"] for r in self.scene_order(scene, project=pid)]
+        return (base + (order.index(sid) if sid in order else len(order))) % (2 ** 31)
 
     # ------------------------------------------------------------ scene state
     def scene_state(self, scene: str) -> dict:

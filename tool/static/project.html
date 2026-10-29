@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Movie — Kinoloom</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="/static/slate.css?v=8">
-<link rel="stylesheet" href="/static/project.css?v=16">
+<link rel="stylesheet" href="/static/slate.css?v=9">
+<link rel="stylesheet" href="/static/project.css?v=22">
 </head>
 <body>
 <div class="app">
@@ -33,6 +33,7 @@
       <button class="btn hidden" id="btn-stop" type="button" data-tip="Stop the director and the render queue"><span data-icon="stop"></span>Stop</button>
       <button class="btn primary" id="btn-run" type="button" data-verb="run"><span data-icon="play"></span><span class="lbl">Start production</span></button>
     </header>
+    <div class="tb-notice hidden" id="tb-notice" role="status" aria-live="polite"></div>
 
     <main class="content" id="page-root">
       <section class="page" id="page-overview"></section>
@@ -112,17 +113,19 @@
 
 <script src="/static/js/api.js?v=3"></script>
 <script src="/static/js/icons.js?v=5"></script>
-<script src="/static/js/dialogs.js?v=2"></script>
-<script src="/static/js/shell.js?v=3"></script>
-<script src="/static/js/ui.js?v=16"></script>
-<script src="/static/js/state.js?v=6"></script>
-<script src="/static/js/batch.js?v=5"></script>
+<script src="/static/js/dialogs.js?v=3"></script>
+<script src="/static/js/shell.js?v=5"></script>
+<script src="/static/js/ui.js?v=17"></script>
+<script src="/static/js/state.js?v=13"></script>
+<script src="/static/js/ai-settings.js?v=2"></script>
+<script src="/static/js/prompt-editor.js?v=7"></script>
+<script src="/static/js/batch.js?v=7"></script>
 <script src="/static/js/pages/overview.js?v=5"></script>
-<script src="/static/js/pages/story.js?v=11"></script>
-<script src="/static/js/pages/cast.js?v=14"></script>
-<script src="/static/js/pages/shots.js?v=14"></script>
-<script src="/static/js/model-catalog.js?v=5"></script>
-<script src="/static/js/pages/generate.js?v=20"></script>
+<script src="/static/js/pages/story.js?v=14"></script>
+<script src="/static/js/pages/cast.js?v=19"></script>
+<script src="/static/js/pages/shots.js?v=21"></script>
+<script src="/static/js/model-catalog.js?v=6"></script>
+<script src="/static/js/pages/generate.js?v=22"></script>
 <script src="/static/js/pages/review.js?v=6"></script>
 <script src="/static/js/pages/film.js?v=6"></script>
 </body>

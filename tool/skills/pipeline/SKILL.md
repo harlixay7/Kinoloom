@@ -116,7 +116,7 @@ A manifest entry on the entity:
 
 ## 6. Reference card
 
-- Control room: `http://127.0.0.1:8080`. Movie studio: Casting (datasets), Cast & World (bible), Story, Shots, Render, Review, Film. Studio: Video Studio, Image Studio, Library. System menu: Render queue, Worker PCs, Settings, Logs
+- Control room: `http://127.0.0.1:8080`. Movie studio: Casting (datasets), Cast & World (bible), Story, Shots, Render, Review, Film. Studio: Video Studio, Image Studio, Library. System menu: Render queue, Worker PCs, AI writer, Settings, Logs
 - Story: architect jobs (spine → scenes) — output is validated by the linter before anything renders
 - Datasets: `roster/datasets/<type>/<name>/stills/` + `meta.json`
 - Project refs: `bible/projects/<pid>/refs/{chars,locs,powers}/…`

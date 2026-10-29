@@ -37,6 +37,18 @@ def test_cast_lines_populated():
     assert "default per scene: s01=breach_alert" in out
 
 
+def test_cast_lines_give_each_character_the_casts_look():
+    """The story writes what people do: their look is the cast's, never invented."""
+    bible = MagicMock()
+    bible.characters.return_value = {
+        "sara": {"id": "sara", "name": "Sara", "tier": "main",
+                 "body": "early 20s woman, long dark hair", "outfit": "silver gown"},
+        "kael": {"id": "kael", "name": "Kael", "tier": "supporting"}}
+    out = cast_lines(bible).splitlines()
+    assert "look (the cast's, fixed): early 20s woman, long dark hair; wearing silver gown" in out[1]
+    assert "look (the cast's, fixed): not written in the cast yet: do not invent one" in out[0]
+
+
 def test_cast_lines_empty_fallback():
     """Empty cast returns the canonical anti-hallucination fallback instruction."""
     bible = MagicMock()

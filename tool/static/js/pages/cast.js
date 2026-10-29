@@ -7,6 +7,16 @@
   "use strict";
   const openCards = {};   // which cards are open, kept across re-renders
   const openFolds = {};   // and which folds inside them
+  // cards with edits not saved yet ("c:<id>", "l:<id>"): the page does not
+  // re-render over them (the status poll re-renders it whenever the project
+  // changes), and the browser asks before they are lost
+  const unsaved = new Set();
+  let renderedPid = null;
+  let staleRender = false;
+  let rerender = null;
+  window.addEventListener("beforeunload", function (e) {
+    if (unsaved.size) { e.preventDefault(); e.returnValue = ""; }
+  });
 
   const TIERS = ["main", "supporting", "recurring", "crowd"];
   const POWER_TYPES = ["lightning", "fire", "ice", "water", "wind", "earth",
@@ -46,11 +56,17 @@
     const hasStory = !!(story.beats && Object.keys(story.beats).length);
     const inMovie = chars.filter(function (c) { return c.enabled !== false; });
     const withLook = inMovie.filter(function (c) { return (c.reference_images || []).length; }).length;
+    const mismatched = inMovie.filter(function (c) { return (State.castChecks || {})[c.id]; });
     const castingLink = '<a class="btn small" href="' + Shell.href("casting") + '" data-page="casting" data-shell="tools">' +
       Icon.get("aperture") + "Open Casting</a>";
     const status = !chars.length
       ? '<div class="cast-status need"><span class="cs-mark">' + Icon.get("users") + "</span>" +
           "<div><b>No cast yet.</b> Add characters here, or write the story first: it invents a cast you can then edit.</div></div>"
+      : mismatched.length
+        ? '<div class="cast-status need"><span class="cs-mark">' + Icon.get("warning") + "</span>" +
+            "<div><b>The look text of " + esc(mismatched.map(function (c) { return c.name || c.id; }).join(", ")) +
+            " does not match the main picture.</b> Every prompt describes them with it, so the film waits until " +
+            "it is put right on their card.</div></div>"
       : withLook < inMovie.length
         ? '<div class="cast-status need"><span class="cs-mark">' + Icon.get("aperture") + "</span>" +
             "<div><b>" + withLook + " of " + inMovie.length + " characters have a look.</b> " +
@@ -65,7 +81,7 @@
           "character&apos;s shots on their picked look.</p></div>" +
         '<div class="pi-acts">' +
           (hasStory ? '<button class="btn ghost" type="button" id="cast-regen" ' +
-            'data-tip="Write the beats, scenes and shots again around this cast. The old versions stay in the Story history.">' +
+            'data-tip="Write the story again around this cast: with the AI writer, or with a chat AI on the Story page. The old versions stay in the Story history.">' +
             Icon.get("refresh") + "Rewrite the story around this cast</button>" : "") +
         "</div>" +
       "</header>" +
@@ -120,6 +136,53 @@
       card.scrollIntoView({ block: "nearest", behavior: "smooth" });
       if (first && !first.value) first.focus({ preventScroll: true });
     }
+  }
+
+  /* the look text against what the main picture was made with (its Casting
+     record): a text that says another gender, age or outfit pulls every
+     shot away from the picture */
+  function lookCheck(cid) {
+    const c = (State.castChecks || {})[cid];
+    if (!c || c.ok) return "";
+    const pic = [c.body, c.outfit ? "wearing " + c.outfit : ""].filter(Boolean).join(", ");
+    return '<div class="look-check">' +
+      "<p><b>The Body and Outfit text does not match the main look:</b> " + esc((c.problems || []).join("; ")) + ".</p>" +
+      (pic ? '<p class="lc-pic">The picture was made as: ' + esc(pic) + "</p>" : "") +
+      '<div class="lc-acts">' +
+        '<button class="btn small" type="button" data-act="look-apply" ' +
+          'data-tip="Write Body and Outfit from what the main look was made with">Use the picture&apos;s look</button>' +
+        '<button class="btn small ghost" type="button" data-act="look-keep" ' +
+          'data-tip="The text stays as written and is not checked again">Keep mine</button>' +
+      "</div></div>";
+  }
+
+  async function lookAnswer(card, ch, apply) {
+    // "Keep mine" keeps what is in the fields, so typed edits are saved first
+    if (!apply && unsaved.has(cardKey(card)) && !(await saveCharacter(card, ch))) return;
+    const r = await post("/api/projects/" + encodeURIComponent(pid()) + "/cast/characters/" +
+      encodeURIComponent(ch.id || "") + "/look/" + (apply ? "apply" : "keep"), {}, 30000);
+    if (!r) return;
+    if (!r.ok) { toast(r.error || "That did not work", true); return; }
+    if (apply && r.character) {
+      ["body", "outfit"].forEach(function (k) {
+        const f = card.querySelector('[data-f="' + k + '"]');
+        if (f) f.value = r.character[k] || "";
+      });
+      const sum = card.querySelector(".cast-sum");
+      if (sum && r.character.body) { sum.className = "cast-sum"; sum.textContent = r.character.body; }
+    }
+    const box = card.querySelector(".look-check");
+    if (box) box.remove();
+    toast(apply ? "Body and Outfit now describe the main look" : "Your text stays as written");
+    await State.refreshProject();
+  }
+
+  /* the card's count of picked pictures, kept current after a pick or a removal */
+  function setLookState(card, n, one, many, none) {
+    const s = card.querySelector(".look-state");
+    if (!s) return;
+    s.className = "look-state " + (n ? "ok" : "need");
+    s.textContent = n ? n + " " + (n === 1 ? one : many) : none;
   }
 
   /* the card's portrait: its first picture */
@@ -185,6 +248,86 @@
       (open ? Icon.get("chevron-up") + "Close" : Icon.get("pen") + "Edit") + "</button>";
   }
 
+  /* ------------------------------------------------------------ unsaved edits */
+  function cardKey(card) {
+    return card.dataset.cid != null ? "c:" + card.dataset.cid : "l:" + (card.dataset.lid || "");
+  }
+
+  function setUnsaved(card, on) {
+    if (on) unsaved.add(cardKey(card)); else unsaved.delete(cardKey(card));
+    card.classList.toggle("unsaved", on);
+    const btn = card.querySelector('.cast-actions [data-act="save"]');
+    if (btn) btn.textContent = on ? "Save changes" : (card.dataset.cid != null ? "Save character" : "Save place");
+    const chip = card.querySelector(".unsaved-chip");
+    const meta = card.querySelector(".cast-meta");
+    if (on && !chip && meta) {
+      meta.insertAdjacentHTML("beforeend", '<span class="unsaved-chip" data-tip="Open the card and press Save changes">' +
+        "Unsaved changes</span>");
+    } else if (!on && chip) {
+      chip.remove();
+    }
+  }
+
+  /* after a save: what the page held back while edits were open shows now */
+  function afterSave() {
+    if (!unsaved.size && staleRender && rerender) rerender();
+  }
+
+  // controls that save on their own: the card's head, the pictures' own
+  // settings and the file pickers
+  const SELF_SAVED = '[type="file"], .powref-lvl, .locscene-sel, .ldscene-sel, .cast-head [data-f]';
+  const ROW_EDITS = ["add-power", "rm-power", "add-weapon", "rm-weapon", "add-loadout", "rm-loadout"];
+
+  function trackEdits(card) {
+    const mark = function (e) {
+      const t = e.target;
+      if (!t || !t.matches || !t.matches("input, textarea, select") || t.matches(SELF_SAVED)) return;
+      setUnsaved(card, true);
+    };
+    card.addEventListener("input", mark);
+    card.addEventListener("change", mark);
+  }
+
+  /* The head of a card saves itself as it changes: a character's name and
+     part, and whether a character or place is in the movie. */
+  async function saveHead(path, body, done) {
+    const r = await post("/api/projects/" + encodeURIComponent(pid()) + path, body, 30000);
+    if (!r || !r.ok) return false;          // post() already said why
+    toast(done);
+    await State.refreshProject();
+    return true;
+  }
+
+  function bindHead(card, item, kind) {
+    const path = () => (kind === "c" ? "/cast/characters/" : "/cast/locations/") + encodeURIComponent(item.id || "");
+    const en = card.querySelector('.cast-head [data-f="enabled"]');
+    if (en) en.onchange = async function () {
+      const ok = await saveHead(path(), { enabled: en.checked }, en.checked ? "In the movie" : "Left out of the movie");
+      if (ok) { item.enabled = en.checked; card.classList.toggle("benched", !en.checked); }
+      else en.checked = !en.checked;
+    };
+    if (kind !== "c") return;                 // a place's name renames it (renameLocation)
+    const name = card.querySelector('.cast-head [data-f="name"]');
+    if (name) {
+      name.onkeydown = function (e) {
+        if (e.key === "Enter") { e.preventDefault(); name.blur(); }
+        else if (e.key === "Escape") { name.value = item.name || ""; name.blur(); }
+      };
+      name.onchange = async function () {
+        const v = name.value.trim();
+        if (!v) { toast("Give the character a name first", true); name.value = item.name || ""; return; }
+        if (v === (item.name || "")) return;
+        if (await saveHead(path(), { name: v }, "Name saved")) item.name = v;
+        else name.value = item.name || "";
+      };
+    }
+    const tier = card.querySelector('.cast-head [data-f="tier"]');
+    if (tier) tier.onchange = async function () {
+      if (await saveHead(path(), { tier: tier.value }, "Part saved")) item.tier = tier.value;
+      else tier.value = item.tier || "supporting";
+    };
+  }
+
   function inMovie(enabled, what) {
     return '<label class="toggle cast-toggle" data-tip="Whether this ' + what + ' is in the movie">' +
       '<input type="checkbox" data-f="enabled"' + (enabled ? " checked" : "") + "><span></span><em>In the movie</em></label>";
@@ -225,7 +368,11 @@
             '<span class="look-state ' + (looks ? "ok" : "need") + '">' + (looks ? count(looks, "look", "looks") : "No look yet") + "</span>" +
             inMovie(enabled, "character") +
           "</div>" +
-          (ch.body ? '<p class="cast-sum">' + esc(ch.body) + "</p>" : '<p class="cast-sum dim">No description yet.</p>') +
+          (ch.body ? '<p class="cast-sum">' + esc(ch.body) + "</p>"
+            : looks ? '<p class="cast-sum need">No look written yet. Every video prompt describes the character ' +
+                "with it: open the card and fill it in from a Casting picture.</p>"
+            : '<p class="cast-sum dim">No description yet.</p>') +
+          lookCheck(cid) +
         "</div>" +
       "</div>" +
       '<div class="cast-edit">' +
@@ -529,9 +676,7 @@
           '<div class="cast-top loc-id-row">' +
             '<input type="text" class="cast-name" data-f="lid" value="' + esc(lid) +
               '" placeholder="Short name (arena, palace)" spellcheck="false" aria-label="Place name" ' +
-              'data-tip="The name the story writer and the prompts use for this place. Rename it, and its pictures and shots follow.">' +
-            '<button class="btn small" type="button" data-act="loc-rename" ' +
-              'data-tip="Rename this place: its pictures and shots follow">Rename</button>' +
+              'data-tip="The name the story writer and the prompts use for this place. Type a new one and press Enter: its pictures and shots follow.">' +
             editButton(open) +
           "</div>" +
           '<div class="cast-meta"><span class="look-state ' + (pics ? "ok" : "need") + '">' +
@@ -681,6 +826,8 @@
       loadouts: collectLoadouts(card),
       enabled: card.querySelector('[data-f="enabled"]').checked,
     };
+    const lf = card.__lookFrom;
+    if (lf && lf.from && lf.body === body.body && lf.outfit === body.outfit) body.look_source = "casting:" + lf.from;
     const sel = card.querySelector(".cast-lora");
     const f = sel ? sel.value : "";
     body.lora = f
@@ -693,7 +840,9 @@
     if (!r) return null;
     if (r.ok) {
       toast("Saved " + (r.character && r.character.name ? r.character.name : name));
+      setUnsaved(card, false);
       await State.refreshProject();
+      afterSave();
       return r.character || null;    // callers need the id for new characters
     } else {
       toast(r.error || "save failed", true);
@@ -709,7 +858,7 @@
           "/cast/characters/" + encodeURIComponent(ch.id || "") + "/delete", {}, 30000);
         if (!r) return;
         toast(r.ok ? "character deleted" : (r.error || "delete failed"), !r.ok);
-        if (r.ok) await State.refreshProject();
+        if (r.ok) { unsaved.delete("c:" + (ch.id || "")); await State.refreshProject(); afterSave(); }
       });
   }
 
@@ -729,7 +878,9 @@
   }
 
   async function saveLocation(card, l) {
-    const lid = l.id || "";
+    // a new name typed in the card is applied first (leaving the field
+    // already started it), so the fields are saved under that name
+    let lid = card.__renaming ? await card.__renaming : await renameLocation(card, l);
     if (!lid) { toast("Give the place a name first", true); return; }
     const body = {
       id: lid,
@@ -750,25 +901,37 @@
     const r = await post("/api/projects/" + encodeURIComponent(pid()) +
       "/cast/locations/" + encodeURIComponent(lid), body, 30000);
     if (!r) return;
-    toast(r.ok ? "location saved" : (r.error || "save failed"), !r.ok);
-    if (r.ok) await State.refreshProject();
+    toast(r.ok ? "Place saved" : (r.error || "The place was not saved"), !r.ok);
+    if (r.ok) {
+      setUnsaved(card, false);
+      await State.refreshProject();
+      afterSave();
+    }
   }
 
+  /* Apply the name typed in the card (on Enter, on leaving the field, and
+     before a save). Resolves to the place's name afterwards: the new one,
+     or the old one when it was not changed or could not be. */
   async function renameLocation(card, l) {
+    const old = l.id || "";
     const inp = card.querySelector('[data-f="lid"]');
     const want = ((inp && inp.value) || "").trim();
-    if (!want || want === (l.id || "")) { toast("Type the new name first", true); return; }
+    if (!want || want === old) { if (inp) inp.value = old; return old; }
     const r = await post("/api/projects/" + encodeURIComponent(pid()) +
-      "/cast/locations/" + encodeURIComponent(l.id || "") + "/rename",
+      "/cast/locations/" + encodeURIComponent(old) + "/rename",
       { new_id: want }, 60000);
     if (r && r.ok) {
       toast("Renamed to " + r.id
         + (r.shots_updated ? " (" + r.shots_updated + " shots updated)" : ""));
+      if (openCards["l:" + old]) { openCards["l:" + r.id] = true; delete openCards["l:" + old]; }
+      l.id = r.id;
       await State.refreshProject();
       await State.refreshShots();
-    } else {
-      toast((r && r.error) || "rename failed", true);
+      return r.id;
     }
+    toast((r && r.error) || "The place was not renamed", true);
+    if (inp) inp.value = old;
+    return old;
   }
 
   function deleteLocation(card, l) {
@@ -778,20 +941,30 @@
           "/cast/locations/" + encodeURIComponent(l.id || "") + "/delete", {}, 30000);
         if (!r) return;
         toast(r.ok ? "location deleted" : (r.error || "delete failed"), !r.ok);
-        if (r.ok) await State.refreshProject();
+        if (r.ok) { unsaved.delete("l:" + (l.id || "")); await State.refreshProject(); afterSave(); }
       });
   }
 
   async function newLocation() {
+    const name = await Dlg.prompt({
+      title: "New place",
+      label: "Its short name, the way the story calls it. The story writer and the prompts use this name.",
+      placeholder: "arena, palace lobby", okLabel: "Add place" });
+    if (name == null) return;
+    if (!name.trim()) { toast("Give the place a name", true); return; }
     const r = await post("/api/projects/" + encodeURIComponent(pid()) + "/cast/locations", {
-      id: "new_location",
+      name: name.trim(),
       descriptor: "",
       lighting: "",
       enabled: true,
     }, 30000);
     if (!r) return;
-    if (r.ok) { toast("Place added"); await State.refreshProject(); }
-    else toast(r.error || "failed", true);
+    if (r.ok) {
+      const lid = (r.location && r.location.id) || "";
+      openCards["l:" + lid] = true;     // open: its pictures come next
+      toast("Added " + lid);
+      await State.refreshProject();
+    } else toast(r.error || "The place was not added", true);
   }
 
   /* -------------------------------------------------------------- ref image */
@@ -882,6 +1055,7 @@
     // the portrait: the first picture the models would use
     setPortrait(card, manifest.length ? heroRefUrl(cid, manifest[0].copied || manifest[0].file)
       : uploaded.length ? heroRefUrl(cid, uploaded[0]) : auto.length ? (auto[0].url || "") : "");
+    setLookState(card, manifest.length, "look", "looks", "No look yet");
     if (!refs.length && !auto.length && !manifest.length) {
       strip.innerHTML = '<span class="muted small">No looks yet. Pick one from a Casting batch, or upload a photo.</span>';
       return;
@@ -1016,7 +1190,7 @@
   function openPowerPick(card, cid, pw) {
     openBatchPicker({
       type: "power",
-      title: "Pick power reference from batch — " + pw,
+      title: "Pick a picture of the power " + pw,
       onSelect: async function (name, file) {
         const r = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(cid) + "/powers/" +
@@ -1038,23 +1212,26 @@
       "&file=" + encodeURIComponent(normPath(file));
   }
 
+  /* A picture from a Casting batch: a click selects it, "Use this picture"
+     (or a double-click, or Enter) hands it to opts.onSelect. While one is
+     being added, further clicks wait: a double-click adds it once. */
   function openBatchPicker(opts) {
-    const st = { closed: false, datasets: [] };
+    const st = { closed: false, datasets: [], busy: false, file: "" };
     const multi = Array.isArray(opts.roles) && opts.roles.length > 0;
     const veil = openModal(
       '<div class="batch-pick-head">' +
         '<label class="batch-label">Batch' +
-          '<select id="pick-batch"><option value="">loading…</option></select>' +
+          '<select id="pick-batch"><option value="">Loading…</option></select>' +
         "</label>" +
         (multi
-          ? '<label class="batch-label">role' +
+          ? '<label class="batch-label">As' +
               '<select id="pick-role">' +
                 opts.roles.map(function (r) {
                   return '<option value="' + esc(r.value) + '">' + esc(r.label) + "</option>";
                 }).join("") +
               "</select></label>" +
-            '<label class="batch-label" data-tip="add this as another reference instead of replacing the one with the same role">' +
-              '<input type="checkbox" id="pick-append"> add without replacing</label>'
+            '<label class="toggle batch-label" data-tip="Add it as another picture instead of replacing the one it would replace">' +
+              '<input type="checkbox" id="pick-append"><span></span><em>Keep the others</em></label>'
           : "") +
         (opts.extraInput
           ? '<label class="batch-label" data-tip="' + esc(opts.extraInput.tip || "") + '">' +
@@ -1063,18 +1240,24 @@
                 esc(opts.extraInput.placeholder || "") + '" spellcheck="false">' +
             "</label>"
           : "") +
-        '<label class="batch-label" data-tip="Composites record which weapon/outfit they were generated with — filter armed vs plain instead of guessing from the thumbnail">filter' +
-          '<select id="pick-filter">' +
-            '<option value="all">all stills</option>' +
-            '<option value="armed">with weapon</option>' +
-            '<option value="plain">without weapon</option>' +
-          "</select></label>" +
+        (opts.type === "face"
+          ? '<label class="batch-label" data-tip="Each picture records the weapon it was made with">Show' +
+              '<select id="pick-filter">' +
+                '<option value="all">All pictures</option>' +
+                '<option value="armed">With a weapon</option>' +
+                '<option value="plain">Without a weapon</option>' +
+              "</select></label>"
+          : "") +
         '<span class="pick-count muted small"></span>' +
       "</div>" +
-      '<div class="pick-grid" id="pick-grid">' +
-        '<span class="muted small">loading batches…</span>' +
+      '<div class="pick-grid" id="pick-grid" role="listbox" aria-label="Pictures">' +
+        '<span class="muted small">Loading the batches…</span>' +
       "</div>" +
-      '<div class="muted small" id="pick-note"></div>',
+      '<div class="pick-foot">' +
+        '<span class="muted small" id="pick-note">Click a picture to select it.</span>' +
+        '<button class="btn" type="button" id="pick-cancel">Cancel</button>' +
+        '<button class="btn primary" type="button" id="pick-use" disabled>Use this picture</button>' +
+      "</div>",
       { title: opts.title, wide: true });
     if (!veil) return;
     bindTips(veil);
@@ -1088,6 +1271,55 @@
     veil.addEventListener("click", function (e) {
       if (e.target === veil) close();
     });
+    veil.querySelector("#pick-cancel").onclick = close;
+    const useBtn = veil.querySelector("#pick-use");
+
+    function select(th) {
+      if (st.busy) return;
+      veil.querySelectorAll(".pick-thumb.sel").forEach(function (o) {
+        o.classList.remove("sel");
+        o.setAttribute("aria-selected", "false");
+      });
+      th.classList.add("sel");
+      th.setAttribute("aria-selected", "true");
+      st.file = th.dataset.file;
+      useBtn.disabled = false;
+    }
+
+    async function use() {
+      const d = st.datasets[Number(veil.querySelector("#pick-batch").value) || 0];
+      if (st.closed || st.busy || !d || !st.file) return;
+      st.busy = true;
+      useBtn.disabled = true;
+      useBtn.textContent = "Adding…";
+      const th = veil.querySelector(".pick-thumb.sel");
+      if (th) th.classList.add("picked");
+      const roleSel = veil.querySelector("#pick-role");
+      const appendBox = veil.querySelector("#pick-append");
+      const extraEl = veil.querySelector("#pick-extra");
+      let ok = false;
+      try {
+        ok = await opts.onSelect(
+          d.name, st.file,
+          roleSel ? roleSel.value : "primary",
+          appendBox ? !!appendBox.checked : false,
+          extraEl ? extraEl.value : "");
+      } finally {
+        st.busy = false;
+        useBtn.textContent = "Use this picture";
+        useBtn.disabled = !st.file;
+        if (th) th.classList.remove("picked");
+      }
+      if (st.closed || !ok) return;
+      if (appendBox && appendBox.checked) {
+        // keep the picker open so another picture can follow
+        toast("Picture added");
+        return;
+      }
+      close();
+      opts.onDone();
+    }
+    useBtn.onclick = use;
 
     function renderGrid() {
       if (st.closed) return;
@@ -1110,57 +1342,43 @@
         return !metaOf(c) || !metaOf(c).weapon;
       });
       const kept = d.kept != null ? d.kept : 0;
-      const rej = d.rejected != null ? d.rejected : 0;
-      if (count) count.textContent = kept + " kept / " + rej + " rejected";
+      if (count) count.textContent = kept + " kept";
       const shown = cands.slice(0, 60);
-      grid.innerHTML = shown.map(function (c) {
+      if (shown.indexOf(st.file) < 0) st.file = "";
+      useBtn.disabled = st.busy || !st.file;
+      grid.innerHTML = shown.length ? shown.map(function (c) {
         const m = metaOf(c) || {};
-        const chips = [
-          m.weapon ? "weapon: " + m.weapon : "no weapon",
+        const tip = [
+          m.weapon ? "with " + m.weapon : opts.type === "face" ? "no weapon" : "",
           m.outfit ? "outfit: " + m.outfit : "",
           m.handling ? m.handling : "",
           m.level ? "level " + m.level : "",
-        ].filter(Boolean).join(" · ");
-        const tip = "Use this photo as " +
-          (opts.type === "face" ? "identity / composite reference" :
-           opts.type === "power" ? "power reference" :
-           opts.type === "weapon" ? "weapon reference" :
-           "environment reference") + (chips ? " — " + chips : "");
-        return '<div class="pick-thumb" data-file="' + esc(c) +
-          '" data-tip="' + esc(tip) + '">' +
+        ].filter(Boolean).join(", ");
+        const on = c === st.file;
+        return '<div class="pick-thumb' + (on ? " sel" : "") + '" role="option" tabindex="0" aria-selected="' +
+          on + '" data-file="' + esc(c) + '"' + (tip ? ' data-tip="' + esc(tip) + '"' : "") + ">" +
           '<img loading="lazy" src="' + esc(datasetImgUrl(opts.type, d.name, c)) +
-          '" alt="batch photo">' +
+          '" alt="">' +
           (m.weapon
-            ? '<span class="pick-chip armed">ARMED</span>'
+            ? '<span class="pick-chip armed">Armed</span>'
             : (m.outfit || m.level
-              ? '<span class="pick-chip">' + esc(m.level ? "L" + m.level : "PLAIN") + "</span>"
+              ? '<span class="pick-chip">' + esc(m.level ? "Level " + m.level : "Plain") + "</span>"
               : "")) +
+          '<span class="pick-mark" aria-hidden="true">' + Icon.get("check") + "</span>" +
         "</div>";
-      }).join("");
+      }).join("") : '<span class="muted small">No pictures in this batch to show.</span>';
       if (note) note.textContent = cands.length > 60
-        ? "showing first 60 of " + cands.length : "";
+        ? "Showing the first 60 of " + cands.length + "."
+        : "Click a picture to select it, then Use this picture. A double-click adds it at once.";
       grid.querySelectorAll(".pick-thumb").forEach(function (th) {
-        th.onclick = async function () {
-          if (st.closed) return;
-          th.classList.add("picked");
-          const roleSel = veil.querySelector("#pick-role");
-          const appendBox = veil.querySelector("#pick-append");
-          const extraEl = veil.querySelector("#pick-extra");
-          const ok = await opts.onSelect(
-            d.name, th.dataset.file,
-            roleSel ? roleSel.value : "primary",
-            appendBox ? !!appendBox.checked : false,
-            extraEl ? extraEl.value : "");
-          if (st.closed) return;
-          th.classList.remove("picked");
-          if (!ok) return;
-          if (appendBox && appendBox.checked) {
-            // multi-add: keep the picker open so a second image can follow
-            toast("Picture added");
-            return;
+        th.onclick = function () { if (!st.closed) select(th); };
+        th.ondblclick = function () { if (!st.closed) { select(th); use(); } };
+        th.onkeydown = function (e) {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault();
+            select(th);
+            if (e.key === "Enter") use();
           }
-          close();
-          opts.onDone();
         };
       });
     }
@@ -1173,15 +1391,14 @@
       const grid = veil.querySelector("#pick-grid");
       if (!r || !Array.isArray(r.datasets) || !r.datasets.length) {
         if (grid) grid.innerHTML =
-          '<span class="muted small">no training batches found</span>';
+          '<span class="muted small">No batch of this kind on Casting yet. Make one there, keep the best pictures, then pick one here.</span>';
+        sel.innerHTML = '<option value="">None yet</option>';
         return;
       }
       st.datasets = r.datasets;
       sel.innerHTML = r.datasets.map(function (d, i) {
         const kept = d.kept != null ? d.kept : 0;
-        const rej = d.rejected != null ? d.rejected : 0;
-        return '<option value="' + i + '">' + esc(d.name || "batch") +
-          " (" + kept + " kept / " + rej + " rejected)</option>";
+        return '<option value="' + i + '">' + esc(d.name || "Batch") + " (" + kept + " kept)</option>";
       }).join("");
       sel.onchange = renderGrid;
       const filt = veil.querySelector("#pick-filter");
@@ -1207,6 +1424,9 @@
         const o = card.querySelector('[data-f="outfit"]');
         if (b && r.body) b.value = r.body;
         if (o && r.outfit) o.value = r.outfit;
+        // Save tells the server this text is the picture's while it still is
+        card.__lookFrom = { from: r.from || "", body: b ? b.value : "", outfit: o ? o.value : "" };
+        setUnsaved(card, true);
         toast("Filled in from " + file + (r.weapon ? " (weapon: " + r.weapon + ")" : "")
           + ". Read it, then Save.");
         return true;
@@ -1226,11 +1446,23 @@
           "/cast/characters/" + encodeURIComponent(cid) + "/herorefs/select",
           { type: "face", name: name, file: file, role: role, append: append }, 30000);
         if (!r) return false;
-        if (r.ok) { toast(role === "secondary" ? "Extra look added" : "Look picked"); return true; }
-        toast(r.error || "select failed", true);
-        return false;
+        if (!r.ok) { toast(r.error || "select failed", true); return false; }
+        // Body / Outfit were written from what the picture was made with;
+        // text being typed on the card stays in its field
+        const filled = r.look_filled || {};
+        const typing = unsaved.has(cardKey(card));
+        ["body", "outfit"].forEach(function (k) {
+          const f = card.querySelector('[data-f="' + k + '"]');
+          if (f && filled[k] && !typing) f.value = filled[k];
+        });
+        toast((role === "secondary" ? "Extra look added" : "Look picked") +
+          (!Object.keys(filled).length ? ""
+            : typing ? ". Body and Outfit were written from its Casting prompt; your unsaved text is still in the fields, and Save keeps it."
+            : ". Body and Outfit were written from its Casting prompt: read them over."));
+        return true;
       },
-      onDone: function () { loadHeroRefs(card, cid); },
+      // the main look decides whether the look text matches it
+      onDone: async function () { loadHeroRefs(card, cid); await State.refreshProject(); },
     });
   }
 
@@ -1255,6 +1487,7 @@
     });
     setPortrait(card, manifest.length ? locRefUrl(lid, manifest[0].copied || manifest[0].file)
       : uploaded.length ? locRefUrl(lid, uploaded[0]) : "");
+    setLookState(card, manifest.length, "picture", "pictures", "No picture yet");
     if (!r.refs.length && !manifest.length) {
       strip.innerHTML = '<span class="muted small">No pictures yet. Pick one from a Casting batch, or upload one.</span>';
       return;
@@ -1307,11 +1540,11 @@
   function openLocPick(card, lid) {
     openBatchPicker({
       type: "environment",
-      title: "Pick environment reference from batch",
+      title: "Pick a picture of " + lid,
       extraInput: {
-        label: "variant name",
-        placeholder: "arena / palace lobby …",
-        tip: "Name this environment variant (e.g. 'arena'). Scenes bound to the same name — via the Scene → variant map below or a shot's location tag — render this image. Re-picking the same name replaces it; a new name adds another variant.",
+        label: "View name (optional)",
+        placeholder: "arena, lobby",
+        tip: "Only for a place with more than one view. Name this view, and pick which scene uses it under Picture per scene. Leave it empty for the main picture: a scene without a view uses every picture of the place.",
       },
       onSelect: async function (name, file, role, append, extra) {
         const r = await post("/api/projects/" + encodeURIComponent(pid()) +
@@ -1321,13 +1554,17 @@
         if (!r) return false;
         if (r.ok) {
           const tag = String(extra || "").trim();
-          toast(tag ? "variant '" + tag + "' set" : "environment ref set");
+          toast(tag ? "Picture added as the view " + tag : "Picture added");
+          if (r.warning) toast(r.warning, true);
           return true;
         }
-        toast(r.error || "select failed", true);
+        toast(r.error || "The picture was not added", true);
         return false;
       },
-      onDone: function () { loadLocRefs(card, lid); loadLocSceneMap(card, lid); },
+      onDone: async function () {
+        await State.refreshProject();       // the scene map reads the views from the bible
+        loadLocRefs(card, lid); loadLocSceneMap(card, lid);
+      },
     });
   }
 
@@ -1349,12 +1586,12 @@
     });
     scenes.sort();
     if (!scenes.length) {
-      box.innerHTML = '<span class="muted small">no scenes yet — generate the shot plan first</span>';
+      box.innerHTML = '<span class="muted small">No scenes yet: write the shot list on the Story page first.</span>';
       return;
     }
     if (!tags.length) {
-      box.innerHTML = '<span class="muted small">add at least one named variant above ' +
-        "(the variant name field in the picker) to map scenes</span>";
+      box.innerHTML = '<span class="muted small">Every scene here uses all of its pictures. For a place ' +
+        "with more than one view, give a picture a view name when you pick it, then choose its scenes here.</span>";
       return;
     }
     const smap = loc.scene_tags || {};
@@ -1469,7 +1706,7 @@
     });
     scenes.sort();
     if (!scenes.length) {
-      box.innerHTML = '<span class="muted small">no scenes yet — generate the shot plan first</span>';
+      box.innerHTML = '<span class="muted small">No scenes yet: write the shot list on the Story page first.</span>';
       return;
     }
     const smap = ch.scene_tags || {};
@@ -1499,7 +1736,7 @@
   function openWeaponPick(card, cid, wid) {
     openBatchPicker({
       type: "weapon",
-      title: "Pick weapon still — " + wid,
+      title: "Pick a picture of the weapon " + wid,
       onSelect: async function (name, file) {
         const r = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(cid) + "/slotrefs/weapon/" +
@@ -1564,6 +1801,7 @@
         }
         else if (act === "heroref-pick") openHeroPick(card, ch.id || "");
         else if (act === "autofill") openAutofillPick(card, ch);
+        else if (act === "look-apply" || act === "look-keep") lookAnswer(card, ch, act === "look-apply");
         else if (act === "powref-pick") {
           const row = b.closest(".pw-row");
           const pw = row ? row.dataset.pw || "" : "";
@@ -1619,6 +1857,7 @@
             list.innerHTML = '<div class="muted small">No powers.</div>';
           }
         }
+        if (ROW_EDITS.indexOf(act) >= 0) setUnsaved(card, true);
       };
     });
   }
@@ -1679,6 +1918,9 @@
   }
 
   /* -------------------------------------------------------------- regenerate */
+  /* The story around the cast as it is now: the AI writer writes the outline
+     and every scene again (its prompts carry the cast, its weapons and
+     loadouts); without one, the Story page's chat prompt carries it too. */
   async function regenerate() {
     const bible = State.bible || {};
     const chars = asList(bible.characters).filter(function (c) { return c.enabled !== false; });
@@ -1687,45 +1929,26 @@
       toast("The cast is empty: put at least one character or place in the movie first", true);
       return;
     }
-    toast("Rewriting the story around this cast. This can take a few minutes…");
-    const r = await post("/api/projects/" + encodeURIComponent(pid()) + "/story/generate", {
-      stages: ["beats", "scenes", "shots"],
-      cast_config: {
-        characters: chars.map(function (c) {
-          return {
-            id: c.id || "",
-            name: c.name || "",
-            tier: c.tier || "supporting",
-            body: c.body || "",
-            outfit: c.outfit || "",
-            emotion_palette: c.emotion_palette || [],
-            powers: c.powers || {},
-            weapons: c.weapons || {},
-            outfits: c.outfits || {},
-            loadouts: c.loadouts || {},
-            scene_tags: c.scene_tags || {},
-            lora: c.lora || null,
-            enabled: true,
-          };
-        }),
-        locations: locs.map(function (l) {
-          return {
-            id: l.id || "",
-            descriptor: l.descriptor || "",
-            lighting: l.lighting || "",
-            lora: l.lora || null,
-            enabled: true,
-          };
-        }),
-      },
-    }, 900000);
+    const c = (await window.API.get("/api/ai/config", 15000, true)) || {};
+    if (!c.ready) {
+      toast("Copy the story prompt on the Story page into any chat AI: it carries this cast. Or connect an AI writer.");
+      Router.go("story");
+      return;
+    }
+    const okGo = await Dlg.confirm({
+      title: "Rewrite the story around this cast?",
+      message: "The AI writer writes the outline and every scene's shots again, one scene at a time, " +
+        "with this cast. The current versions stay in the Story page's History.",
+      okLabel: "Rewrite",
+    });
+    if (!okGo) return;
+    const r = await post("/api/projects/" + encodeURIComponent(pid()) + "/story/generate-ai", {}, 60000);
     if (!r) return;
     if (r.ok) {
-      toast(r.shots_ingested != null ? "Story rewritten: " + r.shots_ingested + " shots" : "Story rewritten");
-      await State.refreshProject();
-      await State.refreshShots();
+      toast("The AI writer is rewriting the story: follow it on the Story page");
+      Router.go("story");
     } else {
-      toast("Could not rewrite the story: " + (r.error || "unknown error"), true);
+      toast("Could not start the AI writer: " + (r.error || "unknown error"), true);
     }
   }
 
@@ -1755,6 +1978,8 @@
       hydrateCard(card, ch);
       wirePowerRows(card);
       bindCardActions(card, ch);
+      trackEdits(card);
+      bindHead(card, ch, "c");
       const loraSel = card.querySelector(".cast-lora");
       const strIn = card.querySelector(".cast-lora-str");
       if (loraSel && strIn) loraSel.onchange = function () {
@@ -1773,7 +1998,6 @@
           if (b.dataset.act === "toggle") toggleCard(card, "l:" + (l.id || ""));
           else if (b.dataset.act === "save") saveLocation(card, l);
           else if (b.dataset.act === "delete") deleteLocation(card, l);
-          else if (b.dataset.act === "loc-rename") renameLocation(card, l);
           else if (b.dataset.act === "locref-pick") openLocPick(card, l.id || "");
           else if (b.dataset.act === "locref-upload") {
             const fileIn = card.querySelector(".locref-file");
@@ -1781,6 +2005,16 @@
           }
         };
       });
+      trackEdits(card);
+      bindHead(card, l, "l");
+      const nameIn = card.querySelector('[data-f="lid"]');
+      if (nameIn) {
+        nameIn.onkeydown = function (e) {
+          if (e.key === "Enter") { e.preventDefault(); nameIn.blur(); }
+          else if (e.key === "Escape") { nameIn.value = l.id || ""; nameIn.blur(); }
+        };
+        nameIn.onchange = function () { card.__renaming = renameLocation(card, l); };
+      }
       const lrFile = card.querySelector(".locref-file");
       if (lrFile) lrFile.onchange = function () { uploadLocRefs(card, l.id || ""); };
       const llSel = card.querySelector(".loc-lora");
@@ -1820,10 +2054,19 @@
   Router.register("cast", {
     polls: ["status"],
     subs: [],
+    unsaved: function () { return unsaved.size > 0; },
     mount: function (el) {
       const page = this;
       page.el = el;
-      page.render = function () { render(el); };
+      page.render = function () {
+        // unsaved edits stay on screen; another project renders at once
+        if (unsaved.size && renderedPid === State.pid) { staleRender = true; return; }
+        unsaved.clear();
+        staleRender = false;
+        renderedPid = State.pid;
+        render(el);
+      };
+      rerender = page.render;
       page.subs.push(Bus.on("project", page.render));
       page.subs.push(Bus.on("loras", page.render));
       page.render();
@@ -1832,6 +2075,10 @@
     unmount: function () {
       this.subs.forEach(function (off) { off(); });
       this.subs = [];
+      unsaved.clear();
+      staleRender = false;
+      renderedPid = null;
+      rerender = null;
       if (this.el) this.el.innerHTML = "";
     },
   });

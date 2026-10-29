@@ -1,8 +1,9 @@
 """Script-driven per-shot reference images (workspace image studio).
 ShotSpec -> PromptSpec -> image (any studio model + LoRAs) with character
-identity locks: trained char LoRAs (Wan family) or IP-Adapter identity
-refs (SDXL family). Outputs land in shots/keyframes/<shot_id>/img_<n>.png
-and can be promoted to the clip's start image (ref_image)."""
+identity locks: trained char LoRAs (Wan family), IP-Adapter identity refs
+(SDXL family) or native references (Qwen-Image 2.1: each person's still and
+the place). Outputs land in shots/keyframes/<shot_id>/img_<n>.png and can be
+promoted to the clip's start image (ref_image)."""
 from __future__ import annotations
 
 import threading
@@ -150,6 +151,68 @@ def location_ref(shot: dict) -> Path | None:
     return None
 
 
+NATIVE_MAX_REFS = 4     # Qwen-Image 2.1 takes one to four references
+
+
+def native_refs(shot: dict, bible) -> list[dict]:
+    """The pictures a model with native references (Qwen-Image 2.1) is given,
+    as for the opening frames: the lead's picture, the place, then the others.
+    Each person's picture is the still the video model gets (their outfit or
+    loadout still): given a face close-up alone, Qwen drew another outfit in
+    all 10 key-image tests (docs/research/MOVIE_CONTINUITY.md §2).
+    [{"kind": "character"|"location", "id", "path"}]"""
+    from ltx_refs import resolve_reference_set
+    try:
+        refs, _ = resolve_reference_set(shot, bible)
+    except Exception as e:  # noqa: BLE001 - the picture is still made from the prompt
+        log.warning(f"references for {shot.get('shot_id')} not resolved: {e}")
+        return []
+    people: list[dict] = []
+    place: list[dict] = []
+    for r in refs:
+        parts = str(r.get("source") or "").split(":")
+        p = Path(str(r.get("path") or ""))
+        if len(parts) < 2 or not p.is_file():
+            continue
+        if parts[0] == "character":
+            people.append({"kind": "character", "id": parts[1], "path": p})
+        elif parts[0] == "location":
+            place.append({"kind": "location", "id": parts[1], "path": p})
+    out: list[dict] = []
+    for r in people[:1] + place[:1] + people[1:]:
+        if all(r["path"] != o["path"] for o in out):
+            out.append(r)
+    return out[:NATIVE_MAX_REFS]
+
+
+def _ref_url(pid: str, r: dict) -> str | None:
+    """Where the page shows a native reference, when a route serves it."""
+    from bible import BIBLE_DIR
+    p, rid = Path(r["path"]), str(r["id"])
+    if not pid or not is_safe_component(pid) or not is_safe_component(rid):
+        return None
+    if r["kind"] == "character":
+        hit = resolve_identity_path(pid, rid, p.name)
+        if hit is not None and hit.resolve() == p.resolve():
+            return f"/api/herorefs/{pid}/{rid}/{p.name}"
+    elif p.parent.resolve() == (BIBLE_DIR / "projects" / pid / "refs" / "locs" / rid).resolve():
+        return f"/api/locrefs/{pid}/{rid}/{p.name}"
+    return None
+
+
+def _wait_up(client, timeout_s: float = 180) -> None:
+    """The image server answers (a lease may have just restarted it)."""
+    t0 = time.time()
+    while True:
+        try:
+            client.system_stats()
+            return
+        except Exception:  # noqa: BLE001
+            if time.time() - t0 > timeout_s:
+                raise RuntimeError(f"the image server on port {client.port} is not up")
+            time.sleep(5)
+
+
 def build_auto_prompt(shot: dict, bible) -> tuple[str, str]:
     """Auto (prompt, negative) for a shot — SCENE-first: describes the
     full shot (location + every visible character + the action + power
@@ -249,11 +312,22 @@ class ShotImageGen:
             env_info = {"url": f"/api/locrefs/{pid}/{shot.get('location')}/"
                                f"{env.name}"} if pid \
                 else {"path": str(env)}
+        try:
+            names = {"character": bible.characters() or {},
+                     "location": bible.locations() or {}} if bible is not None else {}
+        except Exception:  # noqa: BLE001 - the ids label the pictures instead
+            names = {}
+        native = [{"kind": r["kind"], "id": r["id"], "file": r["path"].name,
+                   "label": str(((names.get(r["kind"]) or {}).get(r["id"]) or {}).get("name")
+                                or r["id"]),
+                   "url": _ref_url(pid, r)} for r in native_refs(shot, bible)]
         return {"models": models.all_model_info(),
+                "default_model": models.default_still_model(),
                 "loras": models.GEN_LORAS,
                 "auto": {"prompt": prompt, "negative": negative},
                 "identity": identity,
-                "env_ref": env_info}
+                "env_ref": env_info,
+                "native_refs": native}
 
     # ---------------------------------------------------------------- jobs
     def start(self, shot: dict, bible, params: dict) -> dict:
@@ -263,8 +337,10 @@ class ShotImageGen:
         pid = str(shot.get("project_id") or "")
         if pid and not is_safe_component(pid):
             return {"ok": False, "error": "invalid project id"}
-        mid = str(params.get("model") or "realvis")
-        m = models.MODELS.get(mid) or models.MODELS["realvis"]
+        mid = str(params.get("model") or models.default_still_model())
+        if mid not in models.MODELS:
+            return {"ok": False, "error": f"unknown model '{mid}'"}
+        m = models.MODELS[mid]
         if params.get("hires") and not m["capabilities"].get("hires", False):
             return {"ok": False,
                     "error": f"{m['name']} does not support the hires fix "
@@ -380,6 +456,11 @@ class ShotImageGen:
                 uploaded = list(uploaded) + [env_uploaded]
                 weights.append(0.35)
             return self._inject_ipadapter_chain(base, uploaded, weights)
+        if family == "qwen21" and uploaded:
+            # native references, as the opening frames take them
+            return models.build_ref_workflow(
+                mid, prompt, negative, seed, w, h, steps, cfgv, None,
+                uploaded[:NATIVE_MAX_REFS], 1.0, False, shot_id=sid)
         if family == "wan":
             from workflows import WorkflowBuilder
             chain = self._wan_chain(shot, bible)
@@ -438,9 +519,10 @@ class ShotImageGen:
     def _run(self, shot: dict, bible, params: dict) -> None:
         sid = shot.get("shot_id") or "img"
         job = self._jobs.get(sid) or {}
+        lease = None
         try:
-            mid = str(params.get("model") or "realvis")
-            m = models.MODELS.get(mid) or models.MODELS["realvis"]
+            mid = str(params.get("model") or models.default_still_model())
+            m = models.MODELS[mid]
             family = m.get("family", "sdxl")
             try:
                 w, h = map(int, str(m.get("default_size",
@@ -480,24 +562,38 @@ class ShotImageGen:
                 import workers as _workers
                 client = _workers.client_for(worker)
             else:
-                client = renderer.ComfyClient(
-                    self.cfg["ensemble"]["comfyui_port"])
+                # a model on its own ComfyUI (Qwen-Image 2.1: comfy_port)
+                # renders there; one GPU lease holds it for all the pictures
+                import gpu_broker
+                port = int(m.get("comfy_port")
+                           or self.cfg["ensemble"]["comfyui_port"])
+                lease = gpu_broker.acquire(model=mid, port=port,
+                                           purpose="image", timeout=3600)
+                client = renderer.ComfyClient(port)
+                _wait_up(client)
             uploaded: list[str] = []
-            for cid, path in char_identity_refs(shot, bible).items():
-                if path is None or not path.exists():
-                    continue
-                try:
-                    uploaded.append(client.upload_image(path))
-                except Exception as e:
-                    log.warning(f"identity ref upload failed {cid}: {e}")
             env_uploaded: str | None = None
-            try:
-                env_path = location_ref(shot)
-                if env_path is not None and env_path.exists() and \
-                        family in ("sdxl", "illustrious"):
-                    env_uploaded = client.upload_image(env_path)
-            except Exception as e:
-                log.warning(f"env ref upload failed: {e}")
+            if family == "qwen21":
+                for r in native_refs(shot, bible):
+                    try:
+                        uploaded.append(client.upload_image(r["path"]))
+                    except Exception as e:
+                        log.warning(f"reference upload failed {r['id']}: {e}")
+            else:
+                for cid, path in char_identity_refs(shot, bible).items():
+                    if path is None or not path.exists():
+                        continue
+                    try:
+                        uploaded.append(client.upload_image(path))
+                    except Exception as e:
+                        log.warning(f"identity ref upload failed {cid}: {e}")
+                try:
+                    env_path = location_ref(shot)
+                    if env_path is not None and env_path.exists() and \
+                            family in ("sdxl", "illustrious"):
+                        env_uploaded = client.upload_image(env_path)
+                except Exception as e:
+                    log.warning(f"env ref upload failed: {e}")
 
             kf_dir = KF_ROOT / _ns(shot.get("project_id")) / sid
             kf_dir.mkdir(parents=True, exist_ok=True)
@@ -557,6 +653,9 @@ class ShotImageGen:
             job["running"] = False
             log.warning(f"shot image generation for {sid} failed: {e}")
         finally:
+            if lease is not None:
+                import gpu_broker
+                gpu_broker.release(lease)
             with self._lock:
                 self._jobs.pop(sid, None)
                 self._stop.discard(sid)

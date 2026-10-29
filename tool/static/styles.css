@@ -1147,6 +1147,7 @@ input[type="range"].ims-adv, .ims-tune input[type="range"] {
 }
 .legacy-foot .linkish { color: var(--muted); text-decoration-color: var(--line3); }
 .legacy-foot .linkish:hover { color: var(--text); }
+.ai-inline .ai-step:first-child { padding-top: 4px; }
 
 /* ========================= Worker PCs ========================= */
 .wk-grid { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); margin-bottom: 22px; }

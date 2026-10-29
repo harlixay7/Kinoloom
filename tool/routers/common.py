@@ -44,6 +44,7 @@ from shot_images import ShotImageGen
 from director import Director
 from keyframe_gen import KeyframeGen
 from lora_video import VideoLoraRegistry
+from movie_prompts import PromptWriter
 from projects import ProjectStore
 from storygen_llm import ArchitectJob
 from batch_gen import BatchGen
@@ -86,8 +87,9 @@ shot_image_gen = ShotImageGen(cfg)
 store = ProjectStore(db)
 keyframe_gen = KeyframeGen(cfg)
 video_lora_reg = VideoLoraRegistry(cfg)
-director = Director(cfg, db, store, orch, assembler)
-architect_job = ArchitectJob(cfg, db, store)
+prompt_writer = PromptWriter(cfg, db, store)      # the movie's video prompts (Shots page + director)
+architect_job = ArchitectJob(cfg, db, store)     # the story's AI writer (Story page + director)
+director = Director(cfg, db, store, orch, assembler, writer=prompt_writer, architect=architect_job)
 batch_gen = BatchGen(cfg, db)
 
 

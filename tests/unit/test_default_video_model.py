@@ -98,6 +98,17 @@ def test_no_movie_model_installed_is_a_clear_error(installed):
         _family(video_family="")                         # Wan is never a fallback
 
 
+def test_no_movie_model_on_a_card_that_cannot_run_them_names_the_card(installed, monkeypatch):
+    import gpu_support
+    installed()
+    old = ("the NVIDIA GeForce GTX 1080 (compute capability 6.1) cannot run LTX-2.5 and MiniMax H3, "
+           "built on CUDA 13.0 for a GTX 16- or RTX 20-series card or newer")
+    monkeypatch.setattr(gpu_support, "problem", lambda runtime, runs="": old if runtime == "cu130" else "")
+    with pytest.raises(orchestrator.NoVideoModel) as e:
+        _family(video_family="")
+    assert str(e.value) == old + ", and the project does not pick the legacy Wan 2.2 model"
+
+
 def test_keyframes_use_an_image_model_at_its_own_size():
     m = models.MODELS["realvis"]
     assert _keyframe_size(m, 768, 480) == (1216, 832)

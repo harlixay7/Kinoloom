@@ -352,8 +352,14 @@ class LtxChain:
         return info
 
     def link_seed(self, i: int) -> int:
-        """The seed link i is drafted with: the spec's, or the one a seam re-roll kept."""
-        return int((self.manifest.data.get("seeds") or {}).get(str(i), self.spec.links[i].seed))
+        """The seed link i is drafted with: the spec's, or the one a seam re-roll kept
+        for it (the spec's seed plus REROLL_SEED_OFFSET steps). A link whose spec seed
+        changed since (a movie retake under the same chain id) drafts from the new one."""
+        spec = self.spec.links[i].seed
+        kept = (self.manifest.data.get("seeds") or {}).get(str(i))
+        if kept is not None and int(kept) >= spec and (int(kept) - spec) % REROLL_SEED_OFFSET == 0:
+            return int(kept)
+        return spec
 
     def draft(self, i: int, force: bool = False) -> dict:
         rel = self.draft_rel(i)

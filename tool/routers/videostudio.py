@@ -333,7 +333,8 @@ def videostudio_cast_sheet(body: PromptCheckBody) -> dict:
     reads a prompt, the images it receives, the opening and the continuity
     lines, and the reply format."""
     import prompt_check
-    segments = max(1, min(int(body.segments or len(body.prompts) or 1), 50))
+    import video_studio
+    segments = max(1, min(int(body.segments or len(body.prompts) or 1), video_studio.CHAIN_MAX_SEGMENTS))
     return prompt_check.sheet(body.model, segments, **_check_request(body))
 
 

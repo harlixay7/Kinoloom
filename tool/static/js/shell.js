@@ -98,6 +98,8 @@
     const total = st.total || 0;
     const running = !!(snap.director && snap.director.running);
     const gate = p && p.status === "gate_pending" ? (p.stage || "") : "";
+    // the keyframes gate of LTX-2.5 / H3: opening frames to look at on the Shots page
+    const frames = gate === "keyframes" && !!p.error;
     const chars = list((snap.bible || {}).characters).filter(function (c) { return c && c.enabled !== false; });
     const faced = chars.filter(function (c) { return (c.reference_images || []).length > 0; }).length;
     const batches = snap.datasets == null ? null : snap.datasets;
@@ -122,15 +124,18 @@
           (faced < chars.length ? ", " + faced + " with a picked look" : ""));
     add("story", gate === "story" ? "need" : story.treatment ? (parts >= 4 ? "done" : "part") :
       (running && p && p.stage === "story" ? "live" : "todo"),
-      gate === "story" ? "Waiting for your approval" : story.treatment ? (parts >= 4 ? "Written" : parts + " of 5 parts written") : "Not written yet");
-    add("shots", (gate === "prompts" || gate === "shots" || waiting) ? "need" : total ? "done" : "todo",
+      gate === "story" ? (p.error ? "Waiting to be written" : "Waiting for your approval")
+        : story.treatment ? (parts >= 4 ? "Written" : parts + " of 5 parts written") : "Not written yet");
+    add("shots", (gate === "prompts" || gate === "shots" || frames || waiting) ? "need" : total ? "done" : "todo",
       waiting ? waiting + " waiting for a video prompt" : gate === "prompts" ? "Video prompts needed"
-        : gate === "shots" ? "Waiting for your approval" : total ? total + " shots" : "No shot list yet",
+        : frames ? "Opening frames wait for you"
+        : gate === "shots" ? (p.error ? "Scenes need their shots" : "Waiting for your approval")
+        : total ? total + " shots" : "No shot list yet",
       waiting ? String(waiting) : "");
     const renderState = !total ? "todo" : (finished >= total ? "done"
       : (running && inflight) ? "live" : (finished || inflight) ? "part" : "todo");
-    add("render", gate === "keyframes" ? "need" : renderState,
-      gate === "keyframes" ? "Keyframes wait for your approval"
+    add("render", gate === "keyframes" && !frames ? "need" : renderState,
+      gate === "keyframes" && !frames ? "Keyframes wait for your approval"
         : !total ? "Nothing to render yet" : finished + " of " + total + " rendered",
       renderState === "live" ? finished + "/" + total : "");
     add("review", review ? "need" : (total && finished >= total ? "done" : "todo"),
@@ -151,12 +156,8 @@
     const find = function (page) { return s.filter(function (x) { return x.page === page; })[0]; };
     if (!p) return { page: "overview", title: "Start a project", text: "Give it a title and a one-paragraph idea.", action: "new" };
     if (p.status === "gate_pending") {
-      const stage = p.stage || "";
-      const where = stage === "prompts" || stage === "shots" ? "shots" : stage === "review" ? "review"
-        : stage === "keyframes" ? "render" : "story";
-      return { page: where, title: stage === "prompts" ? "Shots need their video prompts" : "Production waits for you",
-        text: p.error || ("Check the " + (stage || "work") + ", then press Approve & continue."),
-        action: stage === "prompts" ? "open" : "approve" };
+      const s = stopInfo(p, false);
+      return { page: s.page, title: s.title, text: s.text, action: s.waits ? "open" : "approve" };
     }
     if (running) {
       return { page: "render", title: "Production is running",
@@ -197,11 +198,98 @@
     return { page: "film", title: "Your film is ready", text: "Watch it, download it, or retake any shot.", action: "open" };
   }
 
+  /* What production that stopped waits for: the page to open, a title and
+     the words (the director's reason when it gave one), or null while it
+     runs or when nothing waits. `waits`: something to write, not to approve. */
+  function stopInfo(p, running) {
+    if (!p || running) return null;
+    if (p.status === "error") {
+      return { tone: "bad", page: "overview", title: "Production stopped with an error",
+        text: p.error || "See the activity on the Overview." };
+    }
+    if (p.status !== "gate_pending") return null;
+    const stage = p.stage || "";
+    // a wait with a reason at the story, the shots or the prompts: something to write
+    const waits = !!p.error && (stage === "story" || stage === "shots" || stage === "prompts");
+    const frames = stage === "keyframes" && !!p.error;
+    const where = stage === "prompts" || frames ? "shots" : stage === "shots" ? (waits ? "story" : "shots")
+      : stage === "review" ? "review" : stage === "keyframes" ? "render" : stage === "cast" ? "cast" : "story";
+    return { tone: "need", page: where, waits: waits,
+      title: stage === "prompts" ? "Shots need their video prompts"
+        : waits && stage === "story" ? "Write the story" : waits ? "Scenes need their shots"
+        : frames ? "Opening frames to look at" : "Production waits for you",
+      text: p.error || ("Check the " + (stage || "work") + ", then press Approve & continue.") };
+  }
+
   function feed(data) {
     if (!data) return;
     Object.keys(data).forEach(function (k) { if (k in snap) snap[k] = data[k]; });
     paintThread();
     window.dispatchEvent(new CustomEvent("shell:progress"));
+    watchStops();
+  }
+
+  /* -------------------------------------------------- production stops */
+  /* Production that stops for you (a checkpoint, or an error) says so where
+     it is seen: a dialog on the page, the tab's title, and a desktop
+     notification while the window is in the background (once the browser
+     allows them: askNotify, on Start production). Each stop is announced
+     once; closing its dialog in one tab settles it for every tab. */
+  let baseTitle = "";
+  let stop = null;            // { key, info } of the stop on screen
+  let stopOpen = false;
+
+  function watchStops() {
+    const p = snap.project;
+    const s = snap.pid ? stopInfo(p, !!(snap.director && snap.director.running)) : null;
+    if (!baseTitle) baseTitle = document.title;
+    document.title = s ? (s.tone === "bad" ? "Stopped · " : "Waiting for you · ") + baseTitle : baseTitle;
+    const key = s ? [snap.pid, p.status, p.stage || "", p.updated || ""].join("|") : "";
+    if (!s) { stop = null; return; }
+    if (stop && stop.key === key) return;
+    stop = { key: key, info: s };
+    if (load("kino.stop.seen") === key) return;
+    tellDesktop(s, key);
+    showStop();
+  }
+
+  function showStop() {
+    if (!stop || stopOpen || !window.Dlg || document.visibilityState !== "visible") return;
+    const cur = stop;
+    if (load("kino.stop.seen") === cur.key) return;
+    stopOpen = true;
+    const page = PAGES[cur.info.page] || PAGES.overview;
+    window.Dlg.confirm({ tone: cur.info.tone, title: cur.info.title, message: esc(cur.info.text),
+      okLabel: "Open the " + page.label + " page", cancelLabel: "Later" }).then(function (go) {
+      stopOpen = false;
+      store("kino.stop.seen", cur.key);
+      if (go) goTo(cur.info.page);
+    });
+  }
+
+  function tellDesktop(s, key) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    if (document.visibilityState === "visible" && document.hasFocus()) return;   // the dialog shows it
+    if (load("kino.stop.told") === key) return;                                 // another tab told already
+    store("kino.stop.told", key);
+    try {
+      const n = new Notification("Kinoloom: " + s.title, { body: s.text, tag: "kinoloom-stop" });
+      n.onclick = function () { window.focus(); n.close(); };
+    } catch (e) { /* a browser without page notifications */ }
+  }
+
+  /* the browser's own question, once: asked from a click (Start production) */
+  function askNotify() {
+    try {
+      if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+    } catch (e) { /* not supported */ }
+  }
+
+  function goTo(page) {
+    page = canon(page);
+    if (!PAGES[page]) return;
+    if (PAGES[page].shell === here) location.hash = "#" + page;
+    else leave(href(page));
   }
 
   async function loadDatasets() {
@@ -340,7 +428,7 @@
     const dock = document.getElementById("dock");
     if (!dock) return;
     dock.innerHTML =
-      '<button class="dock-btn" type="button" aria-haspopup="menu" aria-expanded="false" data-tip="Render queue, worker PCs, settings and logs">' +
+      '<button class="dock-btn" type="button" aria-haspopup="menu" aria-expanded="false" data-tip="Render queue, worker PCs, the AI writer, settings and logs">' +
         '<div id="side-gpu"><div class="gm-sub">GPU</div></div>' +
         '<div class="dock-row"><span class="dock-sys">' + icon("sliders") + "System</span>" +
           '<span class="chev">' + icon("chevron-up") + "</span></div>" +
@@ -379,8 +467,14 @@
     pop.setAttribute("role", "menu");
     pop.innerHTML =
       item("queue", "dock-h-queue") + item("workers", "dock-h-workers") +
+      '<button class="dock-item" type="button" role="menuitem" id="dock-ai">' + icon("spark") +
+        '<span>AI writer</span><span class="hint" id="dock-h-ai"></span></button>' +
       item("settings") + item("logs");
     dock.insertBefore(pop, dock.firstChild);
+    pop.querySelector("#dock-ai").onclick = function () {
+      closeDock();
+      if (window.AiSettings) window.AiSettings.open();
+    };
     if (!window.API) return;
     const hint = function (id, text, cls) {
       const el = document.getElementById(id);
@@ -397,6 +491,10 @@
       const ws = (w && w.workers) || [];
       const on = ws.filter(function (x) { return x.online; }).length;
       hint("dock-h-workers", ws.length ? on + " of " + ws.length + " online" : "none", on ? "on" : "");
+    });
+    window.API.get("/api/ai/config", 15000, true).then(function (c) {
+      if (!c) return;
+      hint("dock-h-ai", c.ready ? (c.model || "connected") : "not set up", c.ready ? "on" : "warn");
     });
   }
 
@@ -508,8 +606,11 @@
     setTimeout(pollGpu, GPU_POLL_MS);
   }
 
+  /* the Studio shell: the Movie pages' progress while one is on screen, and
+     the current project on any page while production runs (to see it stop) */
   function pollProgress() {
-    if (document.visibilityState === "visible" && here === "tools" && studio === "movie") loadProject();
+    const running = !!(snap.director && snap.director.running);
+    if (here === "tools" && (running || (document.visibilityState === "visible" && studio === "movie"))) loadProject();
     setTimeout(pollProgress, PROGRESS_POLL_MS);
   }
 
@@ -576,14 +677,19 @@
     });
     pollGpu();
     loadDatasets();
-    if (here === "tools") setTimeout(pollProgress, PROGRESS_POLL_MS);
+    if (here === "tools") {
+      loadProject();                          // whether production runs, on any page
+      setTimeout(pollProgress, PROGRESS_POLL_MS);
+    }
+    // a stop seen while the tab was in the background shows when it comes back
+    document.addEventListener("visibilitychange", showStop);
   }
 
   const Shell = {
     PAGES: PAGES, MOVIE: MOVIE, HOME: HOME, DEFAULT: DEFAULT, gpu: null,
     mount: mount, setActive: setActive, initialPage: initialPage, shellOf: shellOf, canon: canon,
     href: href, bindTips: bindTips, feed: feed, steps: steps, next: next, footer: footer,
-    reloadDatasets: loadDatasets,
+    stopInfo: stopInfo, askNotify: askNotify, reloadDatasets: loadDatasets,
   };
   window.Shell = Shell;
 })();

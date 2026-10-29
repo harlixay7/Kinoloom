@@ -18,6 +18,7 @@ FACINGS = {"camera_left", "camera_right", "camera", "away_from_camera"}
 TIERS = {"hero", "standard", "volume"}
 CHAR_TIERS = {"main", "supporting", "recurring", "crowd"}
 HERO_SHOT_SIZES = {"extreme_close_up", "close_up", "medium_close_up"}
+WIDE_SIZES = {"wide", "extreme_wide"}
 CONTINUITY_TYPES = {"CUT", "CONTINUE", "MATCH_ACTION"}
 
 # ordered emotion intensity for jump warnings (0 calm .. 5 rage)
@@ -57,12 +58,16 @@ class LintReport:
 
 
 class Linter:
-    def __init__(self, bible: Bible, family: str = "") -> None:
+    def __init__(self, bible: Bible, family: str = "", take_len: int = 0) -> None:
         self.b = bible
+        self.family = str(family or "")
+        # the most shots one take holds (movie_takes.story_length); 0: the
+        # family's measured default
+        self.take_len = int(take_len or 0)
         # Reference capacity per video family: LTX MSR is a hard 5-slot guide;
         # H3 fills 6 pictures. The story pipeline passes the project family so
         # the linter can flag over-budget shots for the self-heal loop.
-        self.ref_budget = 6 if str(family or "").startswith("h3") else 5
+        self.ref_budget = 6 if self.family.startswith("h3") else 5
 
     # ------------------------------------------------------------- pipelines
     def lint_package(self, shots: list[dict]) -> LintReport:
@@ -85,8 +90,13 @@ class Linter:
                                rep: LintReport) -> None:
         """Continuity is an EDIT decision, not a mood: never bridge across a
         scene or location change (the tail belongs to another world), never
-        bridge from nothing, and never chain more than two shots in a row
-        (identity drift accumulates across consecutive tail anchors)."""
+        bridge from nothing, a MATCH_ACTION cuts to a new angle, and a take
+        (a shot and the CONTINUE shots after it) holds at most the take
+        length (movie_takes.max_shots): a longer run goes on in a new take.
+        A CUT or a MATCH_ACTION opens fresh from the references."""
+        from movie_takes import H3_TAKE_MAX_SHOTS, LTX_TAKE_MAX_SHOTS
+        h3 = self.family.startswith("h3")
+        cap = self.take_len or (H3_TAKE_MAX_SHOTS if h3 else LTX_TAKE_MAX_SHOTS)
         by_id = {str(s.get("shot_id")): s for s in shots}
         run = 0
         ordered = sorted(shots, key=lambda x: (str(x.get("scene") or ""),
@@ -94,10 +104,9 @@ class Linter:
         for s in ordered:
             sid = str(s.get("shot_id") or "?")
             cont = str(s.get("continuity") or "CUT").upper()
+            run = run + 1 if cont == "CONTINUE" else 0
             if cont == "CUT":
-                run = 0
                 continue
-            run += 1
             prev = by_id.get(str(s.get("prev_shot") or ""))
             if prev is None:
                 rep.w(sid, f"continuity {cont} but no prev_shot — "
@@ -120,9 +129,15 @@ class Linter:
                 rep.w(sid, f"continuity {cont} across time-of-day change "
                            f"({prev.get('time')} -> {s.get('time')}) — "
                            f"lighting should match across continuous action")
-            if run > 2:
-                rep.w(sid, f"{run} consecutive CONTINUE/MATCH_ACTION shots — "
-                           f"insert a CUT to reset identity drift")
+            if cont == "MATCH_ACTION" and (prev.get("shot_size"), prev.get("camera")) == \
+                    (s.get("shot_size"), s.get("camera")):
+                rep.w(sid, "MATCH_ACTION keeps the shot size and camera of the shot "
+                           "before — a match cut needs a new angle (or use CONTINUE)")
+            if cont == "CONTINUE" and run >= cap and run % cap == 0:
+                rep.w(sid, f"a take of more than {cap} shots (the take length): it goes on in a "
+                           f"new take from this shot, on a new angle made from the last frame of "
+                           f"the one before (or from that frame itself without opening frames); "
+                           f"a match cut written here fits the story better")
 
     def lint_shot(self, s: dict, rep: LintReport | None = None) -> LintReport:
         rep = rep or LintReport()
@@ -142,6 +157,15 @@ class Linter:
         if s.get("tier") == "hero":
             if s.get("shot_size") not in HERO_SHOT_SIZES and not s.get("power"):
                 rep.e(sid, "hero tier requires shot_size in close-up range or a power")
+
+        # --- framing for detail: the video models keep a face's identity and
+        # detail at medium or closer
+        size = s.get("shot_size")
+        if size in WIDE_SIZES and s.get("characters"):
+            why = "dialogue" if s.get("dialogue") else "a hero moment" if s.get("tier") == "hero" else ""
+            if why:
+                rep.w(sid, f"{why} at {size}: faces lose their identity and detail at this size; "
+                           f"use medium or closer")
 
         # --- location & lighting
         loc = s.get("location")
@@ -280,6 +304,7 @@ class Linter:
 
     # ------------------------------------------------------------------- dag
     def _lint_dag(self, scene: str, shots: list[dict], rep: LintReport) -> None:
+        before = len(rep.errors)
         ids = {s["shot_id"] for s in shots}
         children: dict[str, list[str]] = {i: [] for i in ids}
         roots = 0
@@ -295,7 +320,9 @@ class Linter:
                 children[prev].append(s["shot_id"])
         if roots != 1:
             rep.e(scene, f"scene {scene} has {roots} roots (need exactly 1)")
-        if not rep.ok:
+        # only this scene's chain problems stop its walk (an error in another
+        # scene used to hide every scene's cycles and orphans)
+        if len(rep.errors) > before:
             return
         # reachability
         root = next(s["shot_id"] for s in shots if s.get("prev_shot") is None)
@@ -320,15 +347,12 @@ class Linter:
         # every scene may host ONE hero moment even when small (a 2-shot
         # scene with a single hero close-up is valid filmmaking; the 15%
         # cap still applies to scenes with 7+ shots)
+        # (no volume quota: it pushed shots wide, where faces lose their
+        # identity and detail; see the framing warnings in lint_shot)
         hero_cap = max(int(n * 0.15), 1 if n <= 6 else 0)
         hero = sum(1 for s in shots if s.get("tier") == "hero")
-        vol = sum(1 for s in shots if s.get("tier") == "volume") / n
         if hero > hero_cap:
             rep.e(scene, f"hero tier {hero}/{n} > {hero_cap} budget")
-        if vol < 0.30 - 1e-9:
-            rep.w(scene, f"volume tier {vol:.0%} < 30% (cost optimization)")
-        if hero > 0.05 and hero < 0.30 and all(s.get("tier") != "volume" for s in shots):
-            rep.w(scene, "scene has no volume-tier shots (check tier mix)")
 
     # -------------------------------------------------------- state mutations
     def _lint_state_mutations(self, scene: str, shots: list[dict], rep: LintReport) -> None:

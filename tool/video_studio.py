@@ -1382,6 +1382,9 @@ def _adopt(jid: str, port: int, pid: str, entry: dict) -> None:
 
 
 # ------------------------------------------------------- chain runner
+CHAIN_MAX_SEGMENTS = 50        # the most segments one chain is written for (the cast sheet)
+
+
 def start_chain(mid: str, prompts: list, *, mode: str = "t2v",
                 negative: str = "", seed: int = -1,
                 width: int = 1344, height: int = 768,
@@ -1392,7 +1395,8 @@ def start_chain(mid: str, prompts: list, *, mode: str = "t2v",
                 draft_only: bool = False,
                 chain_id: str | None = None,
                 start_path: Path | None = None,
-                origin: dict | None = None) -> dict:
+                origin: dict | None = None,
+                seeds: list | None = None) -> dict:
     """Multi-segment chain rendered as one take. Runs in a background thread;
     check get_chain() for progress. `references` carries the cast (character /
     power / environment stills), applied to EVERY segment with the model
@@ -1410,11 +1414,20 @@ def start_chain(mid: str, prompts: list, *, mode: str = "t2v",
                   are named after their content, renderer.upload_name);
       start_path  the opening still as a local path (a previous shot's tail),
                   instead of a ComfyUI input filename;
-      origin      provenance stored on the record (e.g. project + shot ids)."""
+      origin      provenance stored on the record (e.g. project + shot ids);
+      seeds       one seed per segment instead of seed, seed+1, ... (a movie
+                  take keeps each shot's own: a retake moves only its shot's,
+                  and the segments before it reuse their finished steps)."""
     st = video_models.model_status(mid)
     if not st["available"]:
         raise ValueError(
             f"{mid} is not available: {st.get('reason') or 'missing ' + str(st.get('missing'))}")
+    if seeds is not None:
+        if len(seeds) != len(prompts):
+            raise ValueError(f"{len(seeds)} seeds for {len(prompts)} segments")
+        seeds = [int(s) for s in seeds]
+        if any(s < 0 for s in seeds):
+            raise ValueError("segment seeds must not be negative")
     if start_image and not _is_bare_filename(str(start_image)):
         raise ValueError("start_image must be a filename in a ComfyUI input folder")
     # refused here, not warned about in the chain thread: a chain whose opening
@@ -1440,6 +1453,7 @@ def start_chain(mid: str, prompts: list, *, mode: str = "t2v",
         "draft_only": bool(draft_only), "frames": int(frames),
         "seamless": seamless_engine(mid),
         **({"origin": dict(origin)} if origin else {}),
+        **({"seeds": list(seeds)} if seeds is not None else {}),
     }
     _CHAINS[cid] = rec
     import chain_studio
@@ -1447,7 +1461,7 @@ def start_chain(mid: str, prompts: list, *, mode: str = "t2v",
     threading.Thread(target=_run_chain, args=(cid, mid, prompts, mode,
                       negative, seed, width, height, frames, steps, cfg,
                       start_image, worker, list(references or [])),
-                     kwargs={"start_path": start_path}, daemon=True).start()
+                     kwargs={"start_path": start_path, "seeds": seeds}, daemon=True).start()
     return rec
 
 
@@ -1907,7 +1921,7 @@ def _run_chain(cid: str, mid: str, prompts: list, mode: str,
                negative: str, seed: int, width: int, height: int,
                frames: int, steps: int, cfg: float,
                start_image: str, worker: str, references: list = None,
-               start_path: Path | None = None) -> None:
+               start_path: Path | None = None, seeds: list | None = None) -> None:
     """One broker lease for the whole chain so segments stay warm (chains
     always run on the local instance — _run_chain_body binds it directly).
     The lease belongs to this thread: the H3 engine restarts the server under
@@ -1934,7 +1948,7 @@ def _run_chain(cid: str, mid: str, prompts: list, mode: str,
     try:
         _run_chain_body(cid, mid, prompts, mode, negative, seed, width,
                         height, frames, steps, cfg, start_image, worker,
-                        references, start_path=start_path)
+                        references, start_path=start_path, seeds=seeds)
     except Exception as e:  # noqa: BLE001
         # a dead body must never strand the chain as "running" — the UI
         # polls this record and the user watches it
@@ -2009,9 +2023,11 @@ def _run_chain_body(cid: str, mid: str, prompts: list, mode: str,
                     frames: int, steps: int, cfg: float,
                     start_image: str, worker: str,
                     references: list = None,
-                    start_path: Path | None = None) -> None:
+                    start_path: Path | None = None,
+                    seeds: list | None = None) -> None:
     """Sequential chain: each clip continues from the previous tail frame.
-    start_path: a trusted local opening still (seamless engine only)."""
+    start_path: a trusted local opening still (seamless engine only);
+    seeds: one per segment (default: the base seed + the segment index)."""
     from renderer import ComfyClient
     from workflows import WorkflowBuilder
     import shutil as _shutil
@@ -2034,6 +2050,7 @@ def _run_chain_body(cid: str, mid: str, prompts: list, mode: str,
     import random as _random
     base_seed = int(seed) if seed is not None and int(seed) >= 0 \
         else _random.randrange(1 << 31)
+    seg_seeds = [int(s) for s in seeds] if seeds else [base_seed + i for i in range(len(prompts))]
     # LTX overlap-extend: segments 2+ pin the previous clip's last 17 frames
     # in-place (see _build's "chain" branch). Those frames are replayed, so
     # each continuation segment renders OVERLAP-1 extra frames (grid-safe:
@@ -2074,7 +2091,7 @@ def _run_chain_body(cid: str, mid: str, prompts: list, mode: str,
         chain_studio.run_chain(rec, entry, client, [str(p) for p in prompts], negative=negative,
                                base_seed=base_seed, frames=int(frames), start_image=start_path,
                                cast=cast_refs, draft_only=bool(rec.get("draft_only")),
-                               tier_graph=tier_graph, width=width, height=height)
+                               tier_graph=tier_graph, width=width, height=height, seeds=seg_seeds)
         return
 
     try:
@@ -2149,7 +2166,7 @@ def _run_chain_body(cid: str, mid: str, prompts: list, mode: str,
             # slot (H3/LTX instead ride their reference guides below).
             seg_mode = "i2v" if (refs and fam.startswith("wan")) else mode
             wf, template, te_node = _build(
-                mid, seg_mode, prompt, negative, base_seed + i, width, height,
+                mid, seg_mode, prompt, negative, seg_seeds[i], width, height,
                 seg_frames, real_steps, real_cfg, loras=[], start_image=si,
                 teacache_thresh=0.1, teacache_end=0.6, no_cache=False,
                 shot_id=f"chain_{cid[:8]}_seg{i+1}", references=refs,

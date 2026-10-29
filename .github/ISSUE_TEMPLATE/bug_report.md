@@ -20,7 +20,7 @@ A short description of the problem.
 - GPU and VRAM:
 - NVIDIA driver version (`nvidia-smi`):
 - System RAM:
-- Which page or command (Video Studio, Generate, `start.bat`, a script...):
+- Which page or command (Video Studio, Render, `start.bat`, a script...):
 - Which model or tier, if it was a render (for example `ltx25_s6_cq`):
 
 **Logs**

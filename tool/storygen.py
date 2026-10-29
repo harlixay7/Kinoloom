@@ -23,6 +23,8 @@ from core import log_setup
 log = log_setup("storygen")
 
 STAGES = ("treatment", "bible", "beats", "scenes", "shots")
+# a character's text as the Story page shows the story bible
+_CHAR_TEXT = ("id", "name", "tier", "body", "outfit", "emotion_palette", "arc_summary")
 
 # ---------------------------------------------------------------- keywords
 POWER_KEYWORDS = (
@@ -1077,7 +1079,7 @@ class StoryArchitect:
             for stage in stages:
                 content = self.generate_stage(stage)
                 if stage == "bible":
-                    self._write_bible(content)
+                    content = self._write_bible(content)
                 elif stage == "scenes":
                     self._write_scenes(content["scenes"])
                 self.store.set_story_stage(self.pid, stage, content)
@@ -1094,46 +1096,90 @@ class StoryArchitect:
             return {"ok": False, "error": str(e),
                     "stages_completed": list(done.keys())}
 
-    def _write_bible(self, content: dict) -> None:
+    def _write_bible(self, content: dict) -> dict:
+        """The story bible into the project Bible; returns the bible as it
+        stands after it (what the Story page shows).
+
+        The cast belongs to the Cast & World page. The AI that writes the
+        story cannot see the cast's pictures, so a look it writes is a guess
+        that pulls the renders away from them. An existing character keeps its
+        name, tier, look (body and outfit), powers, weapons, loadouts and
+        pictures; the story adds its arc, and a voice style and an emotion
+        palette where the character has none. An existing place keeps its
+        text and pictures, and existing crowd types and camera defaults stay.
+        A character or place the cast does not have is added only while the
+        project has none (the AI then builds the cast); otherwise it is left
+        out, and the shots that use it fail the check (linter)."""
         b = self.bible
-        # NON-DESTRUCTIVE MERGE: the AI's bible section carries only text
-        # fields (name/tier/body/outfit/powers/emotions/voice/arc). It must
-        # NEVER wipe what the Cast tab owns — weapons, loadouts, reference
-        # images, scene maps, LoRAs, enabled flags. The old wholesale
-        # save_character() destroyed all of that on every story import.
+        # an id the AI spells another way ("sara" for "Sara") is the same
+        # record, kept under its own spelling (on Windows the file of "sara"
+        # IS the file of "Sara", so a miss here wrote over it)
+        from package_norm import match_known
+        cast_given = bool(b.characters() or {})
+        places_given = bool(b.locations() or {})
+        kept: list[str] = []
         for c in content.get("characters") or []:
             if not isinstance(c, dict) or not c.get("id"):
                 continue
-            prev = (b.characters() or {}).get(str(c["id"])) or {}
-            merged = dict(prev)
-            for k in ("name", "tier", "body", "outfit", "powers",
-                      "emotion_palette", "voice", "arc_summary"):
-                if c.get(k) is not None:
-                    merged[k] = c[k]
-            merged.setdefault("id", str(c["id"]))
-            merged.setdefault("enabled", True)
-            merged.setdefault("voice", {"engine": "moss-tts",
-                                        "style_tag": "", "params": {}})
-            b.save_character(merged)
+            chars = b.characters() or {}
+            prev = chars.get(match_known(chars, str(c["id"])))
+            if prev is None:
+                if cast_given:
+                    log.info("story bible: %r is not in the cast: left out", c["id"])
+                    continue
+                merged = {k: c[k] for k in ("name", "tier", "body", "outfit", "powers",
+                                            "emotion_palette", "voice", "arc_summary")
+                          if c.get(k) is not None}
+                # a look the story AI wrote follows the first picture picked
+                merged.update(id=str(c["id"]), enabled=True, look_source="story")
+                merged.setdefault("voice", {"engine": "moss-tts", "style_tag": "", "params": {}})
+            else:
+                merged = dict(prev)
+                if c.get("arc_summary"):
+                    merged["arc_summary"] = c["arc_summary"]
+                if c.get("emotion_palette") and not prev.get("emotion_palette"):
+                    merged["emotion_palette"] = c["emotion_palette"]
+                style = (c.get("voice") or {}).get("style_tag") if isinstance(c.get("voice"), dict) else None
+                voice = prev.get("voice") if isinstance(prev.get("voice"), dict) else {}
+                if style and not voice.get("style_tag"):
+                    merged["voice"] = {"engine": "moss-tts", "params": {}, **voice, "style_tag": style}
+            if merged != prev:
+                b.save_character(merged)
+            kept.append(str(merged["id"]))
         ct = b.crowd_types()
-        ct.update(content.get("crowd_types") or {})
+        for k, v in (content.get("crowd_types") or {}).items():
+            ct.setdefault(k, v)
         b.save_crowd_types(ct)
+        places: list[str] = []
         for loc in content.get("locations") or []:
             if not isinstance(loc, dict) or not loc.get("id"):
                 continue
-            prev = (b.locations() or {}).get(str(loc["id"])) or {}
-            merged = dict(prev)
-            for k in ("descriptor", "lighting"):
-                if loc.get(k) is not None:
-                    merged[k] = loc[k]
-            merged.setdefault("id", str(loc["id"]))
-            merged.setdefault("enabled", True)
-            b.save_location(merged)
+            locs = b.locations() or {}
+            key = match_known(locs, str(loc["id"]))
+            if key not in locs:
+                if places_given:
+                    log.info("story bible: place %r is not in the cast: left out", loc["id"])
+                    continue
+                key = str(loc["id"])
+                b.save_location({**{k: loc[k] for k in ("name", "descriptor", "lighting")
+                                    if loc.get(k) is not None}, "id": key, "enabled": True})
+            places.append(key)
         uni = content.get("universe")
         if isinstance(uni, dict) and uni:
-            cur = b.universe()
-            cur.update(uni)
-            b.save_universe(cur)
+            b.save_universe({**uni, **b.universe()})
+        chars, locs = b.characters() or {}, b.locations() or {}
+        out: dict = {
+            "characters": [{k: chars[c][k] for k in _CHAR_TEXT if chars[c].get(k)}
+                           | {"powers": {p: {k: v for k, v in (pw or {}).items()
+                                             if k in ("descriptor", "color", "motion")}
+                                         for p, pw in (chars[c].get("powers") or {}).items()}}
+                           for c in dict.fromkeys(kept) if c in chars],
+            "locations": [{k: locs[x][k] for k in ("id", "name", "descriptor", "lighting") if locs[x].get(k)}
+                          for x in dict.fromkeys(places) if x in locs],
+            "crowd_types": {k: ct[k] for k in (content.get("crowd_types") or {}) if k in ct}}
+        if isinstance(uni, dict) and uni:
+            out["universe"] = b.universe()
+        return out
 
     def _write_scenes(self, scenes: list[dict]) -> None:
         for s in scenes:
@@ -1156,16 +1202,17 @@ class StoryArchitect:
             shots = content.get("shots", [])
             if not shots:
                 return {"ok": False, "error": "no shots in content"}
-            from linter import Linter
-            rep = Linter(self.bible).lint_package(shots)
+            from storygen_llm import project_linter
+            rep = project_linter(self.store, self.pid, self.bible).lint_package(shots)
             if not rep.ok:
-                return {"ok": False, "error": "lint failed",
-                        "report": rep.to_dict()}
+                return {"ok": False, "error": f"{len(rep.errors)} problem(s) in the shots: {rep.errors[0]}",
+                        "errors": rep.errors, "report": rep.to_dict()}
             for s in shots:
                 s["project_id"] = self.pid
             self.db_upsert(shots)
         if stage == "bible" and "characters" in content:
-            self._write_bible(content)
+            # stored as it stands after the merge: the cast's own text
+            content = self._write_bible(content)
         if stage == "scenes" and "scenes" in content:
             self._write_scenes(content["scenes"])
         self.store.set_story_stage(self.pid, stage, content)

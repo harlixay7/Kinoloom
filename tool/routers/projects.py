@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from . import common
 from .common import store, db, director, cfg, architect_job, _proj_guard, Bible
 from core import ROOT, is_safe_component, load_config, log_setup, now, save_config, to_jsonable
+import cast_look
 from projects import ProjectStore
 from storygen_llm import ArchitectJob
 from video_models import DEFAULT_MODEL
@@ -70,6 +71,8 @@ class ProjectUpdateBody(BaseModel):
     # runs of CONTINUE shots on a seamless model render as one continuous
     # take (default on); off = every shot renders alone
     seamless_takes: bool | None = None
+    # the most shots in one take; 0 = the studio's take length (movie_takes)
+    take_max_shots: int | None = None
 
 
 @router.get("/api/projects")
@@ -119,9 +122,18 @@ def project_get(pid: str) -> dict:
     refs = ([{"file": f.name, "active": f.name == active}
              for f in sorted(refs_dir.glob("*")) if f.is_file()]
             if refs_dir.is_dir() else [])
-    return {"project": proj, "bible": p_bible.all(),
+    bible = p_bible.all()
+    import movie_takes
+    import video_studio
+    conf = load_config()
+    # the take length the Render page shows: the studio's (settings), the
+    # project's in effect, and the most a take can hold
+    takes = {"studio": movie_takes.story_length(conf, {**proj, "take_max_shots": 0}),
+             "now": movie_takes.story_length(conf, proj), "top": video_studio.CHAIN_MAX_SEGMENTS}
+    return {"project": proj, "bible": bible,
             "stats": stats, "director": director.status(pid),
-            "refs": {"refs": refs}}
+            "refs": {"refs": refs}, "cast_checks": cast_look.checks(bible.get("characters") or {}),
+            "take_length": takes}
 
 
 @router.post("/api/projects/{pid}")
@@ -131,6 +143,12 @@ def project_update(pid: str, body: ProjectUpdateBody) -> dict:
         return {"ok": False, "error": "mode must be autopilot|checkpoints|manual"}
     if "gates" in kw and not isinstance(kw["gates"], dict):
         return {"ok": False, "error": "gates must be a dict"}
+    if "take_max_shots" in kw:
+        import video_studio
+        top = video_studio.CHAIN_MAX_SEGMENTS
+        if not 0 <= int(kw["take_max_shots"]) <= top:
+            return {"ok": False, "error": f"take length must be 1 to {top} shots, or 0 for the studio's"}
+        kw["take_max_shots"] = int(kw["take_max_shots"])
     if "video_family" in kw:
         # Validated here so a typo cannot be stored: an unknown id would fall
         # back to the default model, which is confusing to diagnose later.
@@ -208,7 +226,9 @@ def project_story_generate(pid: str, body: StoryGenBody) -> dict:
     if not proj:
         raise FileNotFoundError(pid)
     p_bible = Bible(pid)
-    if not (p_bible.dir / "universe.yaml").exists():
+    # a snapshot clears the project's cast: only for a project that has none
+    if not (p_bible.dir / "universe.yaml").exists() and not p_bible.characters() \
+            and not p_bible.locations():
         p_bible.snapshot_from_global(pid)
     res = StoryArchitect(proj, store, p_bible).generate(
         stages=body.stages, idea=body.idea, cast_config=body.cast_config)
@@ -227,59 +247,23 @@ class StageImportBody(BaseModel):
 
 
 @router.get("/api/projects/{pid}/story/architect-prompt")
-def project_architect_prompt(pid: str, kind: str = "full") -> dict:
-    """The full system prompt to paste into any chat AI.
+def project_architect_prompt(pid: str, kind: str = "auto") -> dict:
+    """The story prompt to paste into any chat AI (storygen_llm.chat_prompt:
+    the same text the AI writer gets, with the storytelling skill).
 
-    kind=full  : one-shot package for short films (<= ~60 shots)
-    kind=spine : treatment + bible + beats ONLY — the master plan for long
-                 films; shots are then generated scene-by-scene via
-                 /story/scene-prompt.
-
-    The vocabulary comes from the SAME builders the built-in architect uses
-    (storygen_llm.cast_lines / loc_lines / power_lines + SHOT_RULES), and the
-    storytelling skill is embedded — a cloud model must receive everything:
-    weapons, loadouts, per-scene defaults, named places, power levels and the
-    reference budget.
+    kind=full  : the whole film in one reply (short films)
+    kind=spine : treatment + bible + beats only, for long films; the shots
+                 are then written scene by scene (/story/scene-prompt)
+    kind=auto  : full up to storygen_llm.FULL_MAX_SHOTS shots, else spine
     """
     from bible import Bible
-    from storygen_llm import (cast_lines as _cast_lines,
-                              loc_lines as _loc_lines,
-                              power_lines as _power_lines,
-                              SHOT_RULES as _SHOT_RULES,
-                              COMPACT_EXTRA as _COMPACT_EXTRA,
-                              _skill_text)
+    from storygen_llm import chat_prompt, story_size
     proj = store.get(pid)
     if not proj:
         raise FileNotFoundError(pid)
     p_bible = Bible(pid)
-    cast_txt = _cast_lines(p_bible)
-    loc_txt = _loc_lines(p_bible)
-    power_txt = _power_lines(p_bible)
-    skill = _skill_text("storytelling")
-    dur = int(proj.get("duration_target") or 60)
-    n_shots = max(4, -(-dur // 5))
-    n_scenes = max(2, min(30, round(n_shots / 28)))
-    head = (f"You are the Story Architect for the Kinoloom pipeline. "
-            f"Every shot renders as ONE ~5-second video clip (LTX-2.5 / "
-            f"MiniMax H3), so write for the RENDERER: each shot is one "
-            f"visible change, camera-ready, JSON only.\n")
-    if skill:
-        head += ("\nFollow this skill exactly:\n\n" + skill + "\n")
-    vocab = (f"\n=== PROJECT ===\n{proj.get('genre','')} · tone "
-             f"\"{proj.get('tone','')}\" · {dur}s = {n_shots} shots across "
-             f"{n_scenes} scenes (25-40 shots per scene)\n"
-             f"IDEA: {proj.get('idea','')}\n"
-             f"AUTHORITY: the IDEA is a premise that may predate the current "
-             f"cast. The CAST / LOCATIONS / POWERS lists below are "
-             f"AUTHORITATIVE: if the idea names a character, place or power "
-             f"that is not listed, adapt it to the closest listed id (or make "
-             f"it a crowd type). Never output an id that is not in the lists.\n\n"
-             f"CAST (use ONLY these ids; weapons/loadouts/levels are the "
-             f"presentation vocabulary):\n{cast_txt}\n\n"
-             f"LOCATIONS (use ONLY these ids and their listed places):\n"
-             f"{loc_txt}\n\n"
-             f"POWERS + LEVELS (use ONLY these):\n{power_txt}\n\n"
-             f"SHOT RULES:\n{_SHOT_RULES}\n")
+    prompt, kind = chat_prompt(proj, p_bible, kind)
+    _, n_shots, n_scenes = story_size(proj)
     # ---- stale-premise guard: names the IDEA mentions that are not in the
     # cast. The premise is free text written at project creation, so it can
     # predate the current cast (measured: an idea kept naming "Morgana" while
@@ -321,85 +305,8 @@ def project_architect_prompt(pid: str, kind: str = "full") -> dict:
         if not before or before[-1] in ".!?\"'":
             continue
         idea_warnings.append(tok)
-    if kind == "spine":
-        prompt = (head + vocab +
-                  f"\nWrite the MASTER PLAN (spine) only — treatment, bible, "
-                  f"beats. Do NOT write shots yet.\n"
-                  f"BEAT RULES:\n"
-                  f"- Exactly {n_scenes} beats. Every scene: goal -> obstacle "
-                  f"-> turn (something changes), ends on a hook.\n"
-                  f"- First scene = inciting incident; scene "
-                  f"{n_scenes // 2} = midpoint reversal; last scene = climax "
-                  f"+ resolution hook.\n"
-                  f"- Reward cadence: a payoff every 2-3 minutes. Escalate "
-                  f"powers/threats scene by scene; the power level curve "
-                  f"climbs to 10 at the finale.\n"
-                  f"- Give each scene a specific location (or a named place), "
-                  f"time, mood, and est_shots that sum to {n_shots}.\n"
-                  f"- Characters/locations listed above ALREADY EXIST: the "
-                  f"bible section may only refine their TEXT (name/body/"
-                  f"outfit/descriptor) — never remove weapons, loadouts, "
-                  f"references or places.\n\n"
-                  f"OUTPUT — return ONLY this JSON object (no prose outside "
-                  f"it):\n"
-                  f'{{"treatment": {{"logline": "...", "synopsis": "...", '
-                  f'"themes": ["..."], "protagonist": "<id>", '
-                  f'"antagonist": "<id>", "escalation": ["..."], '
-                  f'"ending": "...", "pacing": "...", '
-                  f'"clipable_moments": ["..."]}},\n'
-                  f' "bible": {{"characters": [{{"id": "<existing id>", '
-                  f'"name": "...", "tier": "main|supporting|recurring|crowd", '
-                  f'"body": "...", "outfit": "...", "powers": {{"<power_id>": '
-                  f'{{"descriptor": "...", "color": "#hex", "motion": "..."}}}}, '
-                  f'"emotion_palette": ["..."], "voice": {{"engine": '
-                  f'"moss-tts", "style_tag": "..."}}, "arc_summary": "..."}}], '
-                  f'"locations": [{{"id": "<existing id>", "descriptor": '
-                  f'"...", "lighting": "..."}}], "crowd_types": '
-                  f'{{"<id>": {{"tier": "crowd", "descriptor": "..."}}}}}},\n'
-                  f' "beats": {{"beats": [{{"scene": "s01", "location": '
-                  f'"<id>", "time": "night|dusk|dawn|day", "mood": "...", '
-                  f'"goal": "...", "turn": "...", "hook": "...", '
-                  f'"est_shots": 30}}]}}}}\n'
-                  f"Do NOT include a shots key in this output.")
-        return {"prompt": prompt, "kind": "spine", "shot_count": n_shots,
-                "scene_count": n_scenes, "idea_warnings": idea_warnings}
-
-    prompt = (head + vocab +
-              f"\nWrite the FULL package: treatment + bible + beats + every "
-              f"shot (exactly {n_shots}). Use the COMPACT shot format so the "
-              f"reply fits:\n\n"
-              f'{{"treatment": {{"logline": "...", "synopsis": "...", '
-              f'"themes": ["..."], "protagonist": "<id>", '
-              f'"antagonist": "<id>", "escalation": ["..."], '
-              f'"ending": "...", "pacing": "...", '
-              f'"clipable_moments": ["..."]}},\n'
-              f' "bible": {{"characters": [{{"id": "<existing id>", '
-              f'"name": "...", "tier": "...", "body": "...", "outfit": "...", '
-              f'"powers": {{"<power_id>": {{"descriptor": "...", '
-              f'"color": "#hex", "motion": "..."}}}}, "emotion_palette": '
-              f'["..."], "voice": {{"engine": "moss-tts", "style_tag": "..."}}, '
-              f'"arc_summary": "..."}}], "locations": [{{"id": "<existing id>", '
-              f'"descriptor": "...", "lighting": "..."}}], "crowd_types": '
-              f'{{"<id>": {{"tier": "crowd", "descriptor": "..."}}}}}},\n'
-              f' "beats": {{"beats": [{{"scene": "s01", "location": "<id>", '
-              f'"time": "night|dusk|dawn|day", "mood": "...", "goal": "...", '
-              f'"turn": "...", "hook": "...", "est_shots": 6}}]}},\n'
-              f' "shots": {{"shots": [\n'
-              f'   {{"scene": "s01", "location": "<id>", "time": "night", '
-              f'"shots": [\n'
-              f'     ["<shot_size>", "<camera>", "<character_id>", "<emotion>", '
-              f'"<primary_action>", "<power_id_or_null>", '
-              f'"<tier|continuity>", {_COMPACT_EXTRA}],\n'
-              f'     ["D", "<character_id>", "<emotion>", "<line>"]\n'
-              f'   ]}}\n'
-              f' ]}}\n'
-              f"}}\n\n"
-              f"shot_size from: extreme_close_up|close_up|medium_close_up|"
-              f"medium|medium_wide|wide|extreme_wide · camera from: static|"
-              f"slow_push_in|dolly|pan|crane|handheld|orbit|pull_back|"
-              f"tracking. One scene block per scene, in order.")
-    return {"prompt": prompt, "kind": "full", "shot_count": n_shots,
-            "idea_warnings": idea_warnings}
+    return {"prompt": prompt, "kind": kind, "shot_count": n_shots,
+            "scene_count": n_scenes, "idea_warnings": idea_warnings}
 
 
 @router.post("/api/projects/{pid}/story/rewrite-idea")
@@ -440,11 +347,13 @@ def project_rewrite_idea(pid: str) -> dict:
     return {"ok": True, "idea": out.strip().strip('"')}
 
 
-def _normalize_package(package: dict, p_bible) -> dict:
+def _normalize_package(package: dict, p_bible, proj: dict | None = None) -> dict:
     """Shared normalization lives in package_norm.py (used by both the
-    paste endpoints and the LLM Story Architect)."""
+    paste endpoints and the LLM Story Architect); the project's beats give
+    the scene ids their spelling."""
     from package_norm import normalize_package
-    return normalize_package(package, p_bible)
+    beats = (((proj or {}).get("story") or {}).get("beats") or {}).get("beats") or []
+    return normalize_package(package, p_bible, [b.get("scene") for b in beats if isinstance(b, dict)])
 
 
 @router.get("/api/projects/{pid}/story/scene-prompt")
@@ -473,17 +382,20 @@ def project_scene_prompt(pid: str, scene: str) -> dict:
 
 def _prune_stale_shots(pid: str, p_bible) -> dict:
     """Delete project shots whose characters or location no longer exist
-    in the project Bible (leftovers from a previous cast/story)."""
-    chars = set(p_bible.characters().keys())
-    locs = set(p_bible.locations().keys())
+    in the project Bible (leftovers from a previous cast/story). A name in
+    other capitals ("sara" for "Sara") is the same one: the shot stays, for
+    the linter to name, never deleted."""
+    chars = {str(k).lower() for k in p_bible.characters()} | \
+        {str(k).lower() for k in p_bible.crowd_types()}
+    locs = {str(k).lower() for k in p_bible.locations()}
     removed = []
     for r in db.all(project=pid):
         j = r.get("json") or {}
         bad = False
-        if j.get("location") and j["location"] not in locs:
+        if j.get("location") and str(j["location"]).lower() not in locs:
             bad = True
         for c in (j.get("characters") or []):
-            if isinstance(c, dict) and c.get("id") and c["id"] not in chars:
+            if isinstance(c, dict) and c.get("id") and str(c["id"]).lower() not in chars:
                 bad = True
                 break
         if bad:
@@ -540,7 +452,7 @@ def project_story_import_file(pid: str, body: dict) -> dict:
                                       "halves"}
     p_bible = Bible(pid)
     try:
-        package = _normalize_package(package, p_bible)
+        package = _normalize_package(package, p_bible, proj)
     except Exception as e:
         log.exception("projects operation failed: %s", e)
         return JSONResponse(status_code=500, content={"ok": False, "error": f"normalization failed: {e}"})
@@ -615,7 +527,7 @@ def project_story_import_all(pid: str, body: dict) -> dict:
         return {"ok": False, "error": "package must be a JSON object"}
     p_bible = Bible(pid)
     try:
-        package = _normalize_package(package, p_bible)
+        package = _normalize_package(package, p_bible, proj)
     except Exception as e:
         log.exception("projects operation failed: %s", e)
         return JSONResponse(status_code=500, content={"ok": False, "error": f"normalization failed: {e}"})
@@ -635,12 +547,11 @@ def project_story_import_all(pid: str, body: dict) -> dict:
 
 @router.get("/api/projects/{pid}/story/ai-config")
 def project_ai_config(pid: str) -> dict:
+    """The AI settings (shared by every project; routers/ai_prompts.py)."""
+    from .ai_prompts import ai_settings
     if not store.get(pid):
         raise FileNotFoundError(pid)
-    arch = dict(cfg.get("architect") or {})
-    key = arch.get("api_key") or ""
-    arch["api_key"] = ("*" * 8 + key[-4:]) if len(key) > 4 else key
-    return {"architect": arch}
+    return {"architect": ai_settings()}
 
 
 class AiConfigBody(BaseModel):
@@ -651,33 +562,10 @@ class AiConfigBody(BaseModel):
 
 @router.post("/api/projects/{pid}/story/ai-config")
 def project_ai_config_save(pid: str, body: AiConfigBody) -> dict:
+    from .ai_prompts import save_ai_settings
     if not store.get(pid):
         raise FileNotFoundError(pid)
-    from urllib.parse import urlsplit
-    from core import save_config
-    arch = dict(cfg.get("architect") or {})
-    new_url = body.base_url.strip()
-    parts = urlsplit(new_url)
-    if parts.scheme not in ("http", "https") or not parts.netloc:
-        return {"ok": False, "error": "base_url must be an http(s) URL"}
-
-    def _origin(u: str) -> tuple[str, str]:
-        s = urlsplit(str(u or ""))
-        return (s.scheme.lower(), s.netloc.lower())
-
-    new_key = body.api_key if body.api_key and not body.api_key.startswith("*") else ""
-    if new_key:
-        arch["api_key"] = new_key
-    elif _origin(new_url) != _origin(arch.get("base_url", "")) and arch.get("api_key"):
-        # the stored key was issued for the OLD endpoint: never send it to a
-        # new host just because the masked field was left unchanged
-        arch["api_key"] = ""
-        log.info("architect endpoint changed host — stored API key cleared")
-    arch["base_url"] = new_url
-    arch["model"] = body.model.strip()
-    cfg["architect"] = arch
-    save_config(cfg)
-    return {"ok": True, "api_key_cleared": not new_key and not arch.get("api_key")}
+    return save_ai_settings(body.base_url, body.model, body.api_key)
 
 
 @router.post("/api/architect/test")
@@ -687,12 +575,22 @@ def architect_test(body: dict) -> dict:
     return LLMClient(cfg).test()
 
 
+class GenerateAiBody(BaseModel):
+    outline: bool = True
+    scenes: str | list[str] = "all"
+
+
 @router.post("/api/projects/{pid}/story/generate-ai")
-def project_generate_ai(pid: str) -> dict:
-    """ONE click, ONE prompt -> the ENTIRE script: the system handles all
-    LLM continuation calls (spine -> every scene with continuity carried
-    forward -> self-healing lint fixes) until the full shot list exists."""
-    return architect_job.start(pid)
+def project_generate_ai(pid: str, body: GenerateAiBody | None = None) -> dict:
+    """The AI writer, in the background: the outline (treatment, story
+    bible, beats) and every scene's shots with the continuity carried
+    forward and the validator's errors sent back for a fix. outline=false
+    writes scenes only: scenes "missing" (those without shots), a list of
+    scene ids, or "all"; scenes "none" writes the outline only."""
+    if not store.get(pid):
+        raise FileNotFoundError(pid)
+    b = body or GenerateAiBody()
+    return architect_job.start(pid, outline=b.outline, scenes=b.scenes)
 
 
 @router.get("/api/projects/{pid}/story/generate-ai/status")
@@ -720,8 +618,12 @@ def project_story_import(pid: str, body: StageImportBody) -> dict:
             return {"ok": False, "error": "no JSON found in the pasted text"}
     if not isinstance(content, dict):
         return {"ok": False, "error": "content must be a JSON object"}
-    return StoryArchitect(proj, store, Bible(pid)).import_stage(
-        body.stage, content)
+    p_bible = Bible(pid)
+    if body.stage in ("bible", "beats", "scenes", "shots"):
+        # one part, read like a whole reply: the cast's spelling, the
+        # compact shots and ids that cannot be file names
+        content = _normalize_package({body.stage: content}, p_bible, proj).get(body.stage, content)
+    return StoryArchitect(proj, store, p_bible).import_stage(body.stage, content)
 
 
 @router.get("/api/projects/{pid}/story/versions")

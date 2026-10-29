@@ -10,32 +10,99 @@ is then cut back into one clip per shot at the link seams, so every shot keeps
 its own row, QA, tail frame and place in the edit, and the assembler's concat
 puts the take back together frame for frame.
 
-CUT and MATCH_ACTION shots (an edit, a new camera set-up) render one at a time
-as before. A retake of a single shot of a take (the QA ladder) renders that
-shot alone, opening on its predecessor's tail frame.
+CUT and MATCH_ACTION shots (an edit, a new camera set-up) render one at a time.
+Which shots form a take is planned by movie_prompts.plan_units. A take holds at
+most `max_shots` shots (the take length: measured defaults, set in the
+settings and per project); a longer run goes on in the next take, which opens
+as a match cut on an opening frame made from the last frame of the one before
+(without opening frames, on that last frame itself: movie_request).
+A retake of a shot inside a take renders the whole take again under the same
+chain id: the shots before it reuse their finished steps, so the latent carry
+into the retaken shot stays (movie_prompts.unit_for).
 """
 from __future__ import annotations
 
 import hashlib
 import subprocess
 from pathlib import Path
-from typing import Callable
 
 from core import log_setup
 
 log = log_setup("movie_takes")
 
-TAKE_MAX_SHOTS = 4          # 4 links = 20 s; H3 at 1080p renders that in ~2 h 40 min
-_JOINABLE = ("pending", "queued")
+# An H3 take is refined at 1080p in one piece: on the 64 GB studio PC the 4-link
+# gate take (651 frames) left 5-7 GB of RAM in one graph, and no longer H3 take
+# has rendered (chain_engine.H3Chain.refine). LTX-2.5 finishes link by link and
+# decodes the take in streamed windows, so its takes are as long as a chain.
+H3_TAKE_MAX_SHOTS = 4
+# An 8-link LTX-2.5 take (the cliff walk, 32 s) kept the cast's identity in every
+# link (ArcFace 0.31-0.51, no decline); links 7 and 8 added seam steps larger
+# than any in links 1-6, though none showed to the eye. 6 is the measured
+# default; `movie.ltx_take_max_shots` and each project's take length change it.
+LTX_TAKE_MAX_SHOTS = 6
 _SLOT_ORDER = ("pic1", "pic2", "pic3", "pic4", "pic5", "pic6", "background")
 _CAST_TYPE = {"character": "face", "power": "power", "weapon": "weapon", "location": "environment"}
 
 
-def settings(cfg: dict) -> tuple[bool, int]:
-    """(enabled, max shots per take) from settings `movie.seamless_takes` /
-    `movie.take_max_shots`; on by default."""
+def settings(cfg: dict) -> bool:
+    """Whether CONTINUE runs render as seamless takes (`movie.seamless_takes`,
+    on by default)."""
+    return bool(((cfg or {}).get("movie") or {}).get("seamless_takes", True))
+
+
+def _count(v) -> int:
+    try:
+        return max(0, int(v or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def max_shots(cfg: dict, mid: str, project: int = 0) -> int:
+    """The most shots one take of `mid` holds (the take length). LTX-2.5: the
+    project's take length when set, else `movie.ltx_take_max_shots` (default
+    LTX_TAKE_MAX_SHOTS), at most a Video Studio chain's segments. H3:
+    `movie.h3_take_max_shots` (the older `movie.take_max_shots` too, default
+    4), the most its 1080p refine holds in memory, so a project's take length
+    can only shorten it."""
+    import video_models
+    import video_studio
+    top = video_studio.CHAIN_MAX_SEGMENTS
+    fam = str((video_models.VIDEO_MODELS.get(mid) or {}).get("family") or "")
     m = (cfg or {}).get("movie") or {}
-    return bool(m.get("seamless_takes", True)), max(1, int(m.get("take_max_shots") or TAKE_MAX_SHOTS))
+    if fam.startswith("h3"):
+        top = min(top, _count(m.get("h3_take_max_shots")) or _count(m.get("take_max_shots"))
+                  or H3_TAKE_MAX_SHOTS)
+        return max(1, min(_count(project) or top, top))
+    n = _count(project) or _count(m.get("ltx_take_max_shots")) or LTX_TAKE_MAX_SHOTS
+    return max(1, min(n, top))
+
+
+def story_length(cfg: dict, proj: dict | None) -> int:
+    """The take length a story is written for: the shortest take of the
+    project's video models (its model and its per-tier models), with its
+    own take length."""
+    import video_models
+    proj = proj or {}
+    try:
+        mids = {str(proj.get("video_family") or "") or video_models.default_model_id() or ""}
+    except Exception:  # noqa: BLE001 - a registry problem shows elsewhere
+        mids = set()
+    vm = proj.get("video_models")
+    mids |= {str(v) for v in (vm.values() if isinstance(vm, dict) else ()) if v}
+    mids.discard("")
+    own = _count(proj.get("take_max_shots"))
+    lengths = [max_shots(cfg, m, own) for m in sorted(mids)]
+    return min(lengths) if lengths else max_shots(cfg, "", own)
+
+
+def project_length(db, pid: str) -> int:
+    """The project's take length (projects.take_max_shots, set on the Movie
+    side); 0 when it uses the studio's."""
+    try:
+        row = db.con.execute("SELECT take_max_shots FROM projects WHERE id=?", (pid,)).fetchone()
+        return _count(row[0]) if row is not None else 0
+    except Exception:  # noqa: BLE001 - a DB without the column predates the setting
+        return 0
 
 
 def _sjson(row: dict) -> dict:
@@ -43,12 +110,8 @@ def _sjson(row: dict) -> dict:
     return j if isinstance(j, dict) else {}
 
 
-def _fresh(row: dict) -> bool:
-    """Not a QA retake or a forced text-to-video render (those render alone)."""
-    return not int(row.get("qa_stage") or 0) and not _sjson(row).get("t2v")
-
-
-def _continues(prev: dict, row: dict) -> bool:
+def continues(prev: dict, row: dict) -> bool:
+    """`row` is a CONTINUE of `prev` in the same scene and location."""
     from shotspec import continuity_of
     pj, j = _sjson(prev), _sjson(row)
     if continuity_of(j) != "CONTINUE" or str(j.get("prev_shot") or "") != prev["shot_id"]:
@@ -57,28 +120,6 @@ def _continues(prev: dict, row: dict) -> bool:
         return False
     pl, cl = str(pj.get("location") or ""), str(j.get("location") or "")
     return not (pl and cl and pl != cl)
-
-
-def plan_take(head: dict, scene_rows: list[dict], model_of: Callable[[dict], str],
-              max_shots: int = TAKE_MAX_SHOTS) -> list[dict]:
-    """`head` and the CONTINUE shots that follow it without a break, in story
-    order: each continues the one before it, is still to render, is not a QA
-    retake, and renders on head's model. A fork (two shots continuing the same
-    one) ends the take. [head] alone when nothing follows."""
-    if not _fresh(head):
-        return [head]
-    mid = model_of(head)
-    run = [head]
-    while len(run) < max_shots:
-        nxt = [r for r in scene_rows if str(_sjson(r).get("prev_shot") or "") == run[-1]["shot_id"]]
-        if len(nxt) != 1:
-            break
-        r = nxt[0]
-        if (r.get("status") not in _JOINABLE or not _fresh(r) or not _continues(run[-1], r)
-                or r["shot_id"] in {x["shot_id"] for x in run} or model_of(r) != mid):
-            break
-        run.append(r)
-    return run
 
 
 def take_id(pid: str, mid: str, sids: list[str]) -> str:
@@ -121,11 +162,16 @@ def take_cast(refs: list[dict], bible, shot: dict) -> list[dict]:
     (face / power / weapon / environment), and characters with their name and
     look (bible body + the shot's outfit), the identity sentence the chain puts
     in every link prompt."""
+    from cast_look import body_text, place_entry, place_text
     from ltx_refs import resolve_presentation
     try:
         chars = bible.characters() or {}
     except Exception:  # noqa: BLE001 - a look sentence is a bonus, never a failure
         chars = {}
+    try:
+        locs = bible.locations() or {}
+    except Exception:  # noqa: BLE001
+        locs = {}
     by_id = {str(c.get("id")): c for c in shot.get("characters") or [] if isinstance(c, dict)}
     out = []
     for r in slot_sorted(refs):
@@ -135,11 +181,17 @@ def take_cast(refs: list[dict], bible, shot: dict) -> list[dict]:
         if parts[0] == "character" and len(parts) > 1:
             char = chars.get(parts[1]) or {}
             pres = resolve_presentation(char, by_id.get(parts[1]) or {}, shot)
-            look = [str(char.get("body") or "").strip()]
+            look = [body_text(char)]
             if pres.get("outfit"):
                 look.append(f"wearing {pres['outfit']}")
             entry["name"] = str(char.get("name") or parts[1])
             entry["description"] = ", ".join(x for x in look if x)
+        elif parts[0] == "location" and len(parts) > 1:
+            # the set the background reference shows, for the prompt writer
+            seen = place_text(place_entry(locs.get(parts[1]) or {}, parts[2] if len(parts) > 2 else "",
+                                          entry["path"]))
+            if seen:
+                entry["description"] = seen
         out.append(entry)
     return out
 

@@ -155,7 +155,10 @@ def _user_ref(slot: str, r: dict, path: str) -> Ref:
 def _look(r: dict, path: str) -> str:
     """A person's look: the reference's own description, else what its face
     dataset was generated from (chain_studio.cast_descriptions, the text LTX
-    chains add to every segment)."""
+    chains add to every segment). A place: what its picture shows, when the
+    reference says (the movie's places)."""
+    if _kind(r.get("type")) == "environment":
+        return str(r.get("description") or "").strip()[:400]
     if _kind(r.get("type")) != "person" or r.get("slot") == "background":
         return ""
     import chain_studio
@@ -714,11 +717,39 @@ def _shared_runs(texts: list[str], n: int = 8) -> int:
     return sum(1 for k, i in enumerate(hits) if k == 0 or i != hits[k - 1] + 1)
 
 
+def _flat(s: str) -> str:
+    return " ".join(re.sub(r"[^\w]+", " ", str(s or "").lower()).split())
+
+
+def _check_clip_looks(p: Plan, texts: list[str]) -> list[Issue]:
+    """One LTX clip: LTX matches each reference picture to the person the
+    prompt describes, so a person whose reference card has a look is
+    described with it, word for word, in every shot. A look missing from the
+    prompt gets the cast's identity sentence after its first sentence, the one
+    seamless takes carry (chain_studio.with_cast_line)."""
+    t = texts[0] if texts else ""
+    missing = [r for r in p.refs if r.kind == "person" and r.look and _flat(r.look) not in _flat(t)]
+    if not t.strip() or not missing:
+        return []
+    line = " Cast, the same age and look in every shot: " + "; ".join(r.look.rstrip(". ") for r in missing) + "."
+    i = t.find(". ")
+    at = i + 1 if i >= 0 else len(t)
+    one = len(missing) == 1
+    return [Issue("warning", "look",
+                  f"The prompt does not describe {_names([r.label for r in missing])} with "
+                  f"{'the look' if one else 'the looks'} on {'its' if one else 'their'} reference card, word "
+                  f"for word. LTX-2.5 matches each reference picture to the person the prompt describes.",
+                  1, [_fix(at, at, "", line, "Add the cast's look")])]
+
+
 def _check_looks(p: Plan, texts: list[str]) -> list[Issue]:
     """A seamless LTX take keeps a person's age and look by repeating it in every
     segment: the studio adds the look from the reference card
     (chain_studio.with_cast_line). Without one, the prompts have to repeat a
-    description themselves; a suggestion only when they do not."""
+    description themselves; a suggestion only when they do not. One clip:
+    _check_clip_looks."""
+    if p.family == "ltx" and p.chain is None:
+        return _check_clip_looks(p, texts)
     if p.family != "ltx" or p.chain != "seamless":
         return []
     bare = [r for r in p.refs if r.kind == "person" and not r.look]
@@ -743,21 +774,25 @@ def _continuity_fix(fam: str, t: str) -> dict:
 
 
 # --------------------------------------------------------------- cast sheet
-def cast_sheet(p: Plan) -> str:
+def cast_sheet(p: Plan, *, attach: bool = True, reply: bool = True) -> str:
     """The brief for the agent that writes the prompts: how this model reads a
     prompt, the images it receives, how each segment opens and continues, and
-    the reply format the Paste reply button reads."""
+    the reply format the Paste reply button reads. The movie's prompt writer
+    (movie_prompts) sends the images' looks instead of the images (`attach`
+    False) and asks for its own reply format (`reply` False)."""
     lines: list[str] = []
     add = lines.append
     add(f"CAST SHEET: {p.label} ({p.model})")
     add(_render_line(p))
-    if p.refs:
+    if p.refs and attach:
         add("Attach the images listed below to the chat with this sheet: the prompts describe the "
             "people and places from them.")
     if p.family == "h3":
         _sheet_h3(p, add)
+        _sheet_limits(p, add)
     elif p.family == "ltx":
         _sheet_ltx(p, add)
+        _sheet_limits(p, add)
     else:
         add("")
         add(f"HOW {p.label.upper()} READS THE PROMPT")
@@ -768,7 +803,7 @@ def cast_sheet(p: Plan) -> str:
         add({"start image": "- The clip opens on the start image: it is the first frame.",
              "previous clip": "- The clip opens on the previous clip's last frame."}.get(
             p.opening, "- There is no opening image: segment 1 sets up the scene from the prompt alone."))
-    _sheet_segments(p, add)
+    _sheet_segments(p, add, reply)
     return "\n".join(lines) + "\n"
 
 
@@ -903,7 +938,37 @@ def _sheet_ltx(p: Plan, add) -> None:
             "the people move down one slot). Continue the action from where the segment before ended.")
 
 
-def _sheet_segments(p: Plan, add) -> None:
+# what the video models show well and badly: the cast sheet's MODEL LIMITS
+# and the story rules (storygen_llm.shot_rules) say it from here
+SHOWS_WELL = ("one clear action and one camera move per shot, slow steady camera moves, at most 3 "
+              "people who matter on screen")
+SHOWS_BADLY = ("written text and signs, small props that carry the plot (a key in a lock, a note), fine "
+               "hand work, many people fighting at once, a fast change inside one shot")
+FACES = "a face keeps its identity and detail at medium or closer"
+# words per segment of the prompts the takes on record rendered with (the
+# showcase requests in output/showcase/requests, the studio chains)
+_WORDS = {"ltx": ("one paragraph of about 80 to 180 words (the takes on record use 81 to 175), in plain "
+                  "present-tense sentences about what is seen and heard; no keyword lists"),
+          "h3": ("about 230 to 260 words in the layout below (the takes on record use 227 to 258), its "
+                 "timeline in plain present-tense sentences")}
+
+
+def _sheet_limits(p: Plan, add) -> None:
+    what = "segment" if p.segments > 1 else "clip"
+    add("")
+    add(f"MODEL LIMITS ({p.label})")
+    add(f"- Each {what} lasts a few seconds (Render above): room for one clear action and one camera "
+        f"move. More is rushed or left out.")
+    add(f"- Faces: {FACES}. In a wide shot a face is a few pixels and drifts, so keep dialogue, "
+        f"emotion and hero moments at medium or closer, and the people who matter near the camera.")
+    add("- At most 3 people who matter on screen; anyone else is background.")
+    add(f"- It renders badly: {SHOWS_BADLY}. Tell the story without depending on them.")
+    add("- The camera: slow, steady moves (push in, pull back, track, pan, orbit); no whip pans, "
+        "crash zooms or cuts" + (" inside a segment." if p.segments > 1 else "."))
+    add(f"- Each {what}'s prompt: {_WORDS[p.family]}.")
+
+
+def _sheet_segments(p: Plan, add, reply: bool = True) -> None:
     add("")
     add("WRITE EACH SEGMENT WITH" if p.segments > 1 else "WRITE THE PROMPT WITH")
     add("- One clear action: how it starts and how it ends."
@@ -932,6 +997,8 @@ def _sheet_segments(p: Plan, add) -> None:
         add("[CAMERA KINEMATICS] one camera movement")
         add("[OVERALL SOUNDSCAPE] diegetic sound, any dialogue, audio constraints")
         add("[CONSTRAINTS] what must not happen")
+    if not reply:
+        return
     add("")
     add("REPLY FORMAT")
     if p.segments > 1:

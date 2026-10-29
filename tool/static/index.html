@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Studio — Kinoloom</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="/static/slate.css?v=8">
-<link rel="stylesheet" href="/static/styles.css?v=35">
+<link rel="stylesheet" href="/static/slate.css?v=9">
+<link rel="stylesheet" href="/static/styles.css?v=36">
 </head>
 <body>
 <div class="app">
@@ -780,6 +780,7 @@
         <h1>Settings</h1>
         <div class="seg" id="set-tabs">
           <button class="on" type="button" data-pane="models">Model files</button>
+          <button type="button" data-pane="ai">AI writer</button>
           <button type="button" data-pane="bible">Global bible</button>
           <button type="button" data-pane="access">Access</button>
           <button type="button" data-pane="config">Advanced</button>
@@ -835,6 +836,13 @@
             <button class="btn small" id="btn-mf-refresh" type="button">Refresh</button>
           </div>
           <div class="table-wrap"><table class="table" id="mf-table"></table></div>
+        </div>
+      </div>
+
+      <div class="set-pane hidden" data-pane="ai">
+        <div class="card ai-inline" style="max-width:760px">
+          <div class="card-head"><h2>AI writer</h2></div>
+          <div id="set-ai-body"><span class="leader"></span></div>
         </div>
       </div>
 
@@ -981,16 +989,17 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="/static/js/api.js?v=3"></script>
 <script src="/static/js/icons.js?v=5"></script>
-<script src="/static/js/dialogs.js?v=2"></script>
+<script src="/static/js/dialogs.js?v=3"></script>
 <script>
 /* materialize static [data-icon] placeholders */
 document.querySelectorAll("[data-icon]").forEach(function (el) {
   el.innerHTML = Icon.get(el.dataset.icon);
 });
 </script>
-<script src="/static/js/shell.js?v=3"></script>
-<script src="/static/js/model-catalog.js?v=5"></script>
-<script src="/static/app.js?v=20261027n"></script>
+<script src="/static/js/shell.js?v=5"></script>
+<script src="/static/js/ai-settings.js?v=2"></script>
+<script src="/static/js/model-catalog.js?v=6"></script>
+<script src="/static/app.js?v=20261029a"></script>
 <script src="/static/js/workers-page.js?v=13"></script>
 <script src="/static/js/queue-page.js?v=10"></script>
 </body>

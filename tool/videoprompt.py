@@ -34,6 +34,7 @@ from __future__ import annotations
 from typing import Any
 
 from bible import Bible
+from cast_look import body_text
 from prompts import CHAR_TIER_ORDER, PromptBuilder
 from shotspec import is_legacy
 
@@ -116,7 +117,7 @@ class VideoPromptBuilder:
                 ct = self.b.crowd_types().get(c.get("id"), {})
                 parts.append(f"background: {ct.get('descriptor', c['id'])}")
                 continue
-            bits = [char.get("body"), char.get("outfit")]
+            bits = [body_text(char), char.get("outfit")]
             st = state.get(c["id"], {})
             for k, v in st.items():
                 if k.startswith("wound_") or k in ("clothing", "shield",
@@ -276,7 +277,7 @@ class VideoPromptBuilder:
             cid = str(c.get("id"))
             ch = self.b.characters().get(cid) or {}
             pres = resolve_presentation(ch, c, shot)
-            bits = [str(ch.get("body") or "").strip(),
+            bits = [body_text(ch),
                     str(pres.get("outfit") or ch.get("outfit") or "").strip()]
             if pres.get("weapon_txt"):
                 wline = str(pres["weapon_txt"])

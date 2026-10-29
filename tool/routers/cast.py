@@ -8,7 +8,6 @@ from __future__ import annotations
 import os
 import re
 import time
-import json
 import shutil
 from pathlib import Path
 from typing import Any
@@ -19,13 +18,13 @@ from pydantic import BaseModel
 
 from . import common
 from .common import (
-    Bible, store, db, batch_gen, shot_images, datasets_db, _proj_guard,
+    Bible, store, db, batch_gen, shot_images, _proj_guard,
     _REF_EXTS, _REF_MAX_BYTES, _REF_MEDIA, CHAR_TIERS_CAST
 )
 from core import (ROOT, InvalidInput, is_safe_component, load_config, log_setup, now,
                   safe_join, save_config, to_jsonable)
 from cast_import import import_batch as _import_batch
-from cast_import import _identity_text, _outfit_text
+import cast_look
 
 router = APIRouter()
 log = log_setup("common.cast")
@@ -50,12 +49,70 @@ def _too_big(field) -> bool:
     size = getattr(field, "size", None)
     return size is not None and size > _REF_MAX_BYTES
 
+
+def _same_bytes(a: Path, b: Path) -> bool:
+    """Whether two files hold the same bytes (two pictures written within one
+    clock tick share a size and a time, so neither tells them apart)."""
+    try:
+        if a.stat().st_size != b.stat().st_size:
+            return False
+        with open(a, "rb") as fa, open(b, "rb") as fb:
+            while True:
+                ca, cb = fa.read(1 << 20), fb.read(1 << 20)
+                if ca != cb:
+                    return False
+                if not ca:
+                    return True
+    except OSError:
+        return False
+
+
+def _copy_ref(src: Path, dst: Path, tries: int = 6) -> str | None:
+    """Copy a picked picture into the project (shutil.copy2, so the copy
+    keeps the source's time). A copy with the same bytes is left as it is.
+    Otherwise the picture is written beside `dst` and moved over it, tried
+    again for a few seconds while another program holds `dst` open: on
+    Windows a viewer, or the virus check of a file just written, when a
+    second click picks it again. None, or why it could not be copied."""
+    if _same_bytes(src, dst):
+        return None
+    if not src.is_file():
+        return f"{src.name} is no longer in its batch: pick another picture"
+    tmp = dst.with_name(f"{dst.name}.{os.urandom(4).hex()}.part")
+    last: OSError | None = None
+    try:
+        for attempt in range(tries):
+            try:
+                shutil.copy2(src, tmp)
+                os.replace(tmp, dst)
+                return None
+            except OSError as e:
+                last = e
+                log.warning("copying %s to %s failed (try %d): %s", src.name, dst, attempt + 1, e)
+                # held open (a sharing violation, or a mapped file): wait for it
+                if not (isinstance(e, PermissionError) or getattr(e, "winerror", None) in (32, 33, 1224)):
+                    break
+                time.sleep(0.25 * (attempt + 1))
+    finally:
+        tmp.unlink(missing_ok=True)
+    if isinstance(last, PermissionError) or getattr(last, "winerror", None) in (32, 33, 1224):
+        return (f"{dst.name} is open in another program, so it could not be replaced: "
+                "close it, or wait a moment, and pick the picture again")
+    return f"{dst.name} could not be written: {last}"
+
 @router.post("/api/projects/{pid}/cast/scenes/{sid}/delete")
 def cast_scene_delete(pid: str, sid: str) -> dict:
-    """Delete a scene: project bible scene YAML + its shots in the queue
-    (rendered files on disk are kept)."""
+    """Delete a scene: project bible scene YAML, its beat in the story (the
+    film no longer waits for it, and the AI writer does not write it again)
+    and its shots in the queue (rendered files on disk are kept)."""
     if not is_safe_component(pid) or not is_safe_component(sid):
         return {"ok": False, "error": "invalid id"}
+    proj = store.get(pid) or {}
+    beats = (((proj.get("story") or {}).get("beats") or {}).get("beats") or [])
+    if any(isinstance(b, dict) and b.get("scene") == sid for b in beats):
+        store.set_story_stage(pid, "beats", {
+            **((proj.get("story") or {}).get("beats") or {}),
+            "beats": [b for b in beats if not (isinstance(b, dict) and b.get("scene") == sid)]})
     p = Bible(pid).dir / "scenes" / f"{sid}.yaml"
     if p.exists():
         p.unlink()
@@ -70,10 +127,10 @@ def cast_scene_delete(pid: str, sid: str) -> dict:
     return {"ok": True, "removed_shots": removed}
 
 
-def _cast_slug(name: str) -> str:
+def _cast_slug(name: str, empty: str = "character") -> str:
     s = "".join(c.lower() if c.isalnum() else "_" for c in name.strip())
     s = re.sub(r"_+", "_", s).strip("_")
-    return s or "character"
+    return s or empty
 
 
 def _valid_character_fields(data: dict, partial: bool = False) -> dict | None:
@@ -121,6 +178,20 @@ def _valid_character_fields(data: dict, partial: bool = False) -> dict | None:
     return None
 
 
+def _look_text(char: dict) -> tuple[str, str]:
+    return (str(char.get("body") or "").strip(), str(char.get("outfit") or "").strip())
+
+
+def _look_source(body: dict) -> str:
+    """Who wrote the Body/Outfit text a save brings: the Casting picture the
+    Autofill took it from (the client says so while the fields still hold that
+    text), else the user."""
+    src = str(body.get("look_source") or "")
+    if src.startswith(cast_look.CASTING) and len(src) <= 512:
+        return src
+    return cast_look.HAND
+
+
 @router.post("/api/projects/{pid}/cast/characters")
 def cast_character_create(pid: str, body: dict) -> dict:
     proj, err = _proj_guard(pid)
@@ -136,18 +207,19 @@ def cast_character_create(pid: str, body: dict) -> dict:
     if not is_safe_component(cid):
         return {"ok": False, "error": "invalid character id"}
     p_bible = Bible(pid)
-    existing = p_bible.characters()
-    if cid in existing and not str(body.get("id") or "").strip():
+    # ids are file names, and Windows ignores their case: "sara" is "Sara"
+    existing = {k.lower() for k in p_bible.characters()}
+    if cid.lower() in existing and not str(body.get("id") or "").strip():
         # AUTO-UNIQUIFY when the id was derived from the name: the UI's
         # default ("New Character") collided on the second click and the
         # create failed with "already exists". Explicit ids still error.
         base = cid
         n = 2
-        while cid in existing:
+        while cid.lower() in existing:
             cid = f"{base}_{n}"
             n += 1
         name = f"{name} {n - 1}"
-    if cid in existing:
+    if cid.lower() in existing:
         return {"ok": False, "error": f"character {cid} already exists"}
     char = {
         "id": cid, "name": name, "tier": body.get("tier") or "supporting",
@@ -160,6 +232,8 @@ def cast_character_create(pid: str, body: dict) -> dict:
         "powers": body.get("powers") or {},
         "enabled": bool(body.get("enabled", True)),
     }
+    if any(_look_text(char)):
+        char["look_source"] = _look_source(body)
     for key in ("weapons", "outfits", "loadouts", "scene_tags"):
         if isinstance(body.get(key), dict):
             char[key] = body[key]
@@ -190,9 +264,12 @@ def cast_character_update(pid: str, cid: str, body: dict) -> dict:
     if cid not in chars:
         return {"ok": False, "error": "character not found"}
     char = dict(chars[cid])
+    look = _look_text(char)
     for key in ("name", "tier", "body", "outfit"):
         if body.get(key) is not None:
             char[key] = body[key]
+    if _look_text(char) != look:
+        char["look_source"] = _look_source(body)
     if body.get("emotion_palette") is not None:
         char["emotion_palette"] = list(body["emotion_palette"])
     if body.get("powers") is not None:
@@ -259,14 +336,27 @@ def cast_location_create(pid: str, body: dict) -> dict:
     proj, err = _proj_guard(pid)
     if err:
         return err
-    bad = _valid_location_fields(body)
+    lid = str(body.get("id") or "").strip()
+    named = "" if lid else str(body.get("name") or "").strip()
+    bad = _valid_location_fields(body, partial=bool(named))
     if bad:
         return bad
-    lid = str(body.get("id") or "").strip()
+    if named:
+        lid = _cast_slug(named, "place")[:64]
     if not is_safe_component(lid):
-        return {"ok": False, "error": "invalid location id"}
+        return {"ok": False, "error": "name the place with letters (a to z), digits, _ or -"
+                if named else "invalid location id"}
     p_bible = Bible(pid)
-    if lid in p_bible.locations():
+    # ids are file names, and Windows ignores their case: "arena" is "Arena"
+    existing = {k.lower() for k in p_bible.locations()}
+    if named:
+        # a place named in the UI: the second "arena" becomes arena_2,
+        # where an explicit id still errors
+        base, n = lid, 2
+        while lid.lower() in existing:
+            lid = f"{base[:60]}_{n}"
+            n += 1
+    if lid.lower() in existing:
         return {"ok": False, "error": f"location {lid} already exists"}
     loc = {
         "id": lid,
@@ -454,6 +544,7 @@ def refbatch_options(pid: str) -> dict:
                                  .get("action", ""))[:60]})
     return {"ok": True, "shots": shots,
             "models": _models.all_model_info(),
+            "default_model": _models.default_still_model(),
             "loras": _models.GEN_LORAS,
             "ref_fallback": int(store.get(pid).get("ref_fallback", 1) or 1)}
 
@@ -473,9 +564,9 @@ def refbatch_start(pid: str, body: RefBatchBody) -> dict:
     if not body.shots:
         return {"ok": False, "error": "select at least one shot"}
     cfg = dict(body.config or {})
-    cfg.setdefault("model", "realvis")
-    cfg.setdefault("count", 1)
     import models as _models
+    cfg["model"] = cfg.get("model") or _models.default_still_model()
+    cfg.setdefault("count", 1)
     m = _models.get_model(str(cfg["model"]))
     if m is None:
         return {"ok": False, "error": f"unknown model '{cfg['model']}'"}
@@ -730,7 +821,6 @@ def cast_heroref_select(pid: str, cid: str, body: PickSelectBody) -> dict:
     Cast tab can show a ranked list. Appending a secondary still keeps the
     primary untouched.
     """
-    import shutil as sh
     from datetime import datetime, timezone
     if not is_safe_component(pid) or not is_safe_component(cid):
         return {"ok": False, "error": "invalid id"}
@@ -751,24 +841,38 @@ def cast_heroref_select(pid: str, cid: str, body: PickSelectBody) -> dict:
     dst_dir = p_bible.dir / "refs" / "chars" / cid
     dst_dir.mkdir(parents=True, exist_ok=True)
     copy_name = _ref_copy_name(body.type, body.name, body.file)
-    sh.copy2(src, dst_dir / copy_name)
-    if body.role == "primary":
-        sh.copy2(src, dst_dir / "selected.png")   # legacy consumers
+    err = _copy_ref(src, dst_dir / copy_name)
+    if not err and body.role == "primary":
+        err = _copy_ref(src, dst_dir / "selected.png")   # legacy consumers
+    if err:
+        return {"ok": False, "error": err}
     entry = {"type": body.type, "name": body.name, "file": body.file,
              "copied": copy_name, "role": body.role,
              "added": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     if body.tag.strip():
         entry["tag"] = body.tag.strip()
     char = dict(chars[cid])
+    filled: dict[str, str] = {}
     if entry.get("tag"):
         # tagged picks are loadout composites: one entry per loadout name
         char["reference_images"] = _upsert_ref(char, entry, body.append,
                                                key="tag")
     else:
         char["reference_images"] = _update_ref_list(char, entry, body.append)
+        # the look is written from what the picture was made with, never
+        # left for a story AI that cannot see it to guess: a new main look
+        # rewrites text that came from Casting or a story, and any pick fills
+        # an empty Body or Outfit (text typed by hand stays)
+        if cast_look.primary_face(char) is entry:
+            char, filled = cast_look.refresh(char, entry)
+        elif not (str(char.get("body") or "").strip() and str(char.get("outfit") or "").strip()):
+            look = _still_look(body.type, body.name, body.file) or {}
+            for k in ("body", "outfit"):
+                if look.get(k) and not str(char.get(k) or "").strip():
+                    char[k] = filled[k] = look[k]
     p_bible.save_character(char)
     return {"ok": True, "references": char["reference_images"],
-            "ref": copy_name,
+            "ref": copy_name, "look_filled": filled,
             "url": f"/api/herorefs/{pid}/{cid}/{copy_name}"}
 
 
@@ -854,7 +958,6 @@ def cast_locref_select(pid: str, lid: str, body: LocRefSelectBody) -> dict:
     for backward compatibility, and the pick is recorded in the location YAML
     so the LTX-2.5 pipeline resolves it with provenance.
     """
-    import shutil as sh
     from datetime import datetime, timezone
     if not is_safe_component(pid) or not is_safe_component(lid):
         return {"ok": False, "error": "invalid id"}
@@ -881,9 +984,11 @@ def cast_locref_select(pid: str, lid: str, body: LocRefSelectBody) -> dict:
     d = p_bible.dir / "refs" / "locs" / lid
     d.mkdir(parents=True, exist_ok=True)
     copy_name = _ref_copy_name(body.type, body.name, body.file)
-    sh.copy2(src, d / copy_name)
-    if not body.tag.strip():
-        sh.copy2(src, d / "selected.png")   # legacy consumers
+    err = _copy_ref(src, d / copy_name)
+    if not err and not body.tag.strip():
+        err = _copy_ref(src, d / "selected.png")   # legacy consumers
+    if err:
+        return {"ok": False, "error": err}
     entry = {"type": body.type, "name": body.name, "file": body.file,
              "copied": copy_name, "role": "primary",
              "tag": body.tag.strip(),
@@ -981,7 +1086,6 @@ def cast_powerref_select(pid: str, cid: str, pw: str,
     the entry is stored on the power itself — it can never leak into the
     character's identity slots or a location's environment slots.
     """
-    import shutil as sh
     from datetime import datetime, timezone
     if not is_safe_component(pid) or not is_safe_component(cid) \
             or not is_safe_component(pw):
@@ -1003,7 +1107,9 @@ def cast_powerref_select(pid: str, cid: str, pw: str,
     d = p_bible.dir / "refs" / "powers" / cid / pw
     d.mkdir(parents=True, exist_ok=True)
     copy_name = _ref_copy_name(body.type, body.name, body.file)
-    sh.copy2(src, d / copy_name)
+    err = _copy_ref(src, d / copy_name)
+    if err:
+        return {"ok": False, "error": err}
     existing = [r for r in (power.get("reference_images") or [])
                 if isinstance(r, dict)]
     level = body.level
@@ -1213,6 +1319,12 @@ def cast_character_rename(pid: str, cid: str, body: RenameIdBody) -> dict:
     return _rename_entity(pid, "characters", cid, body.new_id.strip())
 
 
+def _still_look(dtype: str, name: str, file: str) -> dict | None:
+    """The look a batch still was made with, from its recorded provenance:
+    {body, outfit, weapon, handling, ...}; None when the still has no record."""
+    return cast_look.picture_look({"type": dtype, "name": name, "file": file})
+
+
 @router.post("/api/projects/{pid}/cast/characters/{cid}/autofill")
 def cast_character_autofill(pid: str, cid: str, body: AutofillBody) -> dict:
     """Body/Outfit text derived from a batch still's recorded provenance."""
@@ -1220,31 +1332,50 @@ def cast_character_autofill(pid: str, cid: str, body: AutofillBody) -> dict:
         return {"ok": False, "error": "invalid id"}
     if not is_safe_component(body.name):
         return {"ok": False, "error": "invalid batch name"}
-    row = None
-    for r in datasets_db.list_images(body.type, body.name, limit=200000):
-        if r["file"] == body.file:
-            row = r
-            break
-    if row is None:
+    look = _still_look(body.type, body.name, body.file)
+    if look is None:
         return {"ok": False, "error": "no provenance record for that still"}
-    try:
-        variations = json.loads(row.get("variations") or "{}")
-    except Exception:  # noqa: BLE001
-        variations = {}
-    params: dict = {}
-    rid = row.get("run_id")
-    if rid:
-        run = datasets_db.get_run(int(rid))
-        try:
-            params = json.loads((run or {}).get("params") or "{}")
-        except Exception:  # noqa: BLE001
-            params = {}
-    ident = _identity_text(params)
-    outfit = _outfit_text(params, variations)
-    return {"ok": True, "body": ident, "outfit": outfit,
-            "weapon": str(variations.get("weapon") or ""),
-            "handling": str(variations.get("handling") or ""),
-            "from": f"{body.type}/{body.name}/{body.file}"}
+    return {"ok": True, **look, "from": f"{body.type}/{body.name}/{body.file}"}
+
+
+@router.post("/api/projects/{pid}/cast/characters/{cid}/look/apply")
+def cast_look_apply(pid: str, cid: str) -> dict:
+    """Body and Outfit rewritten from the main look's Casting record (the
+    answer to a look text that contradicts the picture)."""
+    proj, err = _proj_guard(pid)
+    if err:
+        return err
+    if not is_safe_component(cid):
+        return {"ok": False, "error": "invalid character id"}
+    p_bible = Bible(pid)
+    chars = p_bible.characters()
+    if cid not in chars:
+        return {"ok": False, "error": "character not found"}
+    look = cast_look.picture_look(cast_look.primary_face(chars[cid]))
+    if not look or not (look.get("body") or look.get("outfit")):
+        return {"ok": False, "error": "the main look has no Casting record to take the text from: "
+                                      "write Body and Outfit by hand"}
+    char = cast_look.apply(chars[cid], look)
+    p_bible.save_character(char)
+    return {"ok": True, "character": char}
+
+
+@router.post("/api/projects/{pid}/cast/characters/{cid}/look/keep")
+def cast_look_keep(pid: str, cid: str) -> dict:
+    """The user's Body and Outfit stand as written: no more warnings, and a
+    new main look never rewrites them."""
+    proj, err = _proj_guard(pid)
+    if err:
+        return err
+    if not is_safe_component(cid):
+        return {"ok": False, "error": "invalid character id"}
+    p_bible = Bible(pid)
+    chars = p_bible.characters()
+    if cid not in chars:
+        return {"ok": False, "error": "character not found"}
+    char = {**chars[cid], "look_source": cast_look.HAND}
+    p_bible.save_character(char)
+    return {"ok": True, "character": char}
 
 
 class ImportBatchBody(BaseModel):
@@ -1305,7 +1436,6 @@ def cast_slotref_select(pid: str, cid: str, kind: str, sid: str,
                         body: SlotRefBody) -> dict:
     """Pick a WEAPON/OUTFIT batch photo as an extra reference for one
     weapon/outfit config entry. Type discipline is enforced."""
-    import shutil as sh
     from datetime import datetime, timezone
     if kind not in _SLOTREF_KINDS:
         return {"ok": False, "error": "kind must be weapon|outfit"}
@@ -1331,7 +1461,9 @@ def cast_slotref_select(pid: str, cid: str, kind: str, sid: str,
     d = p_bible.dir / "refs" / "powers" / cid / f"{kind}_{sid}"
     d.mkdir(parents=True, exist_ok=True)
     copy_name = _ref_copy_name(body.type, body.name, body.file)
-    sh.copy2(src, d / copy_name)
+    err = _copy_ref(src, d / copy_name)
+    if err:
+        return {"ok": False, "error": err}
     entry = {"type": body.type, "name": body.name, "file": body.file,
              "copied": copy_name,
              "added": datetime.now(timezone.utc).isoformat(timespec="seconds")}

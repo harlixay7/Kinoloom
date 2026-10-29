@@ -15,6 +15,29 @@ RETRY_LADDER = ["reseed", "simplify_prompt", "adjust_lora", "regen_keyframe",
                 "review"]
 
 _FROZEN_MOTION = 0.02
+# The movie's LTX-2.5 / H3 shots, calibrated on the 17 links of 5 approved takes
+# and the 6 movie clips that lost the cast (docs/research/MOVIE_CONTINUITY.md):
+# a face of at least CAST_FACE_SIZE of the frame's short side is judged
+# (approved 0.306-0.606; a 99 px approved face scored 0.106, so smaller ones are
+# not); under CAST_FACE_MIN (qa.cast_face_min) the shot goes to review.
+CAST_FACE_MIN = 0.25
+CAST_FACE_SIZE = 0.12
+
+
+def _qa_value(cfg: dict | None, key: str, default: float) -> float:
+    v = ((cfg or {}).get("qa") or {}).get(key)
+    try:
+        return max(0.0, min(float(default if v is None or v == "" else v), 1.0))
+    except (TypeError, ValueError):
+        return default
+
+
+def cast_face_min(cfg: dict | None) -> float:
+    return _qa_value(cfg, "cast_face_min", CAST_FACE_MIN)
+
+
+def cast_face_size(cfg: dict | None) -> float:
+    return _qa_value(cfg, "cast_face_size", CAST_FACE_SIZE)
 
 
 class QADirector:
@@ -79,10 +102,13 @@ class QADirector:
 
     # ------------------------------------------------------------ metrics
     def face_similarity(self, video_path: str,
-                        ref_paths: list | tuple | None) -> float | None:
+                        ref_paths: list | tuple | None,
+                        min_size: float = 0.0) -> float | None:
         """Best-face cosine sim over the video's last 5 frames vs the best
         ref embedding(s) (roster refs or keyframe). None = unavailable;
-        0.0 = no face detected."""
+        0.0 = no face detected. With min_size, faces under that share of the
+        frame's short side are not judged, and None also means no face was
+        large enough."""
         if not self._ensure_face():
             return None
         try:
@@ -101,20 +127,27 @@ class QADirector:
                 return None
             best: float | None = None
             for frame in self._read_frames(video_path, keep_last=5):
+                least = min_size * min(frame.shape[:2])
                 for f in self._face.get(frame):
+                    if f.bbox[3] - f.bbox[1] < least:
+                        continue
                     emb = f.normed_embedding
                     sim = float(max(float(np.dot(emb, re))
                                     for re in ref_embs))
                     if best is None or sim > best:
                         best = sim
-            return 0.0 if best is None else best
+            if best is None:
+                return None if min_size else 0.0
+            return best
         except Exception as e:
             log.warning(f"face similarity failed: {e}")
             return None
 
-    def clip_alignment(self, video_path: str, prompt: str) -> float | None:
+    def clip_alignment(self, video_path: str, prompt: str,
+                       truncate: bool = False) -> float | None:
         """CLIP cosine of the mid-frame image vs prompt; None if the model
-        is unavailable or anything fails."""
+        is unavailable or anything fails (a prompt over CLIP's 77 tokens
+        fails unless `truncate` cuts it there)."""
         if not prompt or not self._ensure_clip():
             return None
         try:
@@ -125,8 +158,11 @@ class QADirector:
             if not frames:
                 return None
             mid = cv2.cvtColor(frames[len(frames) // 2], cv2.COLOR_BGR2RGB)
+            # CLIP reads 77 tokens: a longer prompt (every LTX-2.5 / H3 one)
+            # is cut there when the score is only recorded
+            extra = {"truncation": True, "max_length": 77} if truncate else {}
             inputs = proc(text=[prompt], images=[mid], return_tensors="pt",
-                          padding=True)
+                          padding=True, **extra)
             with torch.no_grad():
                 out = model(**inputs)
             img_f = out.image_embeds
@@ -179,9 +215,20 @@ class QADirector:
         result["motion_fail"] = not (mmin <= motion <= mmax)
         result["frozen"] = motion < _FROZEN_MOTION
 
+        movie = bool(shot.get("applied_model"))
         chars = [c for c in shot.get("characters", []) or []
                  if c.get("tier") in ("main", "supporting", "recurring")]
-        if chars:
+        if movie:
+            # LTX-2.5 / H3: refs are the on-screen cast's portraits; a face
+            # too small to judge, turned away or off screen is not a failure
+            if refs:
+                sim = self.face_similarity(video_path, list(refs),
+                                           min_size=cast_face_size(self.cfg))
+                result["face"] = sim
+                if sim is not None:
+                    result["face_min"] = cast_face_min(self.cfg)
+                    result["face_fail"] = sim < result["face_min"]
+        elif chars:
             has_lora = any(
                 (ROOT / "models" / "loras"
                  / f"{c['id']}_face.safetensors").exists() for c in chars)
@@ -198,9 +245,11 @@ class QADirector:
                     thr = qa.get("face_sim", {}).get(tier, 0.55)
                     result["face_fail"] = sim < thr
 
-        clip = self.clip_alignment(video_path, prompt)
+        clip = self.clip_alignment(video_path, prompt, truncate=movie)
         result["clip"] = clip
-        if clip is not None:
+        # recorded only for LTX-2.5 / H3: on the approved takes a link scored
+        # 0.22-0.38 against its own prompt and as much against the next link's
+        if clip is not None and not movie:
             result["clip_fail"] = clip < qa.get("clip_score_min", 0.28)
 
         detail: list[str] = []
@@ -209,7 +258,10 @@ class QADirector:
                           + (" (frozen)" if result["frozen"] else ""))
         elif result["frozen"]:
             detail.append(f"video frozen (motion {motion:.4f})")
-        if result["face_fail"]:
+        if result["face_fail"] and movie:
+            detail.append(f"the cast's likeness {result['face']:.3f} is under "
+                          f"qa.cast_face_min {result['face_min']}")
+        elif result["face_fail"]:
             detail.append(f"face sim {result['face']:.3f} below threshold")
         if result["clip_fail"]:
             detail.append(f"clip {clip:.3f} below minimum")

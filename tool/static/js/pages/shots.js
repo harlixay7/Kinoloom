@@ -83,9 +83,34 @@
     const auto = plan.auto || {};
     const identity = Array.isArray(plan.identity) ? plan.identity : [];
     const envRef = plan.env_ref || null;
-    const veil = openModal(
-      '<div class="ids-strip">' +
-        (identity.length
+    const nativeRefs = Array.isArray(plan.native_refs) ? plan.native_refs : [];
+    function modelInfo(id) {
+      return models.filter(function (m) { return m.id === id; })[0] || null;
+    }
+    const firstModel = modelInfo(plan.default_model) || models[0];
+    /* the pictures the chosen model draws the shot from: Qwen-Image takes
+       each person's still and the place natively, SDXL locks faces with
+       IP-Adapter, the others take none */
+    function stripHtml(mi) {
+      if (mi && mi.family === "qwen21") {
+        return nativeRefs.length
+          ? nativeRefs.map(function (r) {
+              const place = r.kind === "location";
+              return '<div class="ids-chip' + (place ? " env" : "") + '" data-tip="' +
+                (place ? "The place: the set is drawn from this picture"
+                       : "This person is drawn from this picture, outfit included") + '">' +
+                (r.url ? '<img src="' + esc(r.url) + '" alt="' + esc(r.id || "") + '">' : "") +
+                '<span class="ids-name">' + esc(r.label || r.id || "?") + "</span>" +
+                '<span class="ids-lock' + (place ? " env" : "") + '">' +
+                  (place ? "ENV" : "reference") + "</span>" +
+              "</div>";
+            }).join("")
+          : '<span class="muted small">no reference pictures on this shot</span>';
+      }
+      if (!(mi && mi.capabilities && mi.capabilities.refs)) {
+        return '<span class="muted small">No reference pictures with this model</span>';
+      }
+      return (identity.length
           ? identity.map(function (i) {
               return '<div class="ids-chip" ' +
                 'data-tip="Identity lock — this character is locked via IP-Adapter">' +
@@ -101,14 +126,18 @@
               '<img src="' + esc(envRef.url) + '" alt="environment reference">' +
               '<span class="ids-lock env">ENV</span>' +
             "</div>"
-          : "") +
-      "</div>" +
+          : "");
+    }
+    const veil = openModal(
+      '<div class="ids-strip" id="sfx-strip">' + stripHtml(firstModel) + "</div>" +
       '<div class="studio-row">' +
         '<label class="studio-field">Model' +
           '<select id="sfx-model" data-tip="Image model to render with">' +
             models.map(function (m) {
-              return '<option value="' + esc(m.id || "") + '">' +
-                esc(m.name || m.id || "?") + "</option>";
+              return '<option value="' + esc(m.id || "") + '"' +
+                (firstModel && m.id === firstModel.id ? " selected" : "") + (m.gpu ? " disabled" : "") +
+                (m.gpu ? ' title="' + esc(m.gpu) + '"' : "") + ">" +
+                esc(m.name || m.id || "?") + (m.gpu ? " (not on this graphics card)" : "") + "</option>";
             }).join("") +
           "</select></label>" +
         '<label class="studio-field">Count' +
@@ -118,14 +147,16 @@
             }).join("") +
           "</select></label>" +
       "</div>" +
-      '<div class="studio-section-head">LoRAs <span class="muted small">up to 6</span></div>' +
-      '<div id="sfx-loras">' + studioLoraRow(planLoras, null) + "</div>" +
-      '<button class="btn small" type="button" id="sfx-lora-add" ' +
-        'data-tip="Add another LoRA row (max 6)">+ add LoRA</button>' +
+      '<div id="sfx-lora-box">' +
+        '<div class="studio-section-head">LoRAs <span class="muted small">up to 6</span></div>' +
+        '<div id="sfx-loras">' + studioLoraRow(planLoras, null) + "</div>" +
+        '<button class="btn small" type="button" id="sfx-lora-add" ' +
+          'data-tip="Add another LoRA row (max 6)">+ add LoRA</button>' +
+      "</div>" +
       '<div class="studio-field"><label>Prompt</label>' +
         '<textarea id="sfx-prompt" rows="4" spellcheck="false">' + esc(auto.prompt || "") +
         "</textarea></div>" +
-      '<div class="studio-field"><label>Negative</label>' +
+      '<div class="studio-field" id="sfx-neg-field"><label>Negative</label>' +
         '<textarea id="sfx-negative" rows="3" spellcheck="false">' + esc(auto.negative || "") +
         "</textarea></div>" +
       '<button class="btn small" type="button" id="sfx-adv-toggle" ' +
@@ -165,6 +196,20 @@
       wireStudioLoraRow(rowEl);
     };
 
+    /* the strip, LoRAs and negative follow the chosen model */
+    const modelSel = veil.querySelector("#sfx-model");
+    const loraWrap = veil.querySelector("#sfx-lora-box");
+    const negField = veil.querySelector("#sfx-neg-field");
+    function syncModel() {
+      const mi = modelInfo(modelSel.value);
+      const caps = (mi && mi.capabilities) || {};
+      veil.querySelector("#sfx-strip").innerHTML = stripHtml(mi);
+      loraWrap.classList.toggle("hidden", !caps.loras);
+      negField.classList.toggle("hidden", caps.negative_override === false);
+    }
+    modelSel.onchange = syncModel;
+    syncModel();
+
     const advToggle = veil.querySelector("#sfx-adv-toggle");
     const advBox = veil.querySelector(".adv-collapse");
     if (advToggle && advBox) advToggle.onclick = function () {
@@ -192,9 +237,10 @@
         }
       });
       const body = {
-        model: veil.querySelector("#sfx-model").value,
+        model: modelSel.value,
         count: Number(veil.querySelector("#sfx-count").value) || 1,
-        loras: loras,
+        /* hidden rows (a model without LoRAs) are not sent */
+        loras: loraWrap.classList.contains("hidden") ? [] : loras,
         prompt: veil.querySelector("#sfx-prompt").value,
         negative: veil.querySelector("#sfx-negative").value,
       };
@@ -315,10 +361,17 @@
       if (!(s in allScenes)) allScenes[s] = groups[s];
     });
     const passedAll = shots.filter(function (r) { return r.status === "passed"; }).length;
+    const pv = State.prompts;
+    const movie = !!(pv && pv.shots && Object.keys(pv.shots).length);
+    /* after a first batch from a chat AI, the same button gives the next
+       batch's brief: say so; without an AI writer it is the way to go on */
+    const prog = State.promptProgress();
+    const chatFirst = !!(movie && !pv.ai && prog.todo);
     el.innerHTML =
       '<header class="page-intro">' +
         '<div class="pi-text"><h1>Shots</h1>' +
-          "<p>Every shot of the shot plan, scene by scene.</p></div>" +
+          "<p>Every shot of the shot plan, scene by scene. A shot renders once it has a video prompt: the AI writer " +
+          "writes them in story order, or you write one by hand on the shot.</p></div>" +
         '<div class="pi-acts">' +
           '<span class="pi-stat"><b>' + shots.length + "</b> shots in <b>" + Object.keys(allScenes).length +
             "</b> scenes, <b>" + passedAll + "</b> passed</span>" +
@@ -326,6 +379,27 @@
             Icon.get("image") + "Start pictures</button>" +
         "</div>" +
       "</header>" +
+      (movie
+        ? '<div class="prompt-bar">' +
+            '<span class="pb-mark">' + Icon.get("pen") + "</span>" +
+            '<div class="pbar-text"><b>Video prompts</b>' + promptSummary() + "</div>" +
+            '<span class="spacer"></span>' +
+            '<button class="btn small ' + (chatFirst ? "primary" : "ghost") + '" type="button" data-chat-brief data-tip="' +
+              (prog.next
+                ? prog.todo + (prog.todo === 1 ? " shot still needs" : " shots still need") + " a video prompt. Copy the brief " +
+                  "for the next batch into the same chat AI and paste its reply back here"
+                : "Copy a brief for the next shots (one scene, a few prompts at a time; a longer take in parts) " +
+                  "into any chat AI and paste its reply back, batch by batch") + '">' +
+              Icon.get("copy") + (prog.next ? "Use a chat AI for the next batch" : "Use a chat AI") + "</button>" +
+            '<button class="btn small ghost" type="button" data-ai-settings data-tip="The AI that writes the story and the video prompts">' +
+              Icon.get("spark") + (pv.ai ? "AI writer" : "Connect an AI") + "</button>" +
+            '<button class="btn small ' + (chatFirst ? "ghost" : "primary") + '" type="button" data-write-prompts data-tip="' +
+              (pv.ai ? "The AI writer writes every missing and outdated prompt, take by take in story order, with the story so far, the cast and the rules of the video model"
+                     : "Connect an AI writer first, or use a chat AI") + '"' +
+              (pv.ai ? "" : " disabled") + ">" + Icon.get("wand") + "Write the prompts</button>" +
+          "</div>"
+        : "") +
+      '<div id="sp-writer" class="aigen-box hidden"></div>' +
       Object.keys(allScenes).sort().map(function (sceneId) {
       const rows = allScenes[sceneId];
       const meta = Object.assign({}, scenes[sceneId] || {},
@@ -391,10 +465,212 @@
         const card = UI.shotCard(r, {});
         wrap.appendChild(card);
         extendShotCard(card, r);
+        promptRow(card, r);
       });
     });
+    const aiBtn = el.querySelector("[data-ai-settings]");
+    if (aiBtn) aiBtn.onclick = function () { AiSettings.open(function () { State.refreshPrompts(); }); };
+    const briefBtn = el.querySelector("[data-chat-brief]");
+    if (briefBtn) briefBtn.onclick = function () { PromptEditor.brief(); };
+    const writeBtn = el.querySelector("[data-write-prompts]");
+    if (writeBtn) writeBtn.onclick = async function () {
+      writeBtn.disabled = true;
+      const r = await post("/api/projects/" + encodeURIComponent(State.pid) + "/prompts/write", {}, 30000);
+      writeBtn.disabled = false;
+      if (r && r.ok) startedWriting(el);
+    };
+    // the polled status is fresher than the view's, unless the view shows a
+    // newer job (one the director started)
+    const live = lastJob && lastJob.pid === State.pid ? lastJob.job : null;
+    const snap = pv && pv.writer;
+    const job = !live ? snap : !snap ? live : ((snap.started || 0) > (live.started || 0) ? snap : live);
+    showWriter(el, job);
+    if (job && job.running) watchWriter(el);
+    markWriter(el);
     bindTips(el);
   }
+
+  /* an AI writer that is set up but does not answer: the chat AI becomes the
+     primary way (asked at most once a minute, apart from the page load) */
+  let reach = null;          /* {at, up, base} */
+  async function markWriter(el) {
+    const pv = State.prompts;
+    if (!pv || !pv.ai) return;
+    if (!reach || Date.now() - reach.at > 60000) {
+      const r = await API.get("/api/ai/reachable", 20000, true);
+      if (!r) return;
+      reach = { at: Date.now(), up: !!r.reachable, base: r.base_url || "" };
+    }
+    if (reach.up) return;
+    const chatBtn = el.querySelector("[data-chat-brief]");
+    const writeBtn = el.querySelector("[data-write-prompts]");
+    if (chatBtn) { chatBtn.classList.remove("ghost"); chatBtn.classList.add("primary"); }
+    if (writeBtn) {
+      writeBtn.classList.remove("primary");
+      writeBtn.classList.add("ghost");
+      writeBtn.dataset.tip = "The AI writer" + (reach.base ? " at " + reach.base : "") +
+        " is not answering: start it, pick another under AI writer, or use a chat AI";
+    }
+  }
+
+  /* ====================================================== video prompts */
+  let writerTimer = null;
+  let lastJob = null;        /* {pid, job}: the writer's latest status */
+  let hiddenJob = null;      /* the finished job whose summary was closed */
+
+  function promptSummary() {
+    const pv = State.prompts;
+    if (!pv || !pv.shots || !Object.keys(pv.shots).length) return "";
+    const c = pv.counts || {};
+    const parts = [];
+    if (c.ready) parts.push('<span class="pb-n ok">' + c.ready + " ready</span>");
+    if (c.missing) parts.push('<span class="pb-n bad">' + c.missing + " without one</span>");
+    if (c.stale) parts.push('<span class="pb-n warn">' + c.stale + " outdated</span>");
+    if (!parts.length) return '<span class="pb-n">Nothing left to render</span>';
+    return '<span class="pb-counts" data-tip="The prompts of the shots still to render. A shot renders only ' +
+      'with a prompt written for it, by the AI or by hand; one without waits.">' + parts.join("") + "</span>";
+  }
+
+  function showWriter(el, job) {
+    const box = el.querySelector("#sp-writer");
+    if (!box) return;
+    if (!job || (!job.running && job.started === hiddenJob)) { box.classList.add("hidden"); return; }
+    const failed = Object.keys(job.failed || {});
+    const pct = job.total ? Math.round(100 * (job.done || 0) / job.total) : 0;
+    box.classList.remove("hidden");
+    box.innerHTML =
+      '<span class="aigen-status' + (job.running ? "" : failed.length ? " err" : " ok") + '">' +
+        (job.running ? "writing prompts"
+          : !failed.length ? "prompts written"
+          : (job.written || []).length ? "prompts written, some not" : "prompts not written") +
+      "</span>" +
+      (job.running ? '<span class="aigen-bar"><span class="aigen-fill" style="width:' + pct + '%"></span></span>' : "") +
+      '<span class="muted small">' + esc(job.message || "") +
+        (job.total ? " (" + (job.done || 0) + "/" + job.total + ")" : "") + "</span>" +
+      (failed.length && !job.running
+        ? '<span class="small st-red">' + esc(failed.slice(0, 4).join(", ")) + (failed.length > 4 ? "…" : "") +
+          ": " + esc(job.failed[failed[0]]) + "</span>"
+        : "") +
+      '<span class="spacer"></span>' +
+      (job.running
+        ? '<button class="btn small" type="button" data-writer-stop>' + Icon.get("stop") + "Stop</button>"
+        : '<button class="btn small ghost icon" type="button" data-writer-hide data-tip="Hide">' + Icon.get("x") + "</button>");
+    const stop = box.querySelector("[data-writer-stop]");
+    if (stop) stop.onclick = function () {
+      post("/api/projects/" + encodeURIComponent(State.pid) + "/prompts/write/stop", {}, 30000);
+    };
+    const hide = box.querySelector("[data-writer-hide]");
+    if (hide) hide.onclick = function () { hiddenJob = job.started; box.classList.add("hidden"); };
+    bindTips(box);
+  }
+
+  /* a job was just started: show it before the first status poll (any
+     status the server sends replaces this one) */
+  function startedWriting(el) {
+    lastJob = { pid: State.pid, job: { running: true, message: "starting" } };
+    showWriter(el, lastJob.job);
+    watchWriter(el);
+  }
+
+  function stopWatching() {
+    if (writerTimer) { clearInterval(writerTimer); writerTimer = null; }
+  }
+
+  function watchWriter(el) {
+    if (writerTimer) return;
+    const pid = State.pid;
+    writerTimer = setInterval(async function () {
+      if (!el.isConnected || pid !== State.pid) { stopWatching(); return; }
+      const r = await API.get("/api/projects/" + encodeURIComponent(pid) + "/prompts/write/status", 15000, true);
+      if (!r) return;
+      lastJob = { pid: pid, job: r.active };
+      showWriter(el, r.active);
+      if (!r.active || !r.active.running) {
+        stopWatching();
+        await State.refreshPrompts();
+        await State.refreshShots();
+      }
+    }, 2500);
+  }
+
+  /* the card's prompt row: its state, the start of the prompt, the editor */
+  function promptRow(card, row) {
+    const e = State.prompts && State.prompts.shots && State.prompts.shots[row.shot_id];
+    const foot = card.querySelector(".sc-foot");
+    if (!e || !foot) return;
+    const text = String(e.text || "");
+    const div = document.createElement("div");
+    div.className = "sc-prompt";
+    div.innerHTML = PromptEditor.chip(e) +
+      '<span class="sc-prompt-text"' + (text ? ' title="' + esc(text) + '"' : "") + ">" +
+        esc(text || (e.state === "missing" ? "" : e.why) || "") + "</span>" +
+      '<button class="btn small ghost" type="button" data-tip="Read, write or check this shot\'s video prompt">' +
+        Icon.get("pen") + "Prompt</button>";
+    div.querySelector("button").onclick = function () { PromptEditor.open(row.shot_id); };
+    foot.insertAdjacentElement("beforebegin", div);
+    // an LTX-2.5 / H3 shot opens on no keyframe: say what it opens on
+    const ph = card.querySelector(".sc-media .ph-kf span");
+    if (ph) ph.textContent = e.wants_image ? "Made first"
+      : OPENS[e.start] || "None";
+    if (e.frame) openingFrame(card, row.shot_id, e.frame);
+  }
+
+  /* the opening frame the shot's take starts from, how much the faces in it
+     look like the cast's pictures, and Make again */
+  function openingFrame(card, sid, f) {
+    const slot = card.querySelector(".sc-media .sc-frame");
+    if (!slot || slot.querySelector("img")) return;           // the shot's own start picture wins
+    const like = f.likeness == null ? null : Number(f.likeness);
+    const who = Object.keys(f.people || {}).map(function (n) {
+      return n + " " + (f.people[n] == null ? "not seen" : Number(f.people[n]).toFixed(2));
+    }).join(", ");
+    const tip = !f.scored ? "Not scored: install InsightFace to compare the faces with the cast's pictures"
+      : like == null ? "No face in it to compare with the cast's pictures"
+      : "Likeness to the cast's pictures (ArcFace, the least-alike person counts): " + who +
+        (f.weak ? ". Under the floor of " + f.min_likeness + " (movie.key_image_min_likeness): make it again" : "");
+    slot.innerHTML =
+      '<img loading="lazy" src="/api/projects/' + encodeURIComponent(State.pid) + "/shots/" +
+        encodeURIComponent(sid) + "/opening-frame?v=" + encodeURIComponent(f.v) + '" alt="opening frame">' +
+      '<div class="sc-frame-tag">Opening frame</div>' +
+      (f.scored && like != null
+        ? '<div class="sc-frame-tag sc-like' + (f.weak ? " weak" : "") + '" data-tip="' + esc(tip) + '">' +
+          like.toFixed(2) + "</div>"
+        : "") +
+      '<button class="sc-raw sc-again" type="button" data-tip="Make the opening frame again with new seeds. ' +
+        esc(tip) + '">' + Icon.get("refresh") + "</button>";
+    const btn = slot.querySelector(".sc-again");
+    btn.onclick = async function (ev) {
+      ev.stopPropagation();                // not the frame's own click
+      btn.disabled = true;
+      const r = await post("/api/projects/" + encodeURIComponent(State.pid) + "/shots/" +
+        encodeURIComponent(sid) + "/opening-frame/again", {}, 30000);
+      if (!r || !r.ok) { btn.disabled = false; return; }
+      toast("making the opening frame of " + sid + " again");
+      waitFrame(sid, f.v);
+    };
+    bindTips(slot);
+  }
+
+  /* refresh the prompts until the frame made again is in (at most 20 minutes) */
+  function waitFrame(sid, v) {
+    const pid = State.pid;
+    const t0 = Date.now();
+    const timer = setInterval(async function () {
+      if (pid !== State.pid || Date.now() - t0 > 20 * 60000) { clearInterval(timer); return; }
+      await State.refreshPrompts();
+      const e = State.prompts && State.prompts.shots && State.prompts.shots[sid];
+      if (e && e.frame && e.frame.v !== v) {
+        clearInterval(timer);
+        await State.refreshShots();
+      }
+    }, 10000);
+  }
+  const OPENS = {
+    "": "From the prompt",
+    "opening frame": "Opening frame",
+    "previous clip": "Previous clip",
+    take: "Same take",
+  };
 
   /* extend a built shot card with reference-image + location controls */
   function extendShotCard(card, row) {
@@ -427,8 +703,9 @@
     // power level), and the start-reference tools as icon buttons
     ctl.innerHTML =
       '<select class="sc-cont-sel" data-tip="Continuity' + (prev ? " after " + esc(prev) : "") +
-        ": CONTINUE / MATCH_ACTION opens this shot on the previous shot's last frame (H3 frame-0 anchor / " +
-        "LTX reference slot); CUT starts fresh. A scene or location change is always a CUT. Changing it requeues the shot." + '">' +
+        ": CUT starts a new shot. CONTINUE carries the same camera take on from the previous shot's last frame " +
+        "(on LTX-2.5 / H3 a run renders as one seamless take). MATCH_ACTION cuts to a new angle while the action " +
+        "carries on. A scene or location change is always a CUT. Changing it requeues the shot." + '">' +
         ["CUT", "CONTINUE", "MATCH_ACTION"].map(function (c) {
           return '<option value="' + c + '"' +
             (String(j.continuity || "CUT") === c ? " selected" : "") + ">" + c.replace("_", " ").toLowerCase() + "</option>";
@@ -535,9 +812,27 @@
     if (contSel) contSel.onchange = async function () {
       // CONTINUE also resets the QA stage (the old Continue button's route)
       const base = "/api/projects/" + encodeURIComponent(State.pid) + "/shots/" + encodeURIComponent(sid);
-      const r = contSel.value === "CONTINUE"
-        ? await post(base + "/continue", {}, 30000)
-        : await post(base + "/continuity", { continuity: contSel.value }, 30000);
+      const send = function (dry) {
+        return contSel.value === "CONTINUE"
+          ? post(base + "/continue", { dry_run: dry }, 30000)
+          : post(base + "/continuity", { continuity: contSel.value, dry_run: dry }, 30000);
+      };
+      // a take renders whole: say which rendered shots the change renders again
+      const ask = await send(true);
+      if (!ask || !ask.ok) { contSel.value = String(j.continuity || "CUT"); return; }  // the error is shown
+      const again = ask.rerenders || [];
+      if (again.length) {
+        const one = again.length === 1;
+        const ok = await Dlg.confirm({
+          title: "Render " + again.length + " more shot" + (one ? "" : "s") + " again?",
+          message: "After this change " + again.join(", ") + (one ? " renders" : " render") + " again: a take " +
+            "renders whole, and a shot that opens on the last frame of a shot rendered again renders again too. " +
+            (one ? "The clip it has now is replaced." : "The clips they have now are replaced."),
+          okLabel: "Change and render again",
+        });
+        if (!ok) { contSel.value = String(j.continuity || "CUT"); return; }
+      }
+      const r = await send(false);
       if (!r) return;
       toast(r.ok ? sid + ": " + contSel.value.toLowerCase().replace("_", " ") + ", requeued" : (r.error || "failed"), !r.ok);
       if (r.ok) State.refreshShots();
@@ -563,11 +858,23 @@
       const page = this;
       page.el = el;
       page.render = function () { render(el); };
-      page.subs.push(Bus.on("shots", page.render));
+      // shot statuses decide which prompts are still needed: the view
+      // follows them, at most every 10 s
+      let promptsAt = 0;
+      const onShots = function () {
+        page.render();
+        if (Date.now() - promptsAt > 10000) { promptsAt = Date.now(); State.refreshPrompts(); }
+      };
+      page.subs.push(Bus.on("shots", onShots));
       page.subs.push(Bus.on("project", page.render));
+      page.subs.push(Bus.on("prompts", page.render));
+      page.subs.push(Bus.on("prompts:writing", function () { startedWriting(el); }));
       page.render();
+      promptsAt = Date.now();
+      State.refreshPrompts();
     },
     unmount: function () {
+      stopWatching();
       closeStudio();
       this.subs.forEach(function (off) { off(); });
       this.subs = [];

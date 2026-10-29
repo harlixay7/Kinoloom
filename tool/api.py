@@ -195,6 +195,7 @@ from routers import (  # noqa: E402
     fleet as _r_fleet,
     queue as _r_queue,
     model_folders as _r_model_folders,
+    ai_prompts as _r_ai_prompts,
 )
 
 _ROUTERS = [
@@ -213,6 +214,7 @@ _ROUTERS = [
     _r_fleet.router,
     _r_queue.router,
     _r_model_folders.router,
+    _r_ai_prompts.router,
 ]
 
 for _router in _ROUTERS:

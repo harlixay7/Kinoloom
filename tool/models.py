@@ -383,6 +383,18 @@ def all_model_info() -> list[dict]:
     return [model_info(mid) for mid in model_ids()]
 
 
+# The model the start-picture pickers open on (the Shots page's Start
+# pictures and a shot's picture studio): Qwen-Image 2.1 fast, the image model
+# the installer sets up and the one the opening frames use (it never
+# downloads RealVisXL). When it is not installed, the first installed model
+# in this order.
+STILL_MODELS = ("qwen21_fast", "qwen21", "realvis", "zimage", "cyberrealistic_xl")
+
+
+def default_still_model() -> str:
+    return next((mid for mid in STILL_MODELS if is_available(mid)), STILL_MODELS[0])
+
+
 # ----------------------------------------------------------- prompt adapter
 def adapt_prompt(mid: str, base_prompt: str, context: str = "images",
                  user_prompt: str | None = None,

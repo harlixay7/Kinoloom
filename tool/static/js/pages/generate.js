@@ -156,7 +156,8 @@
         '<span class="vm-name">' + esc((pick.catalog || {}).label || pick.display_name || pick.id) + "</span>" +
         '<span class="vm-d">' + esc(FAMILY_TEXT[g.id] || "") + "</span>" +
         '<span class="vm-tags">' + tags(pick).map(function (t) { return "<i>" + esc(t) + "</i>"; }).join("") +
-          (pick.available ? "" : "<i class=\"bad\">not installed</i>") + "</span>" +
+          (pick.available ? "" : "<i class=\"bad\">" + (pick.gpu ? "not on this graphics card" : "not installed") +
+            "</i>") + "</span>" +
       "</button>";
     }).join("") + "</div>";
   }
@@ -199,7 +200,8 @@
           "<span>" + (!seamlessUsed.length
             ? "This model renders every shot on its own. Pick a model with " + Icon.get("link") + " to join shots."
             : "Shots that continue each other in one scene render as one long take, like a Video Studio chain, " +
-              "then are cut back into shots. A retake renders the take again from that shot on.") + "</span></div>" +
+              "then are cut back into shots. A retake renders the take again from that shot on.") + "</span>" +
+          (seamlessUsed.length && takesOn ? takeLength() : "") + "</div>" +
       "</div>" +
       fold("gen-more", "More choices",
         (cur && !(curModel.catalog || {}).recommended ? "Using " + esc((curModel.catalog || {}).label || cur) : "Every configuration, and a model per kind of shot") +
@@ -215,6 +217,22 @@
         "</div>" +
         '<p class="gen-hint">Hero shots are the close-ups and big moments. For example: MiniMax H3 for the hero shots and LTX-2.5 for the rest.</p>') +
     "</section>";
+  }
+
+  /* the most shots in one take: the project's, empty = the studio's */
+  function takeLength() {
+    const tl = State.takeLength || {};
+    const own = (State.project && State.project.take_max_shots) || 0;
+    const studio = tl.studio || 6;
+    const tip = "A longer run of continuing shots goes on in a new take, which opens on a new angle " +
+      "made from the last frame of the take before. Empty: the studio's take length (" + studio +
+      ", in Settings). In testing, an 8-shot LTX-2.5 take kept the cast in every shot; shots 7 and 8 " +
+      "had larger steps at their joins, though none showed. MiniMax H3 takes hold at most 4 shots.";
+    return '<label class="takes-len"><span>Shots per take ' + help(tip) + "</span>" +
+      '<input id="gen-take-len" type="number" min="1" max="' + (tl.top || 50) + '" step="1" inputmode="numeric"' +
+        ' value="' + (own || "") + '" placeholder="' + studio + '" aria-label="Shots per take">' +
+      (own && tl.now && tl.now < own ? "<em>" + tl.now + " on MiniMax H3</em>" : "") +
+      (own ? "" : "<em>the studio&apos;s</em>") + "</label>";
   }
 
   /* ------------------------------------------------------ post-processing */
@@ -301,9 +319,9 @@
   function queueMeta(shots) {
     const by = {};
     shots.forEach(function (s) { by[s.status || "pending"] = (by[s.status || "pending"] || 0) + 1; });
-    const order = ["passed", "rendering", "queued", "review", "failed", "pending"];
+    const order = ["passed", "rendering", "queued", "review", "failed", "prompt", "pending"];
     const word = { passed: "passed", rendering: "rendering", queued: "queued", review: "to review", failed: "failed",
-      pending: "not started" };
+      prompt: "waiting for a prompt", pending: "not started" };
     return shots.length + " shots" + (shots.length ? ": " + order.filter(function (k) { return by[k]; })
       .map(function (k) { return by[k] + " " + word[k]; }).join(", ") : "");
   }
@@ -495,6 +513,20 @@
     if (takes) takes.onchange = function () {
       saveProject(el, takes, { seamless_takes: takes.checked },
         "Seamless takes " + (takes.checked ? "on" : "off"), "Could not change seamless takes");
+    };
+    const takeLen = el.querySelector("#gen-take-len");
+    if (takeLen) takeLen.onchange = function () {
+      const raw = takeLen.value.trim();
+      const n = raw === "" ? 0 : Number(raw);
+      const top = Number(takeLen.max) || 50;
+      if (!Number.isInteger(n) || n < 0 || n > top) {
+        toast("Shots per take: a whole number from 1 to " + top + ", or empty for the studio's", true);
+        takeLen.value = (State.project && State.project.take_max_shots) || "";
+        return;
+      }
+      saveProject(el, takeLen, { take_max_shots: n },
+        n ? "Takes hold up to " + n + " shot" + (n === 1 ? "" : "s") : "Takes use the studio's length",
+        "Could not change the take length");
     };
 
     const postOn = el.querySelector("#gen-post-on");

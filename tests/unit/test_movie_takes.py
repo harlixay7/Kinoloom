@@ -1,5 +1,6 @@
-"""Continuous takes in the movie pipeline: which shots join a take, the take's
-one cast, and cutting the delivered take back into frame-exact shot clips."""
+"""Continuous takes in the movie pipeline: which shot carries the one before
+it on, the take's one cast, and cutting the delivered take back into
+frame-exact shot clips. Which shots form a take: test_movie_prompts."""
 import shutil
 import subprocess
 
@@ -8,61 +9,63 @@ import pytest
 import movie_takes as mt
 
 
-def _row(sid, cont="CONTINUE", prev=None, status="pending", scene="s01", loc="hall", **extra):
-    j = {"shot_id": sid, "scene": scene, "location": loc, "continuity": cont, "prev_shot": prev,
-         **extra.pop("json", {})}
-    return {"shot_id": sid, "scene": scene, "status": status, "qa_stage": extra.pop("qa_stage", 0),
-            "json": j, **extra}
+def _row(sid, cont="CONTINUE", prev=None, scene="s01", loc="hall"):
+    return {"shot_id": sid, "scene": scene,
+            "json": {"shot_id": sid, "scene": scene, "location": loc, "continuity": cont, "prev_shot": prev}}
 
 
-def _scene(*rows):
-    return list(rows)
-
-
-def _ids(run):
-    return [r["shot_id"] for r in run]
-
-
-def same_model(_row):
-    return "ltx25_s6_cq"
-
-
-def test_a_run_of_continue_shots_is_one_take():
-    a = _row("a", cont="CUT", status="queued")
-    rows = _scene(a, _row("b", prev="a"), _row("c", prev="b"), _row("d", cont="CUT", prev="c"))
-    assert _ids(mt.plan_take(a, rows, same_model)) == ["a", "b", "c"]
-
-
-@pytest.mark.parametrize("breaker", [
-    _row("b", cont="MATCH_ACTION", prev="a"),          # a new camera set-up: an edit
-    _row("b", cont="CUT", prev="a"),
-    _row("b", prev="a", loc="street"),                  # location change
-    _row("b", prev="a", scene="s02"),                   # scene change
-    _row("b", prev="a", status="passed"),               # already rendered
-    _row("b", prev="a", qa_stage=1),                    # a QA retake renders alone
-    _row("b", prev="a", json={"t2v": True}),
+@pytest.mark.parametrize("row, joins", [
+    (_row("b", prev="a"), True),
+    (_row("b", prev="a", loc=""), True),                 # no location given: the same place
+    (_row("b", cont="MATCH_ACTION", prev="a"), False),   # a cut to a new angle
+    (_row("b", cont="CUT", prev="a"), False),
+    (_row("b", prev="x"), False),                        # continues another shot
+    (_row("b", prev="a", loc="street"), False),
+    (_row("b", prev="a", scene="s02"), False),
 ])
-def test_a_take_ends_at_anything_but_a_fresh_continue(breaker):
-    a = _row("a", cont="CUT", status="queued")
-    assert _ids(mt.plan_take(a, _scene(a, breaker), same_model)) == ["a"]
+def test_continues_is_a_continue_of_that_shot_in_the_same_scene_and_place(row, joins):
+    assert mt.continues(_row("a", cont="CUT"), row) is joins
 
 
-def test_a_take_stays_on_one_model_ends_at_a_fork_and_is_capped():
-    a = _row("a", cont="CUT", status="queued")
-    rows = _scene(a, _row("b", prev="a"), _row("c", prev="b"))
-    assert _ids(mt.plan_take(a, rows, lambda r: "h3" if r["shot_id"] == "c" else "ltx")) == ["a", "b"]
-    fork = _scene(a, _row("b", prev="a"), _row("b2", prev="a"))
-    assert _ids(mt.plan_take(a, fork, same_model)) == ["a"]
-    long = [a] + [_row(f"x{i}", prev=("a" if i == 0 else f"x{i - 1}")) for i in range(8)]
-    assert len(mt.plan_take(a, long, same_model, max_shots=4)) == 4
-    retake = _row("a", cont="CUT", status="queued", qa_stage=2)
-    assert _ids(mt.plan_take(retake, _scene(retake, _row("b", prev="a")), same_model)) == ["a"]
+def test_takes_default_on_with_measured_take_lengths_that_settings_and_projects_change():
+    import video_studio
+    assert mt.settings({}) is True and mt.settings({"movie": {"seamless_takes": False}}) is False
+    ltx, h3 = "ltx25_s6_cq", "minimax_h3_hero_v2"
+    assert mt.max_shots({}, ltx) == mt.LTX_TAKE_MAX_SHOTS == 6
+    assert mt.max_shots({}, h3) == mt.H3_TAKE_MAX_SHOTS == 4
+    assert mt.max_shots({"movie": {"ltx_take_max_shots": 9}}, ltx) == 9
+    assert mt.max_shots({"movie": {"ltx_take_max_shots": 999}}, ltx) == video_studio.CHAIN_MAX_SEGMENTS
+    # the older key keeps its meaning for H3 only; the new one wins
+    old = {"movie": {"take_max_shots": 2}}
+    assert mt.max_shots(old, h3) == 2 and mt.max_shots(old, ltx) == 6
+    assert mt.max_shots({"movie": {"h3_take_max_shots": 3, "take_max_shots": 2}}, h3) == 3
+    assert mt.max_shots({"movie": {"h3_take_max_shots": 0}}, h3) == 4
+    assert mt.max_shots({"movie": {"ltx_take_max_shots": "x"}}, ltx) == 6
+    # a project's take length: any length on LTX, only a shorter one on H3
+    # (its refine holds the whole take in memory)
+    assert mt.max_shots({}, ltx, 12) == 12 and mt.max_shots({}, ltx, 1) == 1
+    assert mt.max_shots({}, h3, 2) == 2 and mt.max_shots({}, h3, 9) == 4
+    assert mt.max_shots({}, ltx, 0) == 6
 
 
-def test_settings_default_on_and_capped_to_at_least_one_shot():
-    assert mt.settings({}) == (True, mt.TAKE_MAX_SHOTS)
-    assert mt.settings({"movie": {"seamless_takes": False, "take_max_shots": 0}}) == (False, mt.TAKE_MAX_SHOTS)
-    assert mt.settings({"movie": {"take_max_shots": 2}}) == (True, 2)
+def test_the_story_is_written_for_the_shortest_take_of_the_projects_models(monkeypatch):
+    import video_models
+    monkeypatch.setattr(video_models, "default_model_id", lambda: "ltx25_s6_cq")
+    assert mt.story_length({}, {}) == 6
+    assert mt.story_length({}, {"video_models": {"hero": "minimax_h3_hero_v2"}}) == 4
+    assert mt.story_length({}, {"take_max_shots": 8}) == 8
+    assert mt.story_length({}, {"take_max_shots": 8, "video_family": "minimax_h3_hero_v2"}) == 4
+
+
+def test_a_projects_take_length_is_read_from_its_row(isolated_db):
+    from projects import ProjectStore
+    db = isolated_db
+    store = ProjectStore(db)
+    pid = store.create("Take Length")["id"]
+    assert mt.project_length(db, pid) == 0 and store.get(pid)["take_max_shots"] == 0
+    store.update(pid, take_max_shots=3)
+    assert mt.project_length(db, pid) == 3 and store.get(pid)["take_max_shots"] == 3
+    assert mt.project_length(db, "nobody") == 0
 
 
 def test_take_id_is_stable_hex_and_depends_on_the_shots():

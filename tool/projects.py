@@ -22,7 +22,7 @@ KNOWN_FIELDS = {
     "title", "idea", "genre", "tone", "duration_target", "mode", "gates",
     "status", "stage", "story", "bible_commit", "created", "updated",
     "ref_fallback", "video_family", "video_models", "post_processing",
-    "post_worker", "seamless_takes", "error",
+    "post_worker", "seamless_takes", "take_max_shots", "error",
 }
 
 _IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]{0,63}\Z")
@@ -53,6 +53,8 @@ def assert_safe_identifier(name: str, allowed: frozenset[str] | set[str] | None 
 #   post_worker     which worker PC runs the post stage ("" = local)
 #   seamless_takes  1 = a run of CONTINUE shots on a seamless model renders as
 #                   one continuous take (movie_takes); 0 = one shot at a time
+#   take_max_shots  the most shots in one take (movie_takes.max_shots); 0 = the
+#                   studio's take length
 #   error           why the director stopped the project (status 'error')
 _PROJECT_COLUMNS = (
     ("ref_fallback", "INTEGER DEFAULT 1"),
@@ -61,6 +63,7 @@ _PROJECT_COLUMNS = (
     ("post_processing", "INTEGER DEFAULT 0"),
     ("post_worker", "TEXT DEFAULT ''"),
     ("seamless_takes", "INTEGER DEFAULT 1"),
+    ("take_max_shots", "INTEGER DEFAULT 0"),
     ("error", "TEXT DEFAULT ''"),
 )
 
@@ -157,6 +160,7 @@ class ProjectStore:
         d["post_worker"] = str(d.get("post_worker") or "")
         d["seamless_takes"] = int(d["seamless_takes"]) \
             if d.get("seamless_takes") is not None else 1
+        d["take_max_shots"] = int(d.get("take_max_shots") or 0)
         d["error"] = str(d.get("error") or "")
         return d
 
@@ -198,6 +202,7 @@ class ProjectStore:
         with self._lock:
             removed = self.con.execute(
                 "DELETE FROM shots WHERE project_id=?", (pid,)).rowcount
+            self.con.execute("DELETE FROM shot_prompts WHERE project_id=?", (pid,))
             self.con.execute(
                 "DELETE FROM story_versions WHERE project_id=?", (pid,))
             self.con.execute("DELETE FROM projects WHERE id=?", (pid,))

@@ -170,3 +170,54 @@ def test_lint_hero_tier_gating():
     wide_hero_shot["power"] = "teleport_flash"
     report2 = linter.lint_shot(wide_hero_shot)
     assert report2.ok
+
+
+def _chain(*conts, sizes=None):
+    shots, prev = [], ""
+    for i, cont in enumerate(conts, 1):
+        sid = f"s01_{i:03d}"
+        shots.append({"shot_id": sid, "scene": "s01", "location": "bridge", "continuity": cont,
+                      "prev_shot": prev, "shot_size": (sizes or {}).get(i, "medium"), "camera": "static"})
+        prev = sid
+    return shots
+
+
+@pytest.mark.parametrize("family, take_len, conts, warned", [
+    ("", 0, ("CUT",) + ("CONTINUE",) * 5, []),                    # one LTX take of 6, the measured default
+    ("", 0, ("CUT",) + ("CONTINUE",) * 6, ["s01_007"]),           # the 7th goes on in a new take
+    ("h3", 0, ("CUT",) + ("CONTINUE",) * 3, []),                  # one H3 take of 4
+    ("h3", 0, ("CUT",) + ("CONTINUE",) * 4, ["s01_005"]),
+    ("", 2, ("CUT",) + ("CONTINUE",) * 4, ["s01_003", "s01_005"]),  # the project's take length
+    ("", 1, ("CUT", "CONTINUE", "CONTINUE"), ["s01_002", "s01_003"]),
+    ("", 3, ("CUT", "CONTINUE", "CONTINUE", "MATCH_ACTION", "CONTINUE", "CONTINUE"), []),  # a cut opens fresh
+])
+def test_a_take_longer_than_the_take_length_says_where_it_goes_on(family, take_len, conts, warned):
+    rep = LintReport()
+    Linter(bible=_create_mock_bible(), family=family, take_len=take_len)._lint_continuity_order(
+        _chain(*conts, sizes={i: "close_up" for i, c in enumerate(conts, 1) if c == "MATCH_ACTION"}), rep)
+    hits = [w for w in rep.warnings if "the take length" in w]
+    assert [w.split("]")[0].strip("[") for w in hits] == warned
+
+
+def test_a_face_that_matters_is_never_written_wide():
+    linter = Linter(bible=_create_mock_bible())
+    shot = {"shot_id": "s01_001", "shot_size": "wide", "tier": "standard", "characters": [{"id": "x"}],
+            "dialogue": [{"char": "x", "line": "hi"}]}
+    assert any("dialogue at wide" in w for w in linter.lint_shot(shot).warnings)
+    shot.update(dialogue=[], tier="hero", power="p")
+    assert any("a hero moment at wide" in w for w in linter.lint_shot(shot).warnings)
+    shot.update(shot_size="medium")
+    assert not any("identity and detail" in w for w in linter.lint_shot(shot).warnings)
+    # an establishing shot of the place is what wide is for
+    shot.update(shot_size="extreme_wide", tier="volume", power=None)
+    assert not any("identity and detail" in w for w in linter.lint_shot(shot).warnings)
+
+
+def test_a_match_cut_needs_a_new_angle():
+    rep = LintReport()
+    Linter(bible=_create_mock_bible())._lint_continuity_order(_chain("CUT", "MATCH_ACTION"), rep)
+    assert any("needs a new angle" in w for w in rep.warnings)
+    rep = LintReport()
+    Linter(bible=_create_mock_bible())._lint_continuity_order(
+        _chain("CUT", "MATCH_ACTION", sizes={2: "wide"}), rep)
+    assert not rep.warnings

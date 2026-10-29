@@ -63,3 +63,37 @@ def test_cast_drift_reports_identity_and_age_per_link(tmp_path, monkeypatch):
 def test_cast_drift_is_none_without_the_face_model(monkeypatch, tmp_path):
     monkeypatch.setattr(face_drift, "_APP", False)
     assert face_drift.cast_drift(tmp_path / "x.mkv", [], {"A": tmp_path / "a.png"}) is None
+    assert face_drift.likeness(tmp_path / "x.png", {"A": tmp_path / "a.png"}) is None
+    assert not face_drift.available()
+
+
+class _StillApp:
+    """A picture's first pixel says who is in it: 1 = A, 2 = B, 3 = A and B,
+    4 = a face like A's, 0 = nobody."""
+
+    def get(self, img):
+        who = int(img[0, 0, 0])
+        faces = {1: [A], 2: [B], 3: [A, B], 4: [_n(A + B)]}.get(who, [])
+        return [SimpleNamespace(bbox=(0, 0, 80, 80), embedding=e, age=30) for e in faces]
+
+
+def _n(v):
+    return v / np.linalg.norm(v)
+
+
+def test_likeness_scores_each_person_against_the_best_face_in_the_still(tmp_path, monkeypatch):
+    import cv2
+    monkeypatch.setattr(face_drift, "_APP", _StillApp())
+    face_drift._REFS.clear()
+
+    def pic(name, who):
+        img = np.zeros((120, 120, 3), np.uint8)
+        img[0, 0, 0] = who
+        cv2.imwrite(str(tmp_path / name), img)
+        return tmp_path / name
+    cast = {"A": pic("a.png", 1), "B": pic("b.png", 2), "nobody": pic("n.png", 0)}
+    assert face_drift.likeness(pic("ab.png", 3), cast) == {"A": 1.0, "B": 1.0}     # no face: left out
+    got = face_drift.likeness(pic("like_a.png", 4), cast)
+    assert got == {"A": 0.707, "B": 0.707}
+    assert face_drift.likeness(pic("empty.png", 0), cast) == {"A": None, "B": None}
+    assert face_drift.likeness(pic("x.png", 1), {"nobody": tmp_path / "n.png"}) == {}

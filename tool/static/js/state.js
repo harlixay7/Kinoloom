@@ -45,6 +45,7 @@
     orch: null,
     director: null,
     shots: [],
+    prompts: null,      /* the LTX-2.5 / H3 shots' video prompts (Shots page) */
     loras: null,
 
     async loadProjects() {
@@ -56,6 +57,7 @@
 
     async setProject(pid) {
       State.pid = pid;
+      State.prompts = null;
       try { localStorage.setItem("ws.lastProject", pid); } catch (e) { /* private mode */ }
       await State.refreshProject();
       await State.refreshShots();
@@ -70,12 +72,16 @@
       State.bible = r.bible || null;
       State.stats = r.stats || {};
       State.director = r.director || {};
+      // the cast members whose look text contradicts their main picture
+      State.castChecks = r.cast_checks || {};
+      State.takeLength = r.take_length || {};
       // The cast/world pages render from State.bible, so a BIBLE change must
       // re-render too — deleting a character changed the bible while the
       // project record stayed identical, so the old `changed("project")`
       // check never fired and the deleted card stayed on screen.
       const bibleSig = Object.keys((State.bible && State.bible.characters) || {}).sort().join(",")
-        + "|" + Object.keys((State.bible && State.bible.locations) || {}).sort().join(",");
+        + "|" + Object.keys((State.bible && State.bible.locations) || {}).sort().join(",")
+        + "|" + Object.keys(State.castChecks).sort().join(",");
       const bibleChanged = bibleSig !== (State._bibleSig || "");
       State._bibleSig = bibleSig;
       Shell.feed({ pid: State.pid, project: State.project, bible: State.bible,
@@ -107,6 +113,29 @@
       if (changed("shots", State.shots)) Bus.emit("shots", State.shots);
     },
 
+    async refreshPrompts() {
+      if (!State.pid) return;
+      const pid = State.pid;
+      const r = await API.get("/api/projects/" + encodeURIComponent(pid) + "/prompts", 30000, true);
+      if (!r || pid !== State.pid) return;
+      State.prompts = r;
+      if (changed("prompts", r)) Bus.emit("prompts", r);
+    },
+
+    /* how far the video prompts are: `done` shots have theirs (ready or
+       rendered), `todo` still need one; `next` once a first batch is in, when
+       the chat AI's brief is the next batch's */
+    promptProgress() {
+      const shots = (State.prompts && State.prompts.shots) || {};
+      let done = 0, todo = 0;
+      Object.keys(shots).forEach(function (sid) {
+        const st = (shots[sid] || {}).state;
+        if (st === "ready" || st === "rendered") done++;
+        else if (st === "missing" || st === "stale") todo++;
+      });
+      return { done: done, todo: todo, next: done > 0 && todo > 0 };
+    },
+
     async refreshEta() {
       if (!State.pid) return;
       const r = await API.get("/api/projects/" + encodeURIComponent(State.pid) + "/eta", 15000, true);
@@ -134,6 +163,13 @@
       name = Shell.canon(name);
       const def = Router.pages[name] || Router.pages.overview;
       if (Router.current && Router.current.name === name) return;
+      // a page with edits not saved yet (Cast & World) asks before they are lost
+      const cur = Router.current && Router.current.def;
+      if (cur && cur.unsaved && cur.unsaved() &&
+          !window.confirm("Some changes on this page are not saved yet. Leave without saving them?")) {
+        history.replaceState(null, "", "#" + Router.current.name);
+        return;
+      }
       if (Router.current) {
         if (Router.current.def && Router.current.def.unmount) {
           try { Router.current.def.unmount(); } catch (e) { console.error(e); }
@@ -192,14 +228,25 @@
     const running = !!(State.director && State.director.running);
     const gate = !!p && p.status === "gate_pending";
     const stopped = !!p && (p.status === "stopped" || p.stage === "paused");
+    // a production that waits for the story, the shots or video prompts to
+    // be written continues once they are (approving would skip nothing)
+    const waits = gate && !!waitingFor(p);
     return {
       running: running,
-      verb: gate ? "resume" : "run",
-      label: gate ? "Approve & continue" : stopped ? "Resume production" : "Start production",
-      tip: gate ? "Approve what waits for you (" + (STAGE_WORDS[p.stage] || p.stage || "this step") + ") and continue"
+      verb: gate && !waits ? "resume" : "run",
+      label: waits ? "Continue production" : gate ? "Approve & continue" : stopped ? "Resume production" : "Start production",
+      tip: waits ? "Continue once " + waitingFor(p) + " written: " + (p.error || "")
+        : gate ? "Approve what waits for you (" + (STAGE_WORDS[p.stage] || p.stage || "this step") + ") and continue"
         : stopped ? "Continue from where production stopped"
         : "The director writes what is missing, renders every shot, checks it and cuts the film",
     };
+  }
+
+  /* what a waiting production needs written, or "" (a gate with a reason
+     at the story, the shots or the video prompts) */
+  function waitingFor(p) {
+    if (!p || p.status !== "gate_pending" || !p.error) return "";
+    return { story: "the story is", shots: "the shots are", prompts: "the video prompts are" }[p.stage] || "";
   }
 
   const STAGE_WORDS = {
@@ -220,7 +267,9 @@
     const stage = p.stage || "";
     if (running) return { text: DOING[stage] || "Working", tone: "live" };
     if (st === "gate_pending") {
+      const waits = waitingFor(p);
       return { text: stage === "prompts" ? "Waiting for video prompts"
+        : waits ? "Waiting until " + waits + " written"
         : "Waiting for your approval: " + (STAGE_WORDS[stage] || stage), tone: "need" };
     }
     if (st === "error") return { text: "Stopped with an error", tone: "bad" };
@@ -231,6 +280,71 @@
     if (st === "draft") return { text: "Not started", tone: "" };
     if (st === "running" || st === "rendering") return { text: "Not running", tone: "" };
     return { text: st.replace(/_/g, " "), tone: "" };
+  }
+
+  /* the note under the top bar: why production waits or stopped, and the one
+     thing that moves it on (a reason in a tooltip went unseen) */
+  function notice(p) {
+    if (!p) return null;
+    const running = !!(State.director && State.director.running);
+    const st = p.status || "", stage = p.stage || "";
+    const chat = { label: State.promptProgress().next ? "Use a chat AI for the next batch" : "Write them with a chat AI",
+                   run: function () { if (window.PromptEditor) PromptEditor.brief(); } };
+    if (!running && st === "gate_pending") {
+      if (waitingFor(p)) {
+        return { tone: "need", text: p.error,
+          title: stage === "prompts" ? "Production waits for video prompts."
+            : stage === "story" ? "Production waits for the story." : "Production waits for the shot list.",
+          act: stage === "prompts" ? chat : { label: "Open the Story page", href: "#story" } };
+      }
+      // the director's reason and the page it names (opening frames: Shots)
+      const s = Shell.stopInfo(p, false);
+      const page = Shell.PAGES[s.page];
+      return { tone: "need", title: "Production waits for your approval.",
+        text: p.error || "Check " + (STAGE_WORDS[stage] || stage || "this step") + ", then press Approve & continue.",
+        act: page ? { label: "Open the " + page.label + " page", href: Shell.href(s.page) } : null };
+    }
+    if (!running && st === "error") {
+      return { tone: "bad", title: "Production stopped with an error.", text: p.error || "See the activity on the Overview." };
+    }
+    // while it renders: the shots that wait for their video prompt
+    const by = (State.stats && State.stats.by_status) || {};
+    const counts = (State.prompts && State.prompts.counts) || {};
+    const n = Math.max(by.prompt || 0, (counts.missing || 0) + (counts.stale || 0));
+    if (n && (st === "rendering" || (running && stage === "render"))) {
+      return { tone: "info", dismiss: true, act: chat,
+        title: n + (n === 1 ? " shot waits" : " shots wait") + " for a video prompt.",
+        text: "The others render meanwhile; these render once their prompts are in." };
+    }
+    return null;
+  }
+
+  let noticeHidden = "";
+  function renderNotice(p) {
+    const box = document.getElementById("tb-notice");
+    if (!box) return;
+    const n = notice(p);
+    const key = n ? n.tone + "|" + n.title + "|" + (n.text || "") + "|" + (n.act ? n.act.label : "") : "";
+    if (!n || (n.dismiss && key === noticeHidden)) {
+      box.className = "tb-notice hidden";
+      box.innerHTML = "";
+      box.dataset.key = "";
+      return;
+    }
+    if (box.dataset.key === key) return;
+    box.dataset.key = key;
+    box.className = "tb-notice " + n.tone;
+    const act = !n.act ? ""
+      : n.act.href ? '<a class="btn small" href="' + n.act.href + '">' + esc(n.act.label) + "</a>"
+      : '<button class="btn small" type="button" data-tn-act>' + esc(n.act.label) + "</button>";
+    box.innerHTML = '<span class="tn-mark">' + Icon.get(n.tone === "info" ? "info" : "warning") + "</span>" +
+      '<p class="tn-text"><b>' + esc(n.title) + "</b> " + esc(n.text || "") + "</p>" + act +
+      (n.dismiss ? '<button class="btn small ghost icon" type="button" data-tn-hide aria-label="Hide" data-tip="Hide">' +
+        Icon.get("x") + "</button>" : "");
+    const a = box.querySelector("[data-tn-act]");
+    if (a) a.onclick = n.act.run;
+    const h = box.querySelector("[data-tn-hide]");
+    if (h) h.onclick = function () { noticeHidden = key; renderNotice(State.project); };
   }
 
   function renderTop() {
@@ -261,6 +375,7 @@
     }
     const stop = document.getElementById("btn-stop");
     if (stop) stop.classList.toggle("hidden", !t.running);
+    renderNotice(p);
   }
 
   function renderSwitcher() {
@@ -365,16 +480,43 @@
 
     /* director transport (renderTop sets the run button's verb) */
     const DONE = { run: "director running", resume: "continuing", stop: "director stopped" };
+    /* a run still working when the start answered may stop a moment later at
+       a step that waits for something: look again soon (the shell's dialog
+       says why it stopped, Shell.stopInfo) */
+    let watch = null;
+    const watchStart = function (pid) {
+      if (watch) clearInterval(watch);
+      let n = 0;
+      watch = setInterval(async function () {
+        n++;
+        if (State.pid !== pid) { clearInterval(watch); watch = null; return; }
+        await State.refreshProject();
+        const p = State.project || {};
+        const running = !!(State.director && State.director.running);
+        if (!running || p.status === "rendering" || n >= 20) { clearInterval(watch); watch = null; }
+      }, 1500);
+    };
     ["btn-run", "btn-stop"].forEach(function (id) {
       const b = document.getElementById(id);
       if (!b) return;
       b.onclick = async function () {
         if (!State.pid) { toast("Open a movie first", true); return; }
         const verb = id === "btn-stop" ? "stop" : (b.dataset.verb || "run");
+        // production can wait for you while this window is in the background
+        if (verb !== "stop") Shell.askNotify();
         b.disabled = true;
         const r = await post("/api/projects/" + encodeURIComponent(State.pid) + "/" + verb, {}, 30000);
         b.disabled = false;
-        if (r) toast(r.ok ? DONE[verb] : (r.error || "failed"), !r.ok);
+        // a run that stopped at once: the shell's dialog says why (refreshProject below)
+        const settled = r && r.ok && verb !== "stop" && r.running === false;
+        if (settled && (r.status === "gate_pending" || r.status === "error")) {
+          /* the dialog */
+        } else if (settled && r.status === "done") {
+          toast("The film is finished: there is nothing new to render");
+        } else if (r) {
+          toast(r.ok ? DONE[verb] : (r.error || "failed"), !r.ok);
+          if (r.ok && r.running && verb !== "stop") watchStart(State.pid);
+        }
         State.refreshProject();
       };
     });
@@ -391,6 +533,8 @@
     Bus.on("director", function () { renderTop(); Poll.recalc(); });
     Bus.on("status", renderTop);
     Bus.on("eta", renderTop);
+    Bus.on("prompts", renderTop);
+    Bus.on("shots", renderTop);
     Bus.on("shots:changed", function () { State.refreshShots(); });
     renderTop();
     const first = Shell.initialPage();

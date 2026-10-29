@@ -169,3 +169,36 @@ def isolated_db(tmp_path, monkeypatch):
         db.con.close()
     except Exception:
         pass
+
+
+@pytest.fixture
+def movie(isolated_db, sandbox_root, monkeypatch):
+    """(db, pid, cfg, models): the small movie of moviekit.py stored, every
+    video model available, the character's reference picture in the sandbox,
+    and the AI set to a remote endpoint. `models` maps a shot id to its video
+    model (moviekit.MID when absent), which movie_request.shot_model returns."""
+    import bible
+    import llm
+    import ltx_refs
+    import movie_request
+    import video_models
+    from moviekit import MID, Bible, shot_rows
+    from projects import ProjectStore
+    monkeypatch.setattr(video_models, "model_status", lambda mid: {"available": True})
+    ref = sandbox_root / "output" / "movie_refs" / "mara.png"
+    ref.parent.mkdir(parents=True, exist_ok=True)
+    ref.write_bytes(b"png mara")
+    monkeypatch.setattr(ltx_refs, "resolve_reference_set",
+                        lambda shot, b, family=None: ([{"slot": "pic1", "path": str(ref),
+                                                        "source": "character:mara"}], []))
+    monkeypatch.setattr(bible, "Bible", Bible)
+    models: dict[str, str] = {}
+    monkeypatch.setattr(movie_request, "shot_model",
+                        lambda db, shot, sjson, pid: models.get(shot["shot_id"], MID))
+    llm._NO_TOOLS.clear()
+    # the AI answers (FakeLLM): no network probe of the example endpoint
+    monkeypatch.setattr(llm, "reachable", lambda base, probe=None: True)
+    pid = ProjectStore(isolated_db).create(title="The Letter")["id"]
+    isolated_db.upsert_shots(shot_rows(pid))
+    cfg = {**core.load_config(), "architect": {"base_url": "https://api.example.test/v1", "model": "writer"}}
+    return isolated_db, pid, cfg, models

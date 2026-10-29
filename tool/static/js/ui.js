@@ -105,10 +105,12 @@
   const STATUS_COLOR = {
     queued: "gray", rendering: "live", post: "live", qa: "live", drafting: "live",
     passed: "green", review: "amber", failed: "red", pending: "gray", assembled: "green",
+    prompt: "amber",     /* waits for its video prompt */
   };
   const STATUS_WORD = {
     queued: "queued", rendering: "rendering", post: "finishing", qa: "checking", drafting: "drafting",
     passed: "passed", review: "to review", failed: "failed", pending: "not started", assembled: "in the film",
+    prompt: "needs a prompt",
   };
   function statusClass(status) { return "st-" + (STATUS_COLOR[status] || "gray"); }
   function statusWord(status) { return STATUS_WORD[status] || status || "not started"; }
@@ -377,16 +379,27 @@
           " · cfg " + (e.cfg != null ? e.cfg : "—");
       }).join(" · ");
     })();
+    // an LTX-2.5 / H3 shot's prompt is the one written for it (AI or hand),
+    // edited in the prompt editor; the legacy Wan path keeps its own here
+    const movie = !!(window.State && State.prompts && State.prompts.shots &&
+      State.prompts.shots[sid]);
     const box = document.createElement("div");
     box.innerHTML =
       '<div class="adv-grid">' +
-        '<div class="adv-col">' +
-          '<div class="adv-label">Prompt</div>' +
-          '<textarea class="adv-prompt mono" rows="4" spellcheck="false">' + esc(row.prompt || "") + "</textarea>" +
-          '<div class="adv-label">Negative</div>' +
-          '<textarea class="adv-neg mono" rows="3" spellcheck="false">' + esc(row.negative || "") + "</textarea>" +
-          '<button class="btn small" type="button" data-act="save-prompt">Save prompts (requeues)</button>' +
-        "</div>" +
+        (movie
+          ? '<div class="adv-col">' +
+              '<div class="adv-label">Prompt</div>' +
+              '<div class="adv-note">This shot renders with the video prompt written for it: edit it with ' +
+                "the Prompt button on the card.</div>" +
+              '<button class="btn small" type="button" data-act="edit-movie-prompt">Edit prompt</button>' +
+            "</div>"
+          : '<div class="adv-col">' +
+              '<div class="adv-label">Prompt</div>' +
+              '<textarea class="adv-prompt mono" rows="4" spellcheck="false">' + esc(row.prompt || "") + "</textarea>" +
+              '<div class="adv-label">Negative</div>' +
+              '<textarea class="adv-neg mono" rows="3" spellcheck="false">' + esc(row.negative || "") + "</textarea>" +
+              '<button class="btn small" type="button" data-act="save-prompt">Save prompts (requeues)</button>' +
+            "</div>") +
         '<div class="adv-col">' +
           '<div class="adv-label">LoRA chain</div>' +
           (loraRows || '<div class="adv-note">empty — auto-resolved from the registry at render</div>') +
@@ -403,7 +416,7 @@
           "</select>" +
           '<button class="btn small" type="button" data-act="profile-apply">Apply profile (requeues)</button>' +
           '<div class="adv-label">Continuity</div>' +
-          '<select class="adv-continuity" data-tip="CUT = fresh composition · CONTINUE = start from the previous shot\'s tail frame · MATCH_ACTION = match the previous choreography">' +
+          '<select class="adv-continuity" data-tip="CUT = a new shot · CONTINUE = the same camera take, from the previous shot\'s last frame · MATCH_ACTION = a new angle while the action carries on">' +
             ["CUT", "CONTINUE", "MATCH_ACTION"].map(function (v) {
               return "<option" + ((j.continuity || "CUT") === v ? " selected" : "") + ">" + v + "</option>";
             }).join("") +
@@ -418,15 +431,18 @@
           "</div>" +
         "</div>" +
       "</div>";
-    box.querySelector("[data-act=save-prompt]").onclick = async function () {
+    const savePrompt = box.querySelector("[data-act=save-prompt]");
+    if (savePrompt) savePrompt.onclick = async function () {
       const r = await post("/api/projects/" + encodeURIComponent(window.State.pid) +
         "/shots/" + encodeURIComponent(sid) + "/prompt", {
         prompt: box.querySelector(".adv-prompt").value,
         negative: box.querySelector(".adv-neg").value,
       }, 30000);
-      if (r) toast(r.ok ? "prompt saved — shot requeued" : "failed", !r.ok);
+      if (r && r.ok) toast("prompt saved — shot requeued");
       window.Bus.emit("shots:changed");
     };
+    const editMovie = box.querySelector("[data-act=edit-movie-prompt]");
+    if (editMovie) editMovie.onclick = function () { window.Bus.emit("prompt:edit", sid); };
     box.querySelector("[data-act=save-loras]").onclick = async function () {
       const out = [];
       box.querySelectorAll(".adv-lora").forEach(function (lr) {

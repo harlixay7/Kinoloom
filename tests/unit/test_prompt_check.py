@@ -224,6 +224,21 @@ def test_a_missing_look_is_a_suggestion_only_when_the_segments_do_not_repeat_one
     assert pc.check(looked, varied) == []
 
 
+def test_an_ltx_clip_describes_each_person_with_the_look_on_the_card(studio):
+    """LTX matches a reference picture to the person the prompt describes: a look
+    on the card that the prompt leaves out gets the cast sentence of the takes."""
+    p = pc.plan(LTX, references=[ref(studio, "pic1", "Ruth", description=LOOK),
+                                 ref(studio, "pic2", "Theo")])
+    text = "A medium shot of the kitchen. Ruth pours tea. Diegetic audio: a kettle hums."
+    issues = pc.check(p, [text])
+    assert codes(issues) == ["look"] and "Ruth" in issues[0].message and "Theo" not in issues[0].message
+    fixed = apply(text, issues[0].fixes)
+    assert fixed == ("A medium shot of the kitchen. Cast, the same age and look in every shot: "
+                     f"{LOOK}. Ruth pours tea. Diegetic audio: a kettle hums.")
+    assert pc.check(p, [fixed]) == []
+    assert pc.check(p, [f"A medium shot of {LOOK.upper()} pouring tea. Diegetic audio: a kettle hums."]) == []
+
+
 def test_a_file_name_is_not_a_cast_name(studio):
     """A disk upload's name defaults to its file name: the sheet lists the image as a file,
     never as a name for the prompt writer to use."""
@@ -333,6 +348,20 @@ def test_ltx_cast_sheet(studio):
     single = pc.cast_sheet(pc.plan(LTX_SEAMLESS, references=[ref(studio, "pic1", "Theo")]))
     assert "Render: one clip" in single and "add segments in Video Studio" in single
     assert "LATER SEGMENTS" not in single
+
+
+def test_the_cast_sheet_states_what_the_model_does_badly_and_how_long_a_prompt_is(studio):
+    ltx = pc.cast_sheet(pc.plan(LTX_SEAMLESS, 2, references=[ref(studio, "pic1", "Theo")]))
+    h3 = pc.cast_sheet(pc.plan(H3, 2, references=cast3(studio)))
+    for text in (ltx, h3):
+        assert "MODEL LIMITS (" in text and pc.FACES in text and pc.SHOWS_BADLY in text
+        assert "At most 3 people who matter on screen" in text and "no whip pans" in text
+        # before the reply format, after how the model reads the prompt
+        assert text.index("READS THE PROMPT") < text.index("MODEL LIMITS") < text.index("REPLY FORMAT")
+    assert "about 80 to 180 words" in ltx and "no keyword lists" in ltx and "inside a segment" in ltx
+    assert "about 230 to 260 words in the layout below" in h3
+    single = pc.cast_sheet(pc.plan(LTX_SEAMLESS, references=[ref(studio, "pic1", "Theo")]))
+    assert "Each clip lasts a few seconds" in single and "Each clip's prompt:" in single
 
 
 # ---------------------------------------------------------------- endpoints

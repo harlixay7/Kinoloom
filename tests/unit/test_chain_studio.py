@@ -358,6 +358,24 @@ def test_ltx_chain_runs_drafts_take_then_finishes_and_decodes_once(studio_sandbo
     assert rec["draft_size"] == [960, 544] and rec["final_size"] == [1920, 1088]
 
 
+def test_a_chain_takes_one_seed_per_link(studio_sandbox, monkeypatch):
+    import json
+
+    import video_models
+    import video_studio
+    rec = {"id": "c0ffee00c0ffee09"}
+    cs.run_chain(rec, LTX_ENTRY, _Uploads(), ["a", "b"], negative="", base_seed=7, frames=121,
+                 start_image=None, cast=[], seeds=[11, 40])
+    man = json.loads((Path(rec["chain_dir"]) / "manifest.json").read_text(encoding="utf-8"))
+    assert [lk["seed"] for lk in man["spec"]["links"]] == [11, 40]
+    with pytest.raises(ValueError, match="1 seeds for 2 links"):
+        cs.run_chain({"id": "c0ffee00c0ffee0a"}, LTX_ENTRY, _Uploads(), ["a", "b"], negative="",
+                     base_seed=7, frames=121, start_image=None, cast=[], seeds=[1])
+    monkeypatch.setattr(video_models, "model_status", lambda mid: {"available": True})
+    with pytest.raises(ValueError, match="2 seeds for 3 segments"):
+        video_studio.start_chain("ltx25_s6_cq", ["a", "b", "c"], seeds=[1, 2])
+
+
 def test_chain_plan_lists_every_step_in_order():
     assert cs.chain_plan("ltx", 3) == ["draft_l1", "draft_l2", "draft_l3", "audio_take", "take_draft",
                                        "assemble_draft", "finish_F0_l1", "finish_F0_l2", "finish_F0_l3",
@@ -671,6 +689,30 @@ def test_a_chain_started_again_reuses_every_finished_step(studio_sandbox, comfy_
     assert len(stored) == 1
 
 
+def test_a_retake_of_one_link_renders_it_and_the_links_after_it_only(studio_sandbox, comfy_uploads, tmp_path):
+    """A movie retake inside a take: the same chain id with only that shot's seed
+    moved (orchestrator.REROLL_SEED). The link before it keeps its draft and
+    finish, so its latents carry into the retaken link; that link, the one after
+    it (it reads the new carry) and the take decodes render again."""
+    from orchestrator import REROLL_SEED
+    from renderer import ComfyClient
+    port, _ = comfy_uploads
+    tail = tmp_path / "tail.png"
+    tail.write_bytes(b"the previous shot's tail frame")
+
+    def start(seeds):
+        _FilesRunner.calls = []
+        rec = {"id": "7a4e7a4e7a4e7a4f"}
+        cs.run_chain(rec, LTX_ENTRY, ComfyClient(port), ["a", "b", "c"], negative="", base_seed=7, frames=121,
+                     start_image=tail, cast=[], seeds=seeds)
+        assert rec["status"] == "completed"
+        return _FilesRunner.calls
+    assert len(start([7, 8, 9])) == 9
+    time.sleep(0.05)                       # the re-rendered carry files get a later mtime
+    assert start([7, 8 + REROLL_SEED, 9]) == ["draft_l2", "draft_l3", "audio_take", "take_draft",
+                                              "finish_F0_l2", "finish_F0_l3", "take_final_F0"]
+
+
 def test_a_chain_continued_from_a_clip_opens_on_its_staged_tail_frame(test_client, sandbox_root, tmp_path,
                                                                      monkeypatch):
     """↪ stages the clip's tail frame in the ComfyUI input folders; a chain names that
@@ -693,7 +735,7 @@ def test_a_chain_continued_from_a_clip_opens_on_its_staged_tail_frame(test_clien
     started, ran = [], threading.Event()
 
     def run_chain(cid, mid, prompts, mode, negative, seed, width, height, frames, steps, cfg,
-                  start_image, worker, references, start_path=None):
+                  start_image, worker, references, start_path=None, seeds=None):
         started.append(start_image)
         ran.set()
     monkeypatch.setattr(video_studio, "_run_chain", run_chain)
