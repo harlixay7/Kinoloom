@@ -62,7 +62,7 @@ Other PCs on the local network can add render lanes next to the main PC.
 
 ### 2.1 Setting up a LAN worker (`install/INSTALL-WORKER.bat`)
 
-Download the installer from the studio's **Workers** page and run it on the worker PC. The studio serves `install/INSTALL-WORKER.bat` with its own URL and the fleet token filled in (`tool/routers/fleet.py:render_installer`). Run straight from the share, `install\INSTALL-WORKER.bat` asks for the URL and token instead. You can answer every prompt in advance with an environment variable (`KINOLOOM_SRC`, `KINOLOOM_DST`, `KINOLOOM_WORKER_NAME`, `KINOLOOM_MAIN_URL`, `KINOLOOM_WORKER_TOKEN`, `KINOLOOM_PACKAGES`).
+Download the installer from the studio's **Worker PCs** page (the System menu at the foot of the sidebar) with **Download INSTALL-WORKER.bat**, and run it on the worker PC. The studio serves `install/INSTALL-WORKER.bat` with its own URL and the fleet token filled in (`tool/routers/fleet.py:render_installer`). Run straight from the share, `install\INSTALL-WORKER.bat` asks for the URL and token instead. You can answer every prompt in advance with an environment variable (`KINOLOOM_SRC`, `KINOLOOM_DST`, `KINOLOOM_WORKER_NAME`, `KINOLOOM_MAIN_URL`, `KINOLOOM_WORKER_TOKEN`, `KINOLOOM_PACKAGES`).
 
 The installer does two things:
 
@@ -72,9 +72,9 @@ The installer does two things:
    - the model packages you choose, copied file by file from `install/model_packages.json` by `install/copy_packages.ps1`: Image Studio, post/upscale, both, a full mirror of `models/` + `external_loras/`, or none.
 2. **Write the worker config** (`worker/worker_config.yaml`), the worker's `ComfyUI/extra_model_paths.yaml`, and a `WORKER.bat` launcher that starts the agent on port 8120. The agent starts its own ComfyUI on port 8188 and registers with the studio.
 
-**What a LAN worker can render.** The installer sets up the render-farm ComfyUI only. That covers image jobs, legacy Wan 2.2 shots and the post/upscale lane. MiniMax H3 and LTX-2.5 graphs need the `ComfyUI_LTX` tree and its own venv, which the installer does not provision (the venv is bound to an interpreter path on the main PC). The studio checks a worker's ComfyUI node classes before it queues a graph there (`RemoteWorkerClient.queue_prompt`). So such a shot fails at once, with the missing classes named, instead of failing mid-render.
+**What a LAN worker can render.** The installer sets up the render-farm ComfyUI only. That covers the SDXL, Z-Image and CyberRealistic image jobs, legacy Wan 2.2 shots and the post/upscale lane. MiniMax H3 and LTX-2.5 graphs need the `ComfyUI_LTX` tree and its own venv, and Qwen-Image 2.1 (the default for start pictures and opening frames) the `ComfyUI_Qwen21` tree and its venv, which the installer does not provision (a venv is bound to an interpreter path on the main PC). The studio checks a worker's ComfyUI node classes before it queues a graph there (`RemoteWorkerClient.queue_prompt`). So such a shot fails at once, with the missing classes named, instead of failing mid-render.
 
-**Weights outside the tree.** Packages are resolved against the shared tree. Weights the main PC keeps elsewhere (`paths.extra_model_dirs`, for example `D:\H3_LAB\models`) are reported as missing, and you must copy them separately.
+**Weights outside the tree.** Packages are resolved against the shared tree. Weights the main PC keeps elsewhere (`paths.extra_model_dirs`, for example `D:\models\h3`) are reported as missing, and you must copy them separately.
 
 If the studio itself listens on loopback only (`ui.host: 127.0.0.1`), the served installer prints a warning: workers cannot reach such a studio.
 
@@ -115,7 +115,7 @@ If the studio itself listens on loopback only (`ui.host: 127.0.0.1`), the served
 
 ### 2.3 Fleet token (shared secret)
 
-- The fleet uses one shared secret, `settings.yaml` → `workers.shared_token`. `tool/settings.example.yaml` ships the placeholder `__WORKER_SHARED_TOKEN__`. At start, the control room replaces an empty or placeholder value with a random token (`security.ensure_secrets`, `secrets.token_urlsafe(32)`). **Workers page → New install token** (`POST /api/workers/token`) rotates it. Every installed worker then needs the new value: reinstall it, or edit `token` in its `worker_config.yaml`.
+- The fleet uses one shared secret, `settings.yaml` → `workers.shared_token`. `tool/settings.example.yaml` ships the placeholder `__WORKER_SHARED_TOKEN__`. At start, the control room replaces an empty or placeholder value with a random token (`security.ensure_secrets`, `secrets.token_urlsafe(32)`). **Worker PCs page (System menu) → New token** (`POST /api/workers/token`) rotates it. Every installed worker then needs the new value: reinstall it, or edit `token` in its `worker_config.yaml`.
 - It fails closed: if the token is empty, every worker call is refused (`workers._check_token`).
 - **Worker → studio:** `register`, `heartbeat` and `result` are the only routes that skip the API-token gate (`security._WORKER_CALLBACKS`). Their handlers check the fleet token instead, with a constant-time comparison. `register` and `heartbeat` carry it in the JSON body (`token`), `result` in the `X-Worker-Token` header. Result uploads must declare `Content-Length` and stay under `workers.max_result_mb` (default 8192; larger uploads get 413).
 - **Per-worker token hash:** `register` stores the SHA-256 hash of the presented token in `workers.token_hash`. `heartbeat` and `result` also require the presented token to match that hash. Every worker uses the same token, so this only ties later calls to the token a worker registered with. It is not a per-worker identity: anyone holding the fleet token can register a worker under any name, and registering an existing name overwrites its host and port. Treat the token like a password.
@@ -187,7 +187,7 @@ Colab runtimes have no reachable public address, so the studio and the Colab wor
 
 - The main PC runs Tailscale. `MAIN_URL` is its tailnet address (for example `http://100.x.y.z:8080`). The studio must listen on a non-loopback address (`ui.host`, for example `0.0.0.0`) to be reachable at all.
 - `colab/bootstrap.sh` starts `tailscaled` in userspace-networking mode (Colab containers cannot create a TUN device), with a SOCKS5 proxy on `localhost:1055` and an HTTP proxy on `localhost:1056`. It then runs `tailscale up --auth-key=$TAILSCALE_AUTHKEY --hostname=$WORKER_NAME --accept-dns=false --ephemeral`. The agent reaches the PC through the HTTP proxy (`HTTP_PROXY` in `colab/colab_env.sh`, sourced before the agent starts).
-- Studio → agent: the bootstrap runs `tailscale serve --bg 8120`, and the agent advertises `https://<node>.<tailnet>.ts.net`. If `serve` fails, it advertises `http://<tailnet-ip>:8120`, which only works if the userspace netstack forwards that port. The Workers page **Test** button shows whether the studio can reach it.
+- Studio → agent: the bootstrap runs `tailscale serve --bg 8120`, and the agent advertises `https://<node>.<tailnet>.ts.net`. If `serve` fails, it advertises `http://<tailnet-ip>:8120`, which only works if the userspace netstack forwards that port. The **Test** button on the Worker PCs page shows whether the studio can reach it.
 - Without `TAILSCALE_AUTHKEY` the bootstrap only warns. The agent then advertises the runtime's own address, which the PC cannot reach.
 - Traffic between the PC and the worker is WireGuard-encrypted by Tailscale and needs no open router port.
 
@@ -198,7 +198,7 @@ The notebooks read these from Colab Secrets (`google.colab.userdata`), and fall 
 | Secret key | Used by | Purpose |
 |---|---|---|
 | `GITHUB_PAT` | optional; the notebooks' clone cell and `bootstrap.sh` use it only when it is set and no clone exists | Clones a private fork. The clone cells reset `origin` to the URL without the PAT afterwards. A read-only, repository-scoped fine-grained token is enough. |
-| `HF_TOKEN` | `colab/fetch_models.py` (bootstrap step 5) and the agent (`hf_token`, for Workers-page installs) | Downloads from the private Hugging Face repository. It is sent only to `huggingface.co` hosts. |
+| `HF_TOKEN` | `colab/fetch_models.py` (bootstrap step 5) and the agent (`hf_token`, for installs from the Worker PCs page) | Downloads from the private Hugging Face repository. It is sent only to `huggingface.co` hosts. |
 | `TAILSCALE_AUTHKEY` | `bootstrap.sh` | Joins the tailnet (the script adds `--ephemeral` itself). Required by the deploy notebook, optional for the smoke notebook. |
 | `WORKER_TOKEN` | `bootstrap.sh` → `worker_config.yaml` `token` | The studio's `workers.shared_token`. Required in worker mode. |
 | `MAIN_URL` | `bootstrap.sh` → `worker_config.yaml` `main_url` | The studio over the tailnet (`http://100.x.y.z:8080`). `localhost`/`127.*` is refused. With `TAILSCALE_AUTHKEY` set, the bootstrap probes `MAIN_URL/api/health` through the Tailscale HTTP proxy before going on, and a failed probe stops it. Required in worker mode. |
@@ -232,13 +232,13 @@ The verdict is `PASS` when ComfyUI reports `status_str == "success"` with no `ex
 
 ### 3.4 Model management and disk guards
 
-- **From the Workers page** (per worker):
-  - **Install group** (`POST /api/workers/{wid}/install_group`): a background install on the worker, with progress via `GET /api/workers/{wid}/install_group/{gid}`;
-  - **Delete model** (`DELETE /api/workers/{wid}/models?path=...`);
+- **From the Worker PCs page** (per worker):
+  - **Add a group** (`POST /api/workers/{wid}/install_group`): a background install on the worker, with progress via `GET /api/workers/{wid}/install_group/{gid}`;
+  - the trash button, **Delete a model file** (`DELETE /api/workers/{wid}/models?path=...`);
   - disk usage (`GET /api/workers/{wid}/disk`);
   - single files via `POST /api/workers/{wid}/install_url` (`{path, url | hf_repo + hf_file, hf_revision?, bytes?, sha256?}`).
 
   These pulls run on the worker's own connection. They allow https only and public addresses only (unless `install_allow_http` / `install_allow_private_hosts` are set in `worker_config.yaml`), checked again on every redirect. They are streamed to `<file>.part` with HTTP Range resume, then renamed.
 - **LAN push:** `POST /api/workers/{wid}/install` sends files from the main PC instead. The studio hashes each file, and the agent checks its size and SHA-256 before renaming it into place.
-- **SHA-256:** a pulled file is hash-checked only when its manifest entry has a `sha256`. `install/colab_model_groups.json` ships with every `sha256` empty and most `bytes` at 0. `tool/scripts/publish_models_hf.py` fills both into the PC's copy while it uploads. The Colab side reads the manifest from its own clone, so the values reach it only after the updated manifest is committed and pushed. Until then, downloads are not hash-checked (the agent logs `verified=False`). Where `bytes` is 0, the size is not checked either: `fetch_models.py` treats any existing file as present, while a Workers-page install downloads it again (it skips a file only on a size match).
-- **Disk budget (`colab/fetch_models.py`):** it adds up the manifest `bytes` of the selected files. It refuses (exit 2, before downloading) when the sum exceeds `--budget-gb` or the manifest's `disk_budget_gb` (60), or when free disk is below the sum plus 3 GiB. Files with `bytes` 0 count as zero, so with today's manifest the default H3 groups pass the guard unmeasured. It also refuses while `hf_repo` still contains the `OWNER` placeholder. Workers-page installs do not apply the 60 GB budget. The agent refuses a file (507) only when its declared size plus 2 GiB exceeds the free disk.
+- **SHA-256:** a pulled file is hash-checked only when its manifest entry has a `sha256`. `install/colab_model_groups.json` ships with every `sha256` empty and most `bytes` at 0. `tool/scripts/publish_models_hf.py` fills both into the PC's copy while it uploads. The Colab side reads the manifest from its own clone, so the values reach it only after the updated manifest is committed and pushed. Until then, downloads are not hash-checked (the agent logs `verified=False`). Where `bytes` is 0, the size is not checked either: `fetch_models.py` treats any existing file as present, while an install from the Worker PCs page downloads it again (it skips a file only on a size match).
+- **Disk budget (`colab/fetch_models.py`):** it adds up the manifest `bytes` of the selected files. It refuses (exit 2, before downloading) when the sum exceeds `--budget-gb` or the manifest's `disk_budget_gb` (60), or when free disk is below the sum plus 3 GiB. Files with `bytes` 0 count as zero, so with today's manifest the default H3 groups pass the guard unmeasured. It also refuses while `hf_repo` still contains the `OWNER` placeholder. Installs from the Worker PCs page do not apply the 60 GB budget. The agent refuses a file (507) only when its declared size plus 2 GiB exceeds the free disk.

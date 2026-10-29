@@ -113,7 +113,7 @@ security:
 | `security.local_bypass` | bool, `true` | A loopback peer plus a loopback `Host` header skips the token. `false` requires the token everywhere. |
 | `security.cors_origins` | list (or comma-separated string) | Extra browser origins that the Origin gate accepts. The gate reads it on every request. Same-origin requests always pass. The same list feeds `CORSMiddleware` (`allow_credentials=True`), which reads it once at startup and falls back to `http://127.0.0.1:8080` and `http://localhost:8080` when the list is empty. Trailing slashes are ignored. |
 | `security.allowed_hosts` | list (or comma-separated string), `[]` | Host names the studio answers to. Entries are exact names or `*.suffix`. `*` turns the Host gate off (not recommended). IP literals and `localhost` always pass. |
-| `security.media_roots` | list, `[]` | Extra folders that client-supplied absolute file paths may point into (`core.resolve_user_path`). Used by story import from a file, shot-list ingest from a path, LTX reference images and Video Studio continuation clips. The studio root, `paths.comfyui`, `paths.shots`, `paths.output`, `paths.roster`, `paths.temp` and `paths.extra_model_dirs` are always allowed. |
+| `security.media_roots` | list, `[]` | Extra folders that client-supplied absolute file paths may point into (`core.resolve_user_path`). Used by story import from a file, shot-list ingest from a path, LTX reference images and Video Studio continuation clips. The studio root, `paths.comfyui`, `paths.shots`, `paths.output`, `paths.roster`, `paths.temp` and `paths.extra_model_dirs` are always allowed. A model folder added under Settings › Model files (`POST /api/model-files/folders`, behind the same API token as `POST /api/settings`) joins that list; a whole drive and a network folder are refused there. A `Kinoloom-models` folder that the installer or that page's search makes at the top of a drive joins it too; Kinoloom fills it only with hard links to model files the search checked and a `README.txt`. |
 
 ### Secrets in settings
 
@@ -133,7 +133,7 @@ The `_response_headers` middleware adds `X-Content-Type-Options: nosniff`, `X-Fr
 - **register** and **heartbeat** carry the token in the JSON body (`"token"`). **result** carries it in the `X-Worker-Token` header (or `Authorization: Bearer` / `X-API-Token`). A missing or wrong token gets **401**.
 - At registration the SHA-256 of the token is stored with the worker, and heartbeats and result uploads must match it. Every worker uses the same token, so this check does not tell one worker from another.
 - Anyone holding the token can register a worker under any name. Registering an existing name overwrites that worker's record, **including its host**, so later jobs for that worker id go to the new address. Treat the token like a password.
-- **Rotation:** `POST /api/workers/token` (Workers page) generates a new token and returns it. Every installed worker then needs reinstalling, or its `worker_config.yaml` `token` updated.
+- **Rotation:** `POST /api/workers/token` (Worker PCs page → New token) generates a new token and returns it. Every installed worker then needs reinstalling, or its `worker_config.yaml` `token` updated.
 - **Installer:** `GET /api/workers/installer` serves `install/INSTALL-WORKER.bat` with the control room URL and the token filled in. Treat the downloaded file as a secret. Values that contain batch metacharacters are refused.
 - `GET /api/workers` reports only whether a token is set, never the token itself. The worker list leaves out `token_hash`.
 
@@ -179,7 +179,7 @@ workers:
 | `workers.offline_after_s` | `30` | A worker without a heartbeat for this long counts as offline. The dispatcher's reaper marks it offline and applies `on_worker_loss`. |
 | `workers.on_worker_loss` | `requeue_local` | What happens to a dead worker's running items: `requeue_local` queues them for the local machine, `fail` fails them, and any other value requeues them for the same worker. An item that has used up its `max_attempts` fails whatever the setting. |
 | `workers.remote_timeout_scale` | `1.0` in code, `3.0` in the example | Multiplies the remote job deadline sent to the agent (3600 s × scale) and the control room's wait for it. |
-| `workers.heartbeat_s` | `10` | Only shown on the Workers page. The agent's heartbeat interval comes from its own `worker_config.yaml`. |
+| `workers.heartbeat_s` | `10` | Only shown on the Worker PCs page. The agent's heartbeat interval comes from its own `worker_config.yaml`. |
 | `workers.enabled`, `workers.agent_port` | `true`, `8120` | Present in `settings.example.yaml` but not read by the control room. The agent's port is set in its `worker_config.yaml`. |
 
 ---

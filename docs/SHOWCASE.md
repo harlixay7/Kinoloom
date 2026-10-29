@@ -4,7 +4,7 @@
 
 > **In short.** Every video and image in the README's showcase was made on one PC with an RTX 3070 8 GB. This page covers how each one was made, how long every step took from a cold start and what that comes to warm, what the seam QA measured, and what is wrong with each sample. It also records three MiniMax H3 takes that were rendered but are not published (see the note below). Every number comes from a saved record; [Records](#15-records) lists where each one lives.
 
-The machine: RTX 3070 8 GB, i9-10980XE, 64 GB RAM, Windows 11, NVIDIA driver 616.64. Each model ran on its own isolated ComfyUI instance. The forest take (section 10) is an earlier H3 gate chain, and the two gallery stills (section 11) come from the studio's Images page. The records themselves are gitignored and not redistributed.
+The machine: RTX 3070 8 GB, i9-10980XE, 64 GB RAM, Windows 11, NVIDIA driver 616.64. Each model ran on its own isolated ComfyUI instance. The forest take (section 10) is an earlier H3 gate chain, and the two gallery stills (section 11) come from the studio's Image Studio (then called Images). The records themselves are gitignored and not redistributed.
 
 > **Why the MiniMax H3 takes are not shown.** Three of the samples on this page are MiniMax H3 takes: the cliff walk (section 6), the kitchen (section 7) and the forest road (section 10). The [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) grants use of the model only outside the European Union, the United Kingdom, South Korea and the United States, and its §V.4 applies the same limit to displaying the model's outputs. I live in the EU, so the H3 renders, stills and frame strips are not published. Their sections keep everything else: how each take was made, every timing, the seam QA and the cast identity scores. The requests that made them are in [`docs/showcase/inputs/`](showcase/inputs/).
 
@@ -19,7 +19,7 @@ The machine: RTX 3070 8 GB, i9-10980XE, 64 GB RAM, Windows 11, NVIDIA driver 616
 | [Letter](#8-ltx-25-the-letter-by-the-window) | LTX-2.5, `ltx25_s6_cq` | 16.0 s, 4 links | about 26 min (33.8 min, with one re-draft) | all pass the pop gate, 3 detail flags | slight softening at frame 193; needed one re-prompt |
 | [Lantern](#9-ltx-25-the-lantern-in-the-snow) | LTX-2.5, `ltx25_s6_cq` | 16.0 s, 4 links | about 29 min (29.7 min) | frame 193 fails pop and saturation; 1 detail flag | the warm light on his cheek dips at frame 193; link 2 skips its action; his identity score falls in links 3-4 |
 | [Stills](#4-stills-qwen-image-21-fast) | Qwen-Image 2.1, fast | 9 stills, 2688x1536 | 38-78 s warm, 99-225 s cold | | a 125 s and a 158 s stall in an upscale |
-| [Gallery](#11-two-more-qwen-stills-from-the-images-page) | Qwen-Image 2.1, fast | 2 stills, 2048x2048 | 304 s and 397 s (an older setup) | | |
+| [Gallery](#11-two-more-qwen-stills-from-image-studio) | Qwen-Image 2.1, fast | 2 stills, 2048x2048 | 304 s and 397 s (an older setup) | | |
 
 ## On this page
 
@@ -33,7 +33,7 @@ The machine: RTX 3070 8 GB, i9-10980XE, 64 GB RAM, Windows 11, NVIDIA driver 616
 8. [LTX-2.5: the letter by the window](#8-ltx-25-the-letter-by-the-window)
 9. [LTX-2.5: the lantern in the snow](#9-ltx-25-the-lantern-in-the-snow)
 10. [MiniMax H3: the forest road](#10-minimax-h3-the-forest-road)
-11. [Two more Qwen stills from the Images page](#11-two-more-qwen-stills-from-the-images-page)
+11. [Two more Qwen stills from Image Studio](#11-two-more-qwen-stills-from-image-studio)
 12. [Continuity, measured](#12-continuity-measured)
 13. [Cast identity through the take](#13-cast-identity-through-the-take)
 14. [What the samples do not show](#14-what-the-samples-do-not-show)
@@ -358,14 +358,14 @@ Take verdict: FAIL on the drift gate only. From link 1 to link 4, high-frequency
 
 **Against the old engine.** The old engine's Video Studio take of the same story (124-frame links, 496 frames, each link started from the last frame of the one before) failed all three joins: pop 3.06x / 2.25x / 2.16x, saturation +18.8 / +11.9 / +10.2. The new take's joins measure 1.105x / 1.280x / 0.963x (above). It is a different render of the same story, so this compares the old pipeline with the new one, not one mechanism with another.
 
-## 11. Two more Qwen stills from the Images page
+## 11. Two more Qwen stills from Image Studio
 
 | Anime style | Photo style |
 | :---: | :---: |
 | ![Qwen-Image 2.1: two samurai facing off in a bamboo grove at dusk](showcase/stills/qwen_samurai_duel.jpg) | ![Qwen-Image 2.1: a woman walking down a city street](showcase/stills/qwen_city_walk.jpg) |
 | `img_00024`, seed 893960 | `img_00018`, seed 824807 |
 
-Both were made on the studio's Images page with the same `qwen21_fast` mode: the Q5_K_M GGUF with the 8-step LoRA, 8 steps, CFG 1.0, euler / simple, text encoder on the CPU. They are square: a 1024x1024 latent, finished with 4x-UltraSharp then x0.5 to 2048x2048. The prompts and settings are copied from the image records into [`docs/showcase/inputs/qwen_gallery.json`](showcase/inputs/qwen_gallery.json).
+Both were made in the studio's Image Studio (then called Images) with the same `qwen21_fast` mode: the Q5_K_M GGUF with the 8-step LoRA, 8 steps, CFG 1.0, euler / simple, text encoder on the CPU. They are square: a 1024x1024 latent, finished with 4x-UltraSharp then x0.5 to 2048x2048. The prompts and settings are copied from the image records into [`docs/showcase/inputs/qwen_gallery.json`](showcase/inputs/qwen_gallery.json).
 
 The image records give 396.9 s (samurai) and 303.5 s (city walk) of execution time. Don't compare those with section 4. Both were made before the Qwen instance moved from `--lowvram` to `--highvram`, a change made because `--lowvram` let the model fall into per-module CPU dequantization at 20-100 s per step ([PROVEN_CONFIGS_QWEN21.md](research/PROVEN_CONFIGS_QWEN21.md)). So they most likely ran on the slow path; their records don't name the launch flags.
 
@@ -479,6 +479,6 @@ Run these from the repository root (the request files name their stills by repo-
    - H3, only where the MiniMax H3 licence allows you to use the model: `tool\.venv\Scripts\python tool\scripts\chain_lab.py h3-gate --request docs\showcase\inputs\h3_cliff.json --steps link,decode`,
      then the same with `--steps refine,take`.
 
-The forest take and the two gallery stills can't be reproduced from the repository alone: the forest take's references are not included, and the gallery stills came from the Images page. Their records in `docs/showcase/inputs/` list every setting.
+The forest take and the two gallery stills can't be reproduced from the repository alone: the forest take's references are not included, and the gallery stills came from Image Studio. Their records in `docs/showcase/inputs/` list every setting.
 
 The renders are deterministic only up to the GPU kernels; a bit-exact repeat has not been tried.

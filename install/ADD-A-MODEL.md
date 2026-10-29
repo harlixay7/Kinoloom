@@ -35,25 +35,30 @@ This covers, for example, your own optimized or distinct quant.
      `STEPS`, `FRAMES` and a few derived values. A token left unset raises
      `WorkflowError`.
    - Optionally, give it a `catalog` block. This places it in the model
-     pickers (Video Studio and the Generate tab):
+     pickers (Video Studio and the movie's Render page):
      `{"group": "ltx25", "label": "My quant 5 s", "detail": "1080p · ~8 min", "rank": 25}`.
      `group` is one of `ltx25`, `h3_1080p`, `h3_draft`, `wan`, `legacy`
      (`video_models.CATALOG_GROUPS`). `label` is the short name shown in the
-     list. `detail` goes in the tooltip and under the select. `rank` orders
-     the group (lower first; 99 by default). `"recommended": true` puts it
-     first with a ★ (keep one per group). Without the block, the entry falls
-     into its family's group under its `display_name`. The catalog changes
-     nothing about how the model renders.
+     list. `detail` goes in the tooltip and under Video Studio's select; the
+     Render page shows its parts (split at `·`) as tags on the model's card.
+     `rank` orders the group (lower first; 99 by default).
+     `"recommended": true` puts it first with a ★ (keep one per group).
+     Without the block, the entry falls into its family's group under its
+     `display_name`. The catalog changes nothing about how the model renders.
 3. **Restart the control room.** The user file is merged once, when
    `tool/video_models.py` is imported. After that, availability is computed
-   from disk on every request: the weight, text encoder, VAE and every named
-   template must exist. Reload the Video Studio tab and the model appears in
-   its group of the select. It is greyed out and marked `(unavailable)` if
-   something is missing. It is marked ⛓ when its chains render as one
-   seamless take (`video_models.seamless_kind`: an LTX entry with a `chain`
-   workflow on the `ComfyUI_LTX` instance, or an H3 entry with reference
-   images). The tooltip calls it experimental unless the entry sets
-   `"experimental": false` (or `"status": "production"`).
+   on every request: the weight, text encoder, VAE and every named template
+   must exist, and this PC's graphics card and driver must run the ComfyUI
+   build of the entry's family (`tool/gpu_support.py`: an LTX-2.5 or H3
+   entry needs a GTX 16- or RTX 20-series card or newer and driver R580, a
+   Wan entry a GTX 900- to RTX 40-series card and R560). Reload the
+   Video Studio page and the model appears in its group of the select. It is
+   greyed out and marked `(unavailable)` if something is missing, or `(not on
+   this graphics card)` when the card or driver is the reason. It is marked ⛓
+   when its chains render as one seamless take (`video_models.seamless_kind`:
+   an LTX entry with a `chain` workflow on the `ComfyUI_LTX` instance, or an
+   H3 entry with reference images). The tooltip calls it experimental unless
+   the entry sets `"experimental": false` (or `"status": "production"`).
 
 Rules of the merge (`video_models._merge_user_registry`):
 - Same id as a built-in model + `"override": true` → replaces that entry.
@@ -66,32 +71,31 @@ Rules of the merge (`video_models._merge_user_registry`):
   models stay available. A single non-object entry is skipped.
 
 **Using it in the movie pipeline** is a separate, manual step. The pipeline
-renders an LTX-2.5 or MiniMax H3 family entry when the Generate tab sets it
+renders an LTX-2.5 or MiniMax H3 family entry when the Render page sets it
 as the project's video model (`video_family`) or per-tier model
 (`video_models`), or when a shot names it in `video_model`
 (`orchestrator._video_family`). An entry of another family, or one that is
-not installed, falls back to the studio default (below). The legacy Wan 2.2
+not available, falls back to the studio default (below). The legacy Wan 2.2
 entry renders only when a project or shot picks it. On a ⛓ entry, runs of
 `CONTINUE` shots render as one seamless take
 (`docs/PIPELINE_AND_CONTINUITY.md`, section 4.4.1).
 
 **The studio default** is `DEFAULT_MODEL` in `tool/video_models.py`
 (`ltx25_s6_cq`). `video_models.default_model_id()` returns it when it is
-installed, otherwise the first installed LTX-2.5 or MiniMax H3 tier in
+available, otherwise the first available LTX-2.5 or MiniMax H3 tier in
 picker order, and never a Wan entry. A project without a model renders on
-it, Video Studio opens on it, and the Generate tab's empty choice means it.
-With no LTX-2.5 or H3 tier installed, a project shot goes to review with an
-error. To change the default, set `DEFAULT_MODEL` to another LTX-2.5 or H3
-id. `tool/scripts/verify_restore.py` fails when no LTX-2.5 or H3 tier is
-installed and warns when `DEFAULT_MODEL` itself is missing.
-`POST /api/videostudio/promote?model=<id>` lists these places and changes
-nothing.
+it, Video Studio opens on it, and the Render page's "Studio default" choice
+means it. With no LTX-2.5 or H3 tier available, a project shot goes to review
+with an error that says why. To change the default, set `DEFAULT_MODEL` to
+another LTX-2.5 or H3 id. `tool/scripts/verify_restore.py` fails when no
+LTX-2.5 or H3 tier is available and warns when `DEFAULT_MODEL` itself is not.
 
 The `REQUIRED` list in `verify_restore.py` covers the files of the other
 templates. It holds `(folder under models/, file name, hard)` tuples. A hard
 entry fails the check when the file is missing or under 1 MB; a soft one
-only warns. Only `models/` is searched (not `paths.extra_model_dirs`). The
-only hard entries today are the IP-Adapter pair, and only when an SDXL model
+only warns. It looks in `models/` and in the model folders of
+`paths.extra_model_dirs`, as the studio does (`tool/model_files.py`). The
+only hard entries are the IP-Adapter pair, and only when an SDXL model
 is installed.
 
 The legacy Wan 2.2 graphs take their unet from `SUBST["MODEL_5B"]` in
@@ -109,11 +113,15 @@ upscaler (`post.py`).
 Image models live in the Python registry `tool/models.py: MODELS`, one dict
 entry per model. Editing it is a code change and needs a control-room
 restart. An entry of an existing `family` (`sdxl`, `wan`, `zimage`,
-`qwen21`) with an existing `template` works in the Images tab: the model
+`qwen21`) with an existing `template` works in Image Studio: the model
 cards are built from the registry, and `models.build_workflow` maps the
 entry's `files` onto that family's template tokens. Availability checks the
 `unet` file in `models/diffusion_models/` (or the `ckpt` in
-`models/checkpoints/` for `"loader": "checkpoint"`). A new architecture
+`models/checkpoints/` for `"loader": "checkpoint"`), or in the same place in
+a model folder of `paths.extra_model_dirs`, where a file in
+`install/components.json` counts only with its size there, and that the card
+and driver run the ComfyUI build of the entry's `comfy_port`
+(`models.gpu_problem`). A new architecture
 needs its own `tool/workflows/<template>.json` and a branch in
 `models.build_workflow`.
 
@@ -137,6 +145,8 @@ needs its own `tool/workflows/<template>.json` and a branch in
   what `install/components.json` lists. For the installer to fetch a new
   model, add it there: its path, size, sha256 and sources, and its id in a
   component's `models` (or `manual`, for a file it must never download).
+  The size and sha256 also let the installer and Settings › Model files find
+  a copy the user already has, under any name (`tool/model_files.py`).
   `tests/unit/test_install_components.py` fails when a file the studio loads
   is missing from that catalog.
 - INSTALL-WORKER.bat installs a worker and lets you pick model packages.

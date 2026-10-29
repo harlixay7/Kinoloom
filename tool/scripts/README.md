@@ -12,7 +12,7 @@
 
 | Script | What it does |
 | :--- | :--- |
-| `verify_restore.py` | The check `install\verify_install.py` runs in a full run: torch and CUDA, the model files under `models\`, the movie models in the video registry, the optional extras and the studio's imports. Run it with an empty `PYTHONPATH`. |
+| `verify_restore.py` | The check `install\verify_install.py` runs in a full run: torch and CUDA, the model files (in `models\` or a model folder of `paths.extra_model_dirs`), the movie models in the video registry, the optional extras and the studio's imports. Run it with an empty `PYTHONPATH`. |
 | `verify_workflows.py` | Builds every workflow template in `tool/workflows/` and checks that each model file it references exists on disk. |
 | `verify_ref_models.py` | Checks the SDXL reference-image (IP-Adapter) stack: file sizes and tensor keys offline, then, with the render farm up, ComfyUI's own model lists and the graph `models.build_ref_workflow()` builds. |
 | `model_inventory.py` | Resolves every workflow template to the model files it loads and compares them with what is on disk. |

@@ -2,7 +2,7 @@
 
 # Docs map
 
-> **In short.** This page lists every document in the repository and what it is for. If you only want to see what Kinoloom can do, read the [README](../README.md) and the [showcase](SHOWCASE.md). If you want to set it up, start with [RESTORE_INSTRUCTIONS.md](setup/RESTORE_INSTRUCTIONS.md). If you want to know exactly how something works or where a number comes from, use the tables below.
+> **In short.** This page lists every document in the repository and what it is for. If you only want to see what Kinoloom can do, read the [README](../README.md) and the [showcase](SHOWCASE.md). If you want to set it up, start with the README's [Quick start](../README.md#quick-start); [RESTORE_INSTRUCTIONS.md](setup/RESTORE_INSTRUCTIONS.md) has the manual steps behind the installer. If you want to know exactly how something works or where a number comes from, use the tables below.
 
 The docs follow three rules: every number comes from a saved record (where a number was only printed on screen and not saved, the doc says so); what was measured is kept apart from what is only inferred; and when a claim turns out wrong, the correction is recorded instead of the old claim being deleted. Everything was tested on one machine: an RTX 3070 8 GB, i9-10980XE, 64 GB RAM, Windows 11.
 
@@ -17,7 +17,7 @@ The docs follow three rules: every number comes from a saved record (where a num
 
 | Doc | What's in it | Read it if... |
 | :--- | :--- | :--- |
-| [RESTORE_INSTRUCTIONS.md](setup/RESTORE_INSTRUCTIONS.md) | What a fresh clone lacks and how to get each piece: the three ComfyUI trees, their venvs, the weights, then verification | you are installing from a clone, or rebuilding after a disk failure |
+| [RESTORE_INSTRUCTIONS.md](setup/RESTORE_INSTRUCTIONS.md) | What a fresh clone lacks and how to get each piece by hand: the three ComfyUI trees, their venvs, the weights, then verification | the installer stopped and you want to see what it does, or you are rebuilding after a disk failure |
 | [install/ADD-A-MODEL.md](../install/ADD-A-MODEL.md) | Adding your own model: a video model needs no code changes, an image model a small one | you have a model file the studio doesn't list yet |
 | [SECURITY.md](../SECURITY.md) | What the API gate enforces, the tokens, the worker fleet, the threat model, how to report a vulnerability | you want to open the studio to your network, or you found a security problem |
 | [DISTRIBUTED_FLEET.md](setup/DISTRIBUTED_FLEET.md) | LAN render workers, the fleet token, the remote client, Colab workers over Tailscale | you want a second PC or a Colab GPU to take render jobs |
@@ -50,6 +50,7 @@ The docs follow three rules: every number comes from a saved record (where a num
 | :--- | :--- |
 | [HARDWARE_BENCHMARKS_AND_LIMITS.md](research/HARDWARE_BENCHMARKS_AND_LIMITS.md) | The test machine (§1), model geometry and FLOPs (§2), the W4A8 kernel gate (§3), compute-bound against bandwidth-bound sampling (§4), the Windows paging cliff (§5), the LTX-2.5 decoder fix (§6) |
 | [PROVEN_CONFIGS_QWEN21.md](research/PROVEN_CONFIGS_QWEN21.md) | The dedicated Qwen-Image 2.1 instance, its weights, the proven configs and their verification log |
+| [MOVIE_CONTINUITY.md](research/MOVIE_CONTINUITY.md) | The movie pipeline's measured defaults: the 8-shot LTX-2.5 take behind the take length of 6 (§1), the opening-frame comparison behind its references (§2), the calibration of the QA's cast check (§3), a five-shot scene through the movie path (§4) |
 | [VIDEOLAB.md](research/VIDEOLAB.md) | Fact-checked copy of the videolab README: benchmarks of the LTX-2.5 22B and MiniMax H3 video DiTs on one 8 GB GPU, mostly single runs |
 | [VIDEOLAB_01_H3_STREAMING_AND_8GB_LIMITS.md](research/VIDEOLAB_01_H3_STREAMING_AND_8GB_LIMITS.md) | H3 token geometry, FLOPs, PCIe streaming, the 243-frame refine post-mortem |
 | [VIDEOLAB_02_LTX_W4A8_KERNEL_AND_PIPELINE_STABILITY.md](research/VIDEOLAB_02_LTX_W4A8_KERNEL_AND_PIPELINE_STABILITY.md) | The W4A8 kernel gate, ComfyUI #15606, pipeline rules |
@@ -69,15 +70,15 @@ The docs follow three rules: every number comes from a saved record (where a num
 | Doc | What's in it |
 | :--- | :--- |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | Development setup, the rules the code keeps, conventions, tests and the checks CI runs |
-| [CHANGELOG.md](../CHANGELOG.md) | Notable changes (nothing released yet) |
-| [LICENSE](../LICENSE) | MIT, except `ComfyUI_LTX/comfy_extras/nodes_lt_audio.py`, a modified ComfyUI file under ComfyUI's GPL-3.0. Model weights are not part of the repository and keep their own licenses. |
+| [CHANGELOG.md](../CHANGELOG.md) | Notable changes, release by release |
+| [LICENSE](../LICENSE) | MIT, except the files [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) lists: two modified GPL-3.0 files (ComfyUI's `nodes_lt_audio.py` and Impact-Pack's `impact_onnx.py`) and the web fonts under the SIL Open Font License. Model weights are not part of the repository and keep their own licenses. |
 | [.github/](../.github/) | The issue templates (bug report, hardware report) and the pull request checklist |
 
 ## Small docs next to the code
 
 | Doc | What's in it |
 | :--- | :--- |
-| [tool/train/INSTALL.md](../tool/train/INSTALL.md) | Installing kohya sd-scripts and training a character face LoRA from the command line (the Training page uses ai-toolkit instead) |
+| [tool/train/INSTALL.md](../tool/train/INSTALL.md) | Installing kohya sd-scripts and training a character face LoRA from the command line (the studio's Wan 2.2 LoRA training, linked from the foot of the Casting page, uses ai-toolkit instead) |
 | [ReferenceImages/README.md](../ReferenceImages/README.md) | The one check that reads this folder: face QA of shots that belong to no project |
 | [install/overlay/README.md](../install/overlay/README.md) | `progress_relay.html`, the live-progress page that has to be copied into each ComfyUI runtime |
 | [ComfyUI-Qwen21-Optimized/README.md](../ComfyUI_Qwen21/custom_nodes/ComfyUI-Qwen21-Optimized/README.md) | The studio's Qwen-Image 2.1 nodes, which ones the studio graph uses, and what each one checks |
@@ -96,6 +97,7 @@ The docs follow three rules: every number comes from a saved record (where a num
 | How does the LLM story generation stay on canon? | [PIPELINE](PIPELINE_AND_CONTINUITY.md) §2-§3 |
 | How does a shot continue from the last one? | [PIPELINE](PIPELINE_AND_CONTINUITY.md) §4 |
 | How does QA decide a shot failed, and what happens next? | [PIPELINE](PIPELINE_AND_CONTINUITY.md) §5 |
+| How many shots does one movie take hold, and why? | [PIPELINE](PIPELINE_AND_CONTINUITY.md) §4.4.1, [MOVIE_CONTINUITY](research/MOVIE_CONTINUITY.md) §1 |
 | How are long takes joined, and how is a seam measured? | [SEAMLESS_CHAINS](research/SEAMLESS_CHAINS.md), [01](research/SEAMLESS_CHAINS_01_LTX.md) §1-§4 |
 | Why does the LTX-2.5 1080p finish sometimes crawl? | [SEAMLESS_CHAINS_01](research/SEAMLESS_CHAINS_01_LTX.md) §7, [HARDWARE](research/HARDWARE_BENCHMARKS_AND_LIMITS.md) §5.4 |
 | Why did the PC blue-screen during the H3 tests, and what changed? | [SEAMLESS_CHAINS_02](research/SEAMLESS_CHAINS_02_H3_MEMORY_AND_CRASHES.md) §5 |
@@ -107,7 +109,7 @@ The docs follow three rules: every number comes from a saved record (where a num
 | How do I report a security problem? | [SECURITY.md](../SECURITY.md) §6 |
 | Which files does a fresh clone lack? | [RESTORE_INSTRUCTIONS](setup/RESTORE_INSTRUCTIONS.md) §1, [TOOLING_BACKUP](setup/TOOLING_BACKUP.md) |
 | How do I add a model? | [install/ADD-A-MODEL.md](../install/ADD-A-MODEL.md) |
-| How do I train a LoRA? | the Training page (ai-toolkit): [ARCHITECTURE](ARCHITECTURE.md) §6; a face LoRA from the command line: [tool/train/INSTALL.md](../tool/train/INSTALL.md) |
+| How do I train a LoRA (legacy Wan 2.2 only)? | Wan 2.2 LoRA training, at the foot of the Casting page (ai-toolkit): [ARCHITECTURE](ARCHITECTURE.md) §6; a face LoRA from the command line: [tool/train/INSTALL.md](../tool/train/INSTALL.md) |
 | Where is the record behind a seamless-chain number? | [SEAMLESS_CHAINS_EVIDENCE_INDEX](research/SEAMLESS_CHAINS_EVIDENCE_INDEX.md) |
 
 ## Where the code lives

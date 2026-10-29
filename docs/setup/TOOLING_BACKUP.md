@@ -28,7 +28,7 @@ Git tracks source. The assets below must never be mistaken for "lost": they are 
   each project carries its own repo history. Do not nest it into this repo.
 
 ## Locally trained models: not on the internet, not in git (too big)
-- LoRAs trained on the Training page (ai-toolkit) are copied into `models/loras/` when a run completes, and the run folders stay in `models/train_models/aitk_out/` (`training.aitk_out`).
+- LoRAs trained with the studio's Wan 2.2 LoRA training (ai-toolkit, at the foot of the Casting page) are copied into `models/loras/` when a run completes, and the run folders stay in `models/train_models/aitk_out/` (`training.aitk_out`).
 
 Back these files up out-of-band. Unlike everything in the re-downloadable list, they cannot be downloaded again.
 
@@ -40,14 +40,15 @@ Back these files up out-of-band. Unlike everything in the re-downloadable list, 
 
 ## Updating the tracked files inside ComfyUI_LTX
 
-Nine files of the `ComfyUI_LTX` tree are tracked here: the studio's own files,
-two patched upstream files (`nodes_lt_audio.py` from ComfyUI,
-`MMH3_Split_Upscale.py` from the H3 upscaler pack) and the two license files
-that go with them:
+Ten files of the `ComfyUI_LTX` tree are tracked here: the studio's own files
+with their license, two patched upstream files (`nodes_lt_audio.py` from
+ComfyUI, `MMH3_Split_Upscale.py` from the H3 upscaler pack) and the two
+license files that go with them:
 
 - `ComfyUI_LTX/LICENSE` (ComfyUI's GPL-3.0, for `nodes_lt_audio.py`)
 - `ComfyUI_LTX/extra_model_paths.yaml`
 - `ComfyUI_LTX/comfy_extras/nodes_lt_audio.py`
+- `ComfyUI_LTX/custom_nodes/ComfyUI-LTX25-Studio/LICENSE`
 - `ComfyUI_LTX/custom_nodes/ComfyUI-LTX25-Studio/__init__.py`
 - `ComfyUI_LTX/custom_nodes/ComfyUI-LTX25-Studio/studio_chain_core.py`
 - `ComfyUI_LTX/custom_nodes/ComfyUI-LTX25-Studio/studio_chain_nodes.py`

@@ -165,43 +165,60 @@ interrupted on the server, and the chain fails.
 A `CONTINUE` shot carries the camera on from the shot before it. When the
 shot's model has the seamless-chain engine, the orchestrator renders a run of
 them as one chain and cuts it back into shots (`tool/movie_takes.py`;
-`Orchestrator._take_run`, `_render_take`, `_wait_take` and `_take_failed` in
-`tool/orchestrator.py`). The chain itself is started through
-`video_studio.start_chain`, the same call a Video Studio chain uses.
+`Orchestrator._render_unit`, `_render_chain`, `_wait_take` and `_unit_failed`
+in `tool/orchestrator.py`). The take renders with the Video Studio's request
+for it (`movie_request.build`; `docs/PIPELINE_AND_CONTINUITY.md` §4.4). The
+chain itself is started through `video_studio.start_chain`, the same call a
+Video Studio chain uses.
 
-**Which shots join a take** (`movie_takes.plan_take`). Starting from the head
-shot, the next shot joins while all of these hold:
+**Which shots join a take** (`movie_prompts.plan_units`). The takes are
+planned in story order, whatever the shots' statuses. The next shot joins
+while all of these hold:
 
-- exactly one shot names the current last shot as its `prev_shot` (two shots
-  continuing the same one is a fork and ends the take);
-- it is `pending` or `queued`, is not a QA retake (`qa_stage` 0) and is not a
-  forced text-to-video render;
-- its continuity is `CONTINUE`, in the same scene and the same location (when
-  both name one);
-- it renders on the head shot's model;
-- the take has fewer than `movie.take_max_shots` shots (default 4).
+- its continuity is `CONTINUE`, with the take's last shot as its
+  `prev_shot`, in the same scene and the same location (when both name one;
+  `movie_takes.continues`);
+- exactly one shot names that shot as its `prev_shot` (two shots continuing
+  the same one is a fork and ends the take);
+- neither is a forced text-to-video render;
+- it renders on the same model, and that model has the engine;
+- the take has fewer shots than its take length (`movie_takes.max_shots`):
+  on LTX-2.5 the project's **Shots per take**, else `movie.ltx_take_max_shots`
+  (default 6), at most a Video Studio chain's 50 segments; on H3
+  `movie.h3_take_max_shots` (default 4), which a project's own length can
+  only shorten.
 
-The head shot itself renders alone if it is a retake or t2v. If planning
-raises an error, the shot renders alone (logged).
+A shot that renders again (a retry or a retake) renders its whole take under
+the take's chain id (`movie_prompts.unit_for`): the shots before it reuse
+their finished steps, so the latent carry into it stays.
 
-**Switches.** The project's `seamless_takes` column (Generate tab, default
-on), settings `movie.seamless_takes` (default on) and
+**Switches.** The project's `seamless_takes` column (the Render page,
+default on), settings `movie.seamless_takes` (default on) and
 `video_studio.seamless_chains`. With any of them off, or on a model without
 the engine, every shot renders alone as before.
 
-**Rendering a take** (`_render_take`):
+**Rendering a take** (`_render_chain`):
 
 - One reference set and cast line for the whole take: the head shot with the
   characters of every shot in the take, first appearance order, highest tier,
   and the first power any shot shows (`take_shot`, `take_cast`, references in
   slot order).
-- The opening frame is the previous shot's tail when the head shot continues
-  one.
-- Each shot keeps its own prompt (H3: `_h3_take_prompt`; LTX: the reference
-  legend and the LTX prompt recipe; the negative comes from the head shot).
+- The take starts from the previous shot's last frame when the head shot
+  continues one (its start image, as ↪ starts a Video Studio chain).
+  Otherwise it starts from the head shot's own start image or its opening
+  frame (`tool/opening_frames.py`).
+- Each shot keeps its own prompt, written for the take by an AI or by hand
+  and passed by the Video Studio's prompt check (`tool/movie_prompts.py`).
+  There is no negative prompt.
 - The chain id is `sha1(project | model | shot ids)[:16]` (`take_id`), and
-  shot seeds are `base_seed + index`; a retried take reuses the seed stored on
-  its head row. The engine reuses a step only when its graph is unchanged.
+  each shot renders its link with its own seed: the one stored on its row,
+  else its stable seed (the scene's base seed plus its place in the story, so
+  a fresh take's seeds are consecutive). A retried take keeps them, and a
+  retake adds 104729 to the retaken shot's seed only. The engine reuses a step
+  only when its graph and the files it reads are unchanged, so the links
+  before the retaken one are reused and the ones from it on render again; a
+  seam re-roll's kept seed counts only while the link keeps the seed it was
+  rolled from (`LtxChain.link_seed`).
   Every start uploads the references again, under names derived from their
   bytes (`renderer.upload_name`), so the uploads leave the graphs as they were
   and a re-run or retry with the same prompts skips the steps that already
@@ -219,11 +236,12 @@ raises an error. Each shot then continues as a normal render: its own render
 record, provenance (take id, index, engine, seam QA verdict), tail frame, post
 queue and QA.
 
-**Failure handling** (`_take_failed`). A transient failure (connection
+**Failure handling** (`_unit_failed`). A transient failure (connection
 refused, timeout) re-queues the whole take without using a retry, up to 60
-times 30 s apart. Any other failure counts one attempt on every shot of the
-take and re-queues it whole with the same seeds. Once the tightest retry
-budget among its shots is spent, all of them go to review.
+times 30 s apart. Any other failure counts one attempt on each shot of the
+take still to render and re-queues those with the same seeds; the shots that
+had rendered keep their clips. Once the tightest retry budget among them is
+spent, they go to review.
 
 **Checked on the CPU, on a real take.** The v4 gate's 1080p take
 (`20261023_125729`, 481 frames, seams 121 / 241 / 361) was cut with
@@ -241,7 +259,7 @@ own.
 
 ## 4. Model catalog
 
-The pickers in Video Studio and on the project's Generate tab group the
+The pickers in Video Studio and on the movie's Render page group the
 registry (`video_models.catalog`; `tool/static/js/model-catalog.js`) into
 LTX-2.5 · 22B, MiniMax H3 · 1080p, MiniMax H3 · drafts, Wan 2.2 · legacy and
 Legacy. The recommended tier of each group comes first, and the chain-capable
@@ -380,11 +398,10 @@ refine and its decode, through the lab's own restart path.
 
 **Other limits:**
 
-- `TAKE_MAX_SHOTS = 4` was chosen from the gate chains (481 frames for 4 LTX
-  links of the gate's length; 651 frames and about 2 h 40 min for 4 H3 links
-  of 192 frames). A movie take's real length depends on its shots' frame
-  counts. The comment in `tool/movie_takes.py` ("4 links = 20 s") holds for
-  the LTX gate only.
+- `H3_TAKE_MAX_SHOTS = 4` comes from the H3 gate chain (651 frames and about
+  2 h 40 min for 4 links of 192 frames); its 1080p refine holds the whole take.
+  The LTX-2.5 default of 6 comes from an 8-link take
+  ([MOVIE_CONTINUITY.md](MOVIE_CONTINUITY.md) §1).
 - An interrupted Video Studio chain cannot be resumed (see section 2). A movie
   take is started again under its stable chain id when it is re-queued or
   retried, and reuses its finished steps (section 3). Finish 1080p from

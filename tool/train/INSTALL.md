@@ -7,8 +7,9 @@
 > face) from the command line. The base model is the legacy Wan 2.2 TI2V-5B
 > (`models\train_models\wan2.2_ti2v_5B_fp16.safetensors`), so the LoRA applies
 > to Wan 2.2 renders only; LTX-2.5 and MiniMax H3 shots use the cast's
-> reference images instead. The LoRAs trained so far came from the Training
-> page (ai-toolkit); there is no saved record of a run of this command-line path.
+> reference images instead. The LoRAs trained so far came from the studio's
+> Wan 2.2 LoRA training (ai-toolkit, linked from the foot of the Casting page);
+> there is no saved record of a run of this command-line path.
 
 Run every command from the repository root. All paths resolve relative to it.
 

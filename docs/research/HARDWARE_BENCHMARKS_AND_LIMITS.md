@@ -29,7 +29,7 @@ The archived measurements were captured on this desktop workstation:
 - **Bus:** PCIe 3.0 x16 (Gen 2–3 under load per the archive; some H3 run logs also record Gen 1).
 - **Storage:** The videolab notes say the archived benchmarks staged weights from a SATA SSD (earlier runs from a cold HDD at ~127 MB/s). This is archived and can't be re-verified. On the studio PC now, the lab model folders (`D:\H3_LAB\models`, `D:\LTX25_LAB\models`) are on a SATA hard disk (WDC WD5000AAKX), and the repository with its `models/` is on a SATA SSD (Samsung 850 EVO). The run logs do not record where the weights were read from in each run.
 - **Operating system:** Windows 11 Pro (WDDM).
-- **Display driver:** NVIDIA 616.64 (`videolab/README.md`: CUDA 13.4 driver API, PyTorch CUDA 13.0 runtime in the lab). The studio's own runtimes need R560+ (cu126) and R580+ (cu130, `ComfyUI_LTX/venv`), per `install/INSTALL-MAIN.bat`.
+- **Display driver:** NVIDIA 616.64 (`videolab/README.md`: CUDA 13.4 driver API, PyTorch CUDA 13.0 runtime in the lab). The studio's own runtimes need R560+ (cu126) and R580+ (cu130, `ComfyUI_LTX/venv` and `ComfyUI_Qwen21/venv`, which gets the cu126 build on a card or driver that runs only that one), per `install/INSTALL-MAIN.bat`.
 
 > **Tested hardware:**
 > This is the only configuration tested. Other cards (for example RTX 3060 12 GB, RTX 40-series, professional RTX GPUs) are untested. If you run a different card, your step times, thermal limits and bus transfer rates will differ. Reports from other machines are welcome.

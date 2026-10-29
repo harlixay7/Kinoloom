@@ -16,7 +16,7 @@
 - [1. Why a fourth instance](#1-why-a-fourth-instance)
 - [2. The instance](#2-the-instance)
 - [3. Weights](#3-weights-all-in-the-studio-models-tree)
-- [4. Proven configs](#4-proven-configs-registry-modelspy--auto-load-in-the-images-tab)
+- [4. Proven configs](#4-proven-configs-registry-modelspy--auto-load-in-image-studio)
 - [5. Studio wiring](#5-studio-wiring)
 - [6. Reference images](#6-reference-images-roster-stills)
 - [7. Verification log](#7-verification-log-this-machine-rtx-3070-not-re-run-since)
@@ -35,7 +35,7 @@ precedent applied a third time, and the production farm stays untouched.
 | Item | Value |
 |---|---|
 | Tree | `ComfyUI_Qwen21\` (ComfyUI **v0.37.4**, `comfyui_version.py`; not a git checkout) |
-| venv | `ComfyUI_Qwen21\venv`: torch **2.13.0+cu126**, pinned in `install\requirements-frozen\qwen21-venv.txt` (comfy-kitchen 0.2.35, comfy-aimdo 0.5.5, gguf 0.19.0). The videolab measurements ran on PyTorch 2.13.0+cu130 (`qwen21.proven.json`). |
+| venv | `ComfyUI_Qwen21\venv`: torch **2.13.0+cu130**, pinned in `install\requirements-frozen\qwen21-venv.txt` (comfy-kitchen 0.2.35, comfy-aimdo 0.5.5, gguf 0.19.0); on a card or driver that runs only CUDA 12.6, torch 2.13.0+cu126 from `qwen21-venv-cu126.txt`. The videolab measurements ran on PyTorch 2.13.0+cu130 as well (`qwen21.proven.json`). |
 | Port | **8190** (8188 farm · 8189 LTX · 8199 H3) |
 | Launch flags | `--listen 127.0.0.1 --highvram --disable-auto-launch` (+ `--extra-model-paths-config` when `paths.extra_model_dirs` is set). Per `tool/launcher.py`: the old `--lowvram` let the Q5_K DiT drop into ComfyUI-GGUF cast mode with per-module CPU dequantization at 20–100 s/step; `--highvram` materializes the 4.97 GB model directly in VRAM. NVML memory pressure stays on. |
 | custom_nodes | ComfyUI-GGUF @ `6ea2651` + ComfyUI-Qwen21-Optimized (tracked in this repo; see below) |
@@ -64,7 +64,7 @@ The pack also has nodes the studio graph does not use: `VAEDecodeTiledPremulAlph
 
 The studio registry loads the Q5_K_M DiT, the text encoder, the VAE, `4x-UltraSharp.pth` and, in fast mode, the Pruna DMD LoRA. The studio does not reference `qwen_image_2.1_turbo_Q4_K_M.gguf` or the viggle 6-step LoRA. They appear only in the videolab evaluation (`videolab/configs/qwen21.proven.json`).
 
-## 4. Proven configs (registry `models.py` → auto-load in the Images tab)
+## 4. Proven configs (registry `models.py` → auto-load in Image Studio)
 
 **Quality: `qwen21`** (measured: 2K in ~215 s, that is 214.2 s, single run; the baseline for fg (foreground) sharpness)
 ```
@@ -120,7 +120,7 @@ numbers across scenes are only informational.
 
 ## 6. Reference images (roster stills)
 
-The Images tab uploads the reference images per run (`upload_image` → the Qwen instance's
+Image Studio uploads the reference images per run (`upload_image` → the Qwen instance's
 input dir), and `build_ref_workflow` wires them into `image1..image4` of the
 positive encode node. Each reference is resized to about a 512×512-pixel area
 (aspect kept, sides in multiples of 32). The vision tower sees alpha composited
@@ -160,5 +160,8 @@ The launcher points you here when `ComfyUI_Qwen21\venv` is missing. The commands
    `extra_model_paths.yaml` and `custom_nodes\ComfyUI-Qwen21-Optimized\`.
 2. `custom_nodes\ComfyUI-GGUF` cloned from https://github.com/city96/ComfyUI-GGUF.git at `6ea2651`.
 3. `ComfyUI_Qwen21\venv` with Python 3.12:
-   `pip install -r ..\install\requirements-frozen\qwen21-venv.txt --extra-index-url https://download.pytorch.org/whl/cu126`.
+   `pip install -r ..\install\requirements-frozen\qwen21-venv.txt --extra-index-url https://download.pytorch.org/whl/cu130`.
+   On a GTX 900- or 10-series card, or a driver older than R580, use
+   `qwen21-venv-cu126.txt` with `https://download.pytorch.org/whl/cu126`
+   instead (the installer makes that choice itself).
 4. The weights from §3 under `models\` (or a `paths.extra_model_dirs` root).

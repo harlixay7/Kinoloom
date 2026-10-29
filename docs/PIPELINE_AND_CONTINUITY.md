@@ -15,11 +15,12 @@ On this page:
   - [2.3 Keeping the model to the Bible's names](#23-keeping-the-model-to-the-bibles-names)
   - [2.4 Recovering JSON from messy replies](#24-recovering-json-from-messy-replies-toolllmpyextract_json)
   - [2.5 The self-heal loop](#25-the-self-heal-loop)
+  - [2.6 Writing the story with a chat AI](#26-writing-the-story-with-a-chat-ai)
 - [3. The canon linter](#3-the-canon-linter-toollinterpy)
   - [3.1 Errors and warnings](#31-errors-and-warnings)
   - [3.2 Allowed values for camera, framing and staging](#32-allowed-values-for-camera-framing-and-staging)
   - [3.3 The hero gate](#33-the-hero-gate)
-  - [3.4 Reference budgets](#34-reference-budgets-toollinterpy65)
+  - [3.4 Reference budgets](#34-reference-budgets-toollinterpy70)
   - [3.5 Continuity order rules](#35-continuity-order-rules)
   - [3.6 Emotion scale and emotion jumps](#36-emotion-scale-and-emotion-jumps)
   - [3.7 Deaths and exits, the shot graph, tier budget and lighting](#37-deaths-and-exits-the-shot-graph-tier-budget-and-lighting)
@@ -27,7 +28,7 @@ On this page:
   - [4.1 Extracting and scoring the tail frame](#41-extracting-and-scoring-the-tail-frame)
   - [4.2 Choosing the start image for Wan shots](#42-choosing-the-start-image-start_image_for-wan-project-shots)
   - [4.3 Video Studio chains](#43-video-studio-chains-toolvideo_studiopy-toolchain_studiopy-toolchain_enginepy)
-  - [4.4 Continuity for LTX-2.5 and MiniMax H3 movie shots](#44-continuity-for-ltx-25-and-minimax-h3-movie-shots-toolorchestratorpy-toolmovie_takespy)
+  - [4.4 Movie shots on LTX-2.5 and MiniMax H3](#44-movie-shots-on-ltx-25-and-minimax-h3-toolmovie_requestpy-toolmovie_promptspy-toolopening_framespy)
 - [5. The QA director and face checks](#5-the-qa-director-and-face-checks-toolqa_directorpy-toolface_qapy)
   - [5.1 Face identity check on the CPU](#51-face-identity-check-on-the-cpu)
   - [5.2 Prompt match (CLIP)](#52-prompt-match-clip)
@@ -78,20 +79,23 @@ A film with many scenes only looks consistent if every shot draws on the same fi
 ### 1.1 What the Bible holds
 1. **Universe rules (`bible/universe.yaml`):** the project-wide camera defaults, under `cinematography`. They set the default lens (`35mm prime lens`), the film stock (`cinematic film stock`), the depth of field (`deep focus, ...`), the key and fill light color temperatures (`color_temp_key: 3800`, `color_temp_fill: 6500`) and the grain.
 2. **Characters and tiers (`bible/characters/<char_id>.yaml`):** every character has one of four identity tiers (`main`, `supporting`, `recurring`, `crowd`; `linter.CHAR_TIERS`). If a shot gives a character a different tier than the Bible does, the linter reports an error.
-   - QA compares faces against a threshold per tier, from settings `qa.face_sim`. `settings.example.yaml` sets main 0.75, supporting 0.65, recurring 0.55. Crowd characters are exempt.
+   - QA compares the faces of Wan 2.2 shots against a threshold per tier, from settings `qa.face_sim`. `settings.example.yaml` sets main 0.75, supporting 0.65, recurring 0.55. Crowd characters are exempt. LTX-2.5 and H3 shots are compared with the cast's portraits instead (section 5.1).
    - Main characters usually carry face references and a face LoRA (a small add-on model trained on that character's face). For example, `kael.yaml` has `face_refs` with front, side and three-quarter views, plus `face_lock`. Crowd types are defined in `bible/crowd_types.yaml`.
+   - The **look** (`body` and `outfit`) puts the reference pictures into words, and every video prompt, opening frame and story prompt describes the character with it. The words come from the Casting record of the character's primary picture: what the picture was made with (`cast_look.picture_look`). `look_source` on the character says where its text came from: `casting:<type>/<batch>/<file>`, `story`, or `hand` (typed on the card). Picking a look from a Casting batch on Cast & World writes an empty Body and Outfit from that record; making another picture the primary one changes text that came from Casting or a story, never text typed by hand (`cast_look.refresh`). **Fill in from a Casting picture** does the same on request, and a card with pictures but no look says so. A Body text without a word for the gender gets the picture's (woman or man) put first in every prompt (`cast_look.body_text`). No story AI writes or changes a look (section 2.2).
+   - **The look matches the picture** (`cast_look.check`): when the text names the other gender or leaves the picture's unsaid, gives another age, or describes other clothes than the picture's record, the card shows what is wrong with **Use the picture's look** and **Keep mine** (which marks the text as typed by hand), and the page says it at the top. Start production waits at the `cast` gate while a character in the movie has such a text. A picture without a record (an upload) and text typed by hand are never flagged.
 3. **Outfits, loadouts, weapons and powers:**
    - **Outfit and loadouts:** `outfit` is the base look (for example `black tactical coat, silver pauldron`). Optional named `loadouts` bundle an outfit with a weapon. A shot's `loadout` must be one that the character defines, or the linter reports an error.
    - **Weapons:** registered weapon ids, each with a `descriptor`. A shot's `weapon` must exist on the character (an error otherwise). `handling` without a weapon or loadout is a warning.
    - **Powers:** abilities bound to a character. Each has a descriptor, a hex color, a motion description and a sound effect. For example, `lightning` has `#00e5ff`, `fast zigzag bolts`, `crackling cyan lightning arcs from both hands` and `electric crackle`. A shot's `power` must be registered on a character in that shot (an error otherwise).
 4. **Emotion palettes:** the emotions each character is allowed to show (for example kael: `["cold", "rage", "grief", "focused", "calm"]`). When a character has a palette, a shot or dialogue emotion outside it is a linter error, and the LLM prompt lists only these words.
 5. **Color grading (3D LUTs):** the post chain grades with the LUT (a color look-up table) in settings `post.lut`. The default is `bible/luts/cinematic_teal_amber.cube`.
-6. **Project snapshots and git history:** each project has its own Bible folder under git (`bible/projects/<project_id>/`). `Bible.snapshot_from_global()` runs when a project is created. It runs again when the Director or the LLM architect finds no `universe.yaml`. It clears the project's `characters/`, `locations/` and `scenes/` folders, copies in `universe.yaml`, `crowd_types.yaml` and the global character, location and scene YAMLs, and commits them as `project snapshot`. It does not copy `luts/`. Later Bible edits are committed per entity.
+6. **Project snapshots and git history:** each project has its own Bible folder under git (`bible/projects/<project_id>/`). `Bible.snapshot_from_global()` runs when a project is created. It runs again only from the built-in generator (`POST /api/projects/{pid}/story/generate`), for a project with no `universe.yaml`, characters or locations. It clears the project's `characters/`, `locations/` and `scenes/` folders, copies in `universe.yaml`, `crowd_types.yaml` and the global character, location and scene YAMLs, and commits them as `project snapshot`. It does not copy `luts/`. Later Bible edits are committed per entity.
 
 ### 1.2 Shot records (`tool/studio.db`)
 The Bible holds the story facts. The life of each shot is tracked in SQLite (`tool/studio.db`) through `tool/shots_db.py`.
-- **Statuses:** `shots_db.py` defines `pending`, `drafting`, `queued`, `rendering`, `post`, `qa`, `passed`, `failed`, `review` and `assembled`. The orchestrator also uses `rendered`.
+- **Statuses:** `shots_db.py` defines `pending`, `drafting`, `queued`, `rendering`, `post`, `qa`, `passed`, `failed`, `review` and `assembled`. The orchestrator also uses `rendered`, and the movie renders use `prompt` (`movie_prompts.WAITING`).
   - A movie shot moves through `pending` → `queued` (the render loop picks it) → `rendering` → `post` (raw render recorded) → `rendered` (early tail frame extracted) → `post` (post worker) → `passed` or `review`.
+  - A shot whose unit has no prompt it may render with waits as `prompt`, with the reason in its error, and goes back to `queued` once the prompts are saved (section 4.4.3).
   - A QA retry or a render retry sends the shot back to `queued`.
   - `drafting`, `qa` and `assembled` appear only in recovery and terminal-status checks. The orchestrator never sets them. Only `record_qa(passed=False)` writes `failed`, and the orchestrator does not call it. The loop still re-picks `failed` rows for retry.
 - **Stored fields:** `spec_version`, `render_profile`, `qa_stage` (the shot's place on the retry ladder), `keyframe_path`, `tail_frame`, `ref_image`, and `final_path` (the post-processed clip, when post-processing ran).
@@ -100,32 +104,46 @@ The Bible holds the story facts. The life of each shot is tracked in SQLite (`to
 
 ## 2. The story architect and its LLM guardrails (`tool/storygen_llm.py`, `tool/llm.py`)
 
-The LLM story architect (`storygen_llm.ArchitectJob`, started from the Projects tab) writes a treatment, a Bible, story beats and a shot list for each scene. A built-in deterministic generator (`tool/storygen.py`) covers the same stages without an LLM. The Project Director uses that one (`docs/ARCHITECTURE.md`, section 4).
+The LLM story architect (`storygen_llm.ArchitectJob`) writes a treatment, a Bible, story beats and a shot list for each scene. The Story page starts it (`POST /api/projects/{pid}/story/generate-ai`), and the Project Director runs the same job in its own thread (`docs/ARCHITECTURE.md`, section 4). The same prompts can be copied into any chat AI, with its replies pasted back (section 2.6). The built-in deterministic generator (`tool/storygen.py`, `POST /api/projects/{pid}/story/generate`) is no longer used by the Director or the pages.
 
 ### 2.1 Talking to any OpenAI-compatible server
-`tool/llm.py:LLMClient` speaks the OpenAI-compatible `/chat/completions` protocol through `httpx`, so you can use any server that offers that endpoint. The module names OpenAI, Anthropic gateways, DeepSeek, Ollama and LM Studio. The shipped default is Ollama at `http://127.0.0.1:11434/v1`.
-- Settings `architect.*`: `base_url`, `api_key`, `model`, `max_tokens` (default 32000), `timeout_s` (default 600) and `retries` (default 2, capped at 5).
-- Requests use `temperature: 0.8`. JSON stages also send `response_format: {"type": "json_object"}`.
+`tool/llm.py:LLMClient` speaks the OpenAI-compatible `/chat/completions` protocol through `httpx`, so you can use any server that offers that endpoint. The same client serves the story architect and the movie's prompt writer (section 4.4.3). A fresh install has no AI writer set up (`architect.base_url` and `model` are empty); the story and the prompts are then written with a chat AI by copy and paste.
+- **AI writer** (in the System menu, under Settings › AI writer, and on the Story and Shots pages; `GET`/`POST /api/ai/config`, `tool/routers/ai_prompts.py`): pick a provider preset (`llm.PROVIDERS`: OpenAI, Google Gemini, OpenRouter, DeepSeek, Groq, Mistral, Ollama and LM Studio on this PC, or any other OpenAI-compatible endpoint), paste its key (the dialog links to the page where the provider issues keys), and pick a model. **List models** lists the endpoint's models (`GET /models`), and **Test** sends one short request. Both use the saved settings.
+  - The key is stored in `settings.yaml` and shown masked, with only its last 4 characters (none for a key of 8 characters or fewer). A masked key sent back keeps the stored one. Moving the endpoint to another host clears the key, so a key is only ever sent to the host it was saved for.
+- **Whether it answers** (`GET /api/ai/reachable`, asked apart from `/api/ai/config`, which every page loads): `llm.reachable` sends `GET <base>/models` with a 3 s timeout. Any HTTP reply counts (a 401 without a key, an older Ollama's 404), except a proxy's 502/504; a refused connection, an unknown host or a timeout does not. The answer is remembered for 30 s when the server answers and for 5 s when it does not. Saving the settings forgets it, and also clears the writers' one-minute memory of an endpoint that did not answer (last item); so does an answer from that endpoint. The Story page shows it beside the AI writer: "Connected", or "Set up, but nothing answers at <host>".
+- Settings `architect.*`: `base_url`, `api_key`, `model`, `max_tokens` (default 32000), `timeout_s` (default 600), `retries` (default 2, capped at 5) and `tools` (`auto` or `off`).
+- The story stages use `temperature: 0.8`, and the JSON stages also send `response_format: {"type": "json_object"}`. The prompt writer uses `temperature: 0.7` and offers OpenAI-style function tools (section 4.4.3). A server that refuses the `tools` field (HTTP 400/404/422 naming tools or functions) is asked again without it, and that endpoint and model are remembered for the rest of the process.
+- A 400 reply that asks for `max_completion_tokens` instead of `max_tokens`, or for the model's default temperature (newer OpenAI reasoning models), gets the request changed once and sent again (`llm._adapt`).
 - Transport errors, HTTP 429 and 5xx responses are retried with exponential backoff (2^attempt seconds, at most 30 s). Other 4xx responses fail at once. The client does not follow redirects, so the Bearer key is never sent on to another host.
+- A refused connection marks the failure as unreachable. The story architect and the prompt writer then stop at that request instead of trying every scene or unit, and the endpoint is remembered for a minute (`movie_prompts._DOWN`): the next request inside that minute fails at once with `the AI writer at <base> did not answer`.
 
 ### 2.2 Writing the story in stages
 A whole film script in one call runs out of context and breaks the structure, so the architect splits the work:
-1. **Spine (one call):** `build_spine_prompt` asks for three things in a single JSON object: the treatment (logline, synopsis, themes, protagonist, antagonist, escalation, ending...), the Bible (characters, locations, crowd types) and the beats. The scene count comes from `duration_target` (5-second shots). If the reply cannot be parsed, a follow-up message asks for JSON only. There are up to `architect.retries + 1` attempts.
+1. **Spine (one call):** `build_spine_prompt` asks for three things in a single JSON object: the treatment (logline, synopsis, themes, protagonist, antagonist, escalation, ending...), the Bible (characters, locations, crowd types) and the beats. The shot and scene counts come from `duration_target` (`story_size`: one 5-second shot per 5 s, 25–40 shots per scene, at most 30 scenes). The prompt carries the project's whole vocabulary (section 2.3) and tells the model to write every id exactly as listed, and that the cast is fixed: with a cast, the bible section lists the characters the story uses with the story's own text only (`_CAST_BIBLE_JSON`: the arc, a voice style, an emotion palette for a character without one) and adds crowd types for the extras; only a project without a cast gets its characters and places from it (`_BIBLE_JSON`). It is the same text a chat AI gets (section 2.6), sent after the architect's system prompt (the role and the storytelling skill). If the reply cannot be parsed, a follow-up message asks for JSON only. There are up to `architect.retries + 1` attempts.
 2. **Normalization and import:** `package_norm.normalize_package` makes the package safe to import:
-   - it expands the compact shot format;
+   - it expands the compact shot format: the entry's character is the shot's lead, and the optional extra object adds the others on screen (`with`: ids, or `[id, emotion, action]`), the shot's last frame (`end`, stored as `end_state.last_frame`), and `tier` and `continuity` together when a shot needs both. A compact entry has no stage position or facing, so none is added;
    - it renames ids that cannot be file names, along with every reference to them (`normalize_ids`);
+   - it gives every reference the Bible's spelling (`canonical_ids`): character, crowd, location, scene, power, weapon, loadout and place names, the characters' emotions (against the palette of a character in the Bible or in the package's bible section) and the shot vocabulary (sizes, camera moves, tiers, positions) are matched to the existing entry whatever their capitals. Scene ids take the spelling of the project's beats, a name the package's own bible section brings sets the spelling of its other references, and a character named twice in one shot is kept once. A name nothing matches stays as written, for the linter to name;
    - it forces any CONTINUE / MATCH_ACTION across a scene or location change to CUT;
    - it caps hero shots per scene.
 
-   Then `StoryArchitect.import_stage` imports the treatment, bible, beats and scenes stages.
-3. **Scene breakdown (one call per beat):** `build_scene_prompt` carries a running continuity state forward: the `state_mutations` of earlier scenes that still hold, each character's last `end_state`, and the previous scene's hook. It asks for exactly `est_shots` entries in the compact array format.
+   Then `StoryArchitect.import_stage` imports the treatment, bible, beats and scenes stages. The bible stage adds the story to the cast (`_write_bible`). The model cannot see the cast's pictures, so a look it writes would pull the renders away from them: an existing character keeps its name, tier, look, powers, weapons, loadouts, pictures and LoRA, and takes the arc, plus a voice style and an emotion palette where it has none. Existing places, crowd types and camera defaults stay as they are. A character or place the cast does not have is added only while the project has none; otherwise it is left out, and the shots that use it fail the linter (`not registered in Bible`). The stage is stored as the cast stands after the import, which is what the Story page shows. Records are found whatever the capitals of the model's id and keep their own spelling. File names on Windows and macOS ignore case, so `Bible._entity_path` also refuses any id that differs from an existing one only in capitals, for every writer: `sara` can never write over `Sara.yaml`.
+3. **Scene breakdown (one call per beat):** `build_scene_prompt` places the scene in the film for a model that sees one request at a time: the logline and synopsis, every beat on one line with this one marked, the last three shots of the scene before (with their last frames) and the next beat. It carries a running continuity state forward: the `state_mutations` of earlier scenes that still hold, each character's last `end_state`, and the previous scene's hook. It asks for exactly `est_shots` entries in the compact array format.
+
+The job writes the outline and every scene; the outline only (`scenes="none"`); the beats that have no shots (`scenes="missing"`: the Story page's **Write the *N* missing scenes** and the Director's shots stage); or chosen scenes (a list of ids: each scene row's **Write**). **Rewrite part** on the shot plan writes every scene again (`scenes="all"`). One run writes a project at a time: `start` refuses while a run holds the project, and `run`, used by the Director, waits for it and never writes again an outline that run has written. An AI on this PC writes only while no render holds the GPU or waits for it, and its model is unloaded when the run ends, as for the prompt writer.
 
 ### 2.3 Keeping the model to the Bible's names
 The scene prompt includes the project Bible's vocabulary and tells the model to use only these ids:
-- `cast_lines`: each character's id, name, tier, powers, LoRA file, emotion palette, weapons (id + descriptor), loadouts (outfit / weapon) and per-scene defaults.
-- `loc_lines`: each location's id and descriptor, its named places (the tags of its reference images) and per-scene defaults.
+- `cast_lines`: each character's id, name, tier, look (body and outfit, marked as the cast's and fixed; a character without one is marked so the model invents none), powers, LoRA file, emotion palette, weapons (id + descriptor), loadouts (outfit / weapon) and per-scene defaults.
+- `loc_lines`: each location's id and descriptor, what its picture shows, its named places (the tags of its reference images) each with what its picture shows, and per-scene defaults. What a place picture shows comes from its Casting record (`cast_look.place_text`: the place, the world, the kind of place and the batch's lighting); an uploaded picture gives only its tag.
 - `power_lines`: each power's descriptor, color and motion (with a note when it has no reference stills yet), plus the 1–10 power-level ladder.
-- `SHOT_RULES`: tier mix, continuity rules, the reference budget (5 LTX / 6 H3 pictures), dialogue limits, and so on.
+- `SHOT_RULES`: tier mix, the reference budget (5 LTX / 6 H3 pictures), dialogue limits, and so on. Among them:
+  - **Takes** (`storygen_llm.shot_rules`): a scene is written as takes. A take is one continuous camera passage in one place (one view of a location); its shots are consecutive 4-5 s moments and it renders as one video (section 4.4.1). A take holds 1 to N shots, N being the project's take length (`movie_takes.story_length`: the shortest take of the project's video models). Inside a take the camera never jumps; it moves, and so do the people. A new take in the same place is a match cut, written only where the story needs a new angle or a take is full; a new take in another place is a cut.
+  - **The edit follows from the takes** (`package_norm`): the scene's first shot is `CUT`; a later take opens on `CUT` when its place differs from the take before, else on `MATCH_ACTION`; every other shot is `CONTINUE`. A continuity marker or a place written on one shot inside a take is left out, with a note. A take's place is its shots' `location_tag`. The older flat format still imports, its markers as written.
+  - **Framing for detail:** dialogue, emotion, a hero moment and a power reveal are medium, medium close-up or close-up. Wide shots only establish a place or show big movement where no face matters, and a take opens on its people at medium wide or closer. Hero shots are at most 15 % of a scene, at close range or with a power.
+  - **The place picture is the set:** the action is staged in the set and the light its picture shows, never in rooms, weather or a time of day the picture does not show.
+  - **Who is on screen:** every character on screen goes in the shot (`with`), so each one gets their reference picture; a character who speaks in the shot is on screen unless the action says otherwise.
+  - **End frames:** `end` for a shot that the next `CONTINUE` or `MATCH_ACTION` shot carries on from.
 - **Rule:** characters, locations, powers, weapons, loadouts, location tags and background crowd types must all match Bible entries. Anything the model invents is a linter error, and that error feeds the self-heal loop.
 
 ### 2.4 Recovering JSON from messy replies (`tool/llm.py:extract_json`)
@@ -138,7 +156,7 @@ Long LLM replies often come wrapped in markdown, with prose around them, with tr
 
 ### 2.5 The self-heal loop
 Each scene gets up to `architect.retries + 1` attempts (default 3). Each attempt runs these steps:
-1. **Shape check:** `validate_scene_package()` checks the reply's structure strictly: only a `shots` key, non-empty lists, compact entries with 5–8 elements, dialogue entries shaped `["D", char, emotion, line]`, and an 8th element that is an object with known keys and a level of 1–10. If the check fails, one follow-up message sends the first 8 errors, the original prompt and the first 2000 characters of the previous reply:
+1. **Shape check:** `validate_scene_package()` checks the reply's structure strictly: only a `shots` key, non-empty lists, compact entries with 5–8 elements, dialogue entries shaped `["D", char, emotion, line]`, and an 8th element that is an object with known keys, a level of 1–10, a `with` list of ids or `[id, emotion, action]` arrays, a text `end`, and known `tier` / `continuity` values. If the check fails, one follow-up message sends the first 8 errors, the original prompt and the first 2000 characters of the previous reply:
    ```
    Your reply for scene <id> failed STRICT JSON validation:
    - <error 1>
@@ -146,7 +164,7 @@ Each scene gets up to `architect.retries + 1` attempts (default 3). Each attempt
    ...
    Return ONLY the corrected JSON object for this scene in the same format.
    ```
-2. **Lint check:** a well-formed reply goes to `merge_scene_shots()`. It normalizes the shots and lints the whole project (the other scenes plus this one), using the reference budget of the project's video family. If the lint fails, one follow-up sends up to 8 linter errors with the same context:
+2. **Lint check:** a well-formed reply goes to `merge_scene_shots()`. It normalizes the shots, refuses shots without a `shot_id` or with one used twice, and lints the whole project (the other scenes plus this one), using the reference budget of the project's video family. A reply that also holds other scenes imports only the requested one; the others come back as left out (`left_out`), and pasting the same reply in their own rows imports them. The scene is refused only for its own problems: errors filed under its shot ids or its scene id. Errors of other scenes come back as notes (`elsewhere`) and never block it. If the lint fails, one follow-up sends up to 8 of the scene's linter errors with the same context:
    ```
    Your shots for scene <id> were rejected by the script validator with these errors:
    - [s01_03] hero tier requires shot_size in close-up range or a power
@@ -155,7 +173,13 @@ Each scene gets up to `architect.retries + 1` attempts (default 3). Each attempt
    Return ONLY the corrected JSON object for this scene (same format).
    ```
 3. **Import:** a scene that passes replaces that scene's existing shots, and the merged shots stage is versioned.
-4. **Partial result:** a scene that is still invalid after all attempts is skipped and recorded in `failed_scenes`, and the job goes on with the next scene. If any scene was skipped, the job ends with stage `partial` and a message to fix or re-import those scenes from the Story tab. Otherwise it ends with stage `done`. If the LLM endpoint sends no reply at all to a scene request, the whole job stops (`architect LLM request failed`).
+4. **Partial result:** a scene that is still invalid after all attempts is skipped and recorded in `failed_scenes`, and the job goes on with the next scene. If any scene was skipped, the job ends with stage `partial` and a message to fix or re-import those scenes from the Story page. Otherwise it ends with stage `done`. A request that fails ends the job with its reason; an endpoint that does not answer ends it with `the AI writer at <base> did not answer`. The job returns its result to the Director (`ok`, `failed_scenes`, `unreachable`, `stopped`), and the Story page keeps its last message on screen until the next run.
+
+### 2.6 Writing the story with a chat AI
+Every stage the architect writes can also be written by any chat AI, by copy and paste on the Story page. The prompts are the ones the architect sends (`storygen_llm.chat_prompt`, `build_scene_prompt`), so both ways get the same context and rules.
+1. **Copy prompt** (`GET /api/projects/{pid}/story/architect-prompt?kind=auto`): up to `FULL_MAX_SHOTS` (60) shots, the whole film in one reply (treatment, bible, beats and every shot in the compact format); for a longer film, the outline only. The film's length sets the counts: 3600 s asks for 26 scenes and 720 shots. The copy also names any character in the idea that the cast does not have.
+2. **Paste reply** (`POST .../story/import-all`): the reply as it came, prose and code fences included (section 2.4). It goes through the same normalization and import as the architect's (section 2.2). The parts that pass are saved; a part with problems is refused, and the window lists every problem.
+3. **Shots scene by scene:** each scene row has **Copy prompt** (`GET .../story/scene-prompt`, best pasted into the same chat) and **Paste reply** (`POST .../story/import-scene-shots`, which merges like the architect's lint check, item 2 of section 2.5). A refused reply keeps the window open with every problem listed and **Copy a fix request**: the problems and the request to send back the corrected JSON, to paste into the same chat. A scene that is imported reports the problems still left in other scenes, and any other scene the reply held. With an AI writer set up, the rows also have **Write**, and the list has **Write the *N* missing scenes**.
 
 ---
 
@@ -181,7 +205,7 @@ Each scene gets up to `architect.retries + 1` attempts (default 3). Each attempt
 │  - Camera (9) │           │  - Hero gate  │           │ Graph Invariants│
 │  - Sizes (7)  │           │  - Ref budget │           │  - Emotion jump│
 │  - Zones (9)  │           │  (6 H3/5 other)│          │  - No cross-loc│
-│  - Facings (4)│           │  - Tier mix   │           │  - Run <= 2   │
+│  - Facings (4)│           │  - Tier mix   │           │  - Take length│
 │  - Tiers (3)  │           │    (<=15% hero│           │  - DAG acyclic│
 └───────────────┘           └───────────────┘           └───────────────┘
                                     │
@@ -203,7 +227,7 @@ Each scene gets up to `architect.retries + 1` attempts (default 3). Each attempt
   - `duration_s` other than 5; an empty or overlong (>25 words) `primary_action`; `expected_visible` ids that are not in the shot;
   - a shot with no characters; `handling` without a weapon or loadout; dialogue lines over 25 words;
   - volume tier below 30% of a scene;
-  - continuity without a `prev_shot`, more than two bridges in a row, and time-of-day changes across a bridge;
+  - continuity without a `prev_shot`, a take longer than the take length (section 3.5), a `MATCH_ACTION` that keeps the shot size and camera of the shot before, and time-of-day changes across a bridge;
   - emotion jumps, death / exit violations, lighting and time inconsistencies;
   - one informational line per accumulated state mutation.
 
@@ -226,8 +250,8 @@ The `hero` tier marks the shots that get the most expensive treatment (for examp
 - A wide shot without a power fails the lint with this error:
   `"hero tier requires shot_size in close-up range or a power"`.
 
-### 3.4 Reference budgets (`tool/linter.py:65`)
-Each video family accepts a fixed number of reference pictures. The linter takes the project's family and enforces this budget:
+### 3.4 Reference budgets (`tool/linter.py:70`)
+Each video family accepts a fixed number of reference pictures. The LLM architect passes the family of the project's video model (`storygen_llm._project_family`: the model's registry family, the studio default when the project names none), and the linter enforces this budget:
 $$\text{Budget} = \begin{cases} 6 \text{ reference slots} & \text{if the family starts with } \text{"h3"} \\ 5 \text{ reference slots} & \text{otherwise (LTX-2.5 MSR; also the default when no family is passed)} \end{cases}$$
 - The number of references a shot needs is:
   $$\text{Need} = N_{\text{characters whose shot tier is not crowd}} + (\text{power} ? 1 : 0) + (\text{location} ? 1 : 0)$$
@@ -237,9 +261,8 @@ $$\text{Budget} = \begin{cases} 6 \text{ reference slots} & \text{if the family 
 The linter walks the shots in `(scene, shot_id)` order:
 - **Bridge without a source:** `continuity: CONTINUE` or `MATCH_ACTION` without a `prev_shot` in the package is a **warning** (`nothing to bridge`).
 - **No bridges across scenes or locations:** if `prev_shot` belongs to a different scene, or to a different location (when both are set), the linter reports an **error**. Scene cuts and location changes must be `CUT`. LLM packages are normalized before the lint, and `package_norm` already turns such bridges into `CUT` with a note.
-- **Limiting identity drift:** chaining tail-frame anchors one after another adds up visual drift (posture, costume, face). The run counter goes up on every non-`CUT` shot and resets on `CUT`:
-  $$\text{Continuity Run} \le 2$$
-  When `run > 2`, the linter gives a **warning** (advice only) to insert a `CUT` and reset the identity drift.
+- **A match cut needs a new angle:** a `MATCH_ACTION` shot with the same `shot_size` and `camera` as the shot before is a **warning** (use another angle, or `CONTINUE`).
+- **The take length:** a shot and the run of `CONTINUE` shots after it render as one seamless take (section 4.4.1), which holds at most the take length (`movie_takes.max_shots`: the project's, else LTX-2.5 6 and H3 4 shots). A `CUT` or a `MATCH_ACTION` opens fresh, so the counter counts the shots of a take only and resets on either. When a take grows past the take length, the linter gives a **warning** (advice only) on the first shot past it, which starts a new take. That take opens on a new angle made from the last frame of the one before (or on that frame itself when opening frames are off), so a `MATCH_ACTION` written there fits the story better.
 
 ### 3.6 Emotion scale and emotion jumps
 Emotions should build step by step. The linter maps emotion words to an intensity scale from 0 to 5 (it skips words that are not on the scale):
@@ -260,7 +283,7 @@ Emotions should build step by step. The linter maps emotion words to an intensit
   - A `prev_shot` that is missing from the scene, or that points to the shot itself, is an error.
   - A depth-first walk from the root detects cycles (`rep.e(scene, "cycle detected at ...")`).
   - Shots that cannot be reached from the root (orphans) are errors.
-  - The walk (the cycle and orphan checks) runs only when the package has no errors so far.
+  - The walk (the cycle and orphan checks) runs only when the scene's own root and `prev_shot` checks found no error. An error in another scene does not stop it, so a project with one broken scene still has every other scene's shot graph checked.
 - **Tier budget:** in a scene of `n` shots, more hero shots than `max(int(n × 0.15), 1 if n ≤ 6 else 0)` is an error, so a small scene can still have one hero moment. A volume share below 30% is a warning.
 - **Lighting (warnings):** three cases are reported as **warnings**: a shot whose `lighting` differs from its Bible location's lighting, a scene whose shots disagree on `time`, and a CONTINUE / MATCH_ACTION bridge across a time-of-day change. `time` is compared ignoring case and whitespace. These never block a package, because errors drive the LLM self-heal loop and time labels are free text.
 
@@ -271,10 +294,10 @@ Emotions should build step by step. The linter maps emotion words to an intensit
 To keep continuity across cuts, a video model needs a clean, stable start image. `tool/continuity.py` extracts the tail frame (a clean frame from the end of a clip, handed to the next shot), scores the candidate frames, and picks the start image for legacy Wan 2.2 shots. Section 4.3 covers Video Studio chains, and section 4.4 covers LTX-2.5 / H3 movie shots.
 
 **Which model a project shot renders on** (`orchestrator._video_family`): the shot's own `video_model` first, then the project's model for the shot's tier (`video_models`), then the project's video model (`video_family`).
-- An installed LTX-2.5 or MiniMax H3 tier renders as picked.
-- The legacy Wan 2.2 model renders only when it is picked and installed.
-- Anything else falls back to the studio default, `video_models.default_model_id()`: no model set, a tier that is not installed, or an entry of another family. The default is `ltx25_s6_cq`, or the first installed LTX-2.5 or H3 tier when that one is missing. It is never Wan.
-- With no LTX-2.5 or H3 tier installed, the shot goes to `review` with an error.
+- An available LTX-2.5 or MiniMax H3 tier renders as picked. Available means its files are installed and this PC's graphics card can run it (`video_models.model_status`, section 1.5 of `docs/ARCHITECTURE.md`).
+- The legacy Wan 2.2 model renders only when it is picked and available.
+- Anything else falls back to the studio default, `video_models.default_model_id()`: no model set, a tier that is not available, or an entry of another family. The default is `ltx25_s6_cq`, or the first available LTX-2.5 or H3 tier when that one is not. It is never Wan.
+- With no LTX-2.5 or H3 tier available, the shot goes to `review` with an error. When the graphics card is the reason, the error says so: the card that is too old, or the driver to update.
 - Shots without a project (sent through the API, `/api/shots/ingest`) still take the legacy Wan path.
 
 ### 4.1 Extracting and scoring the tail frame
@@ -297,7 +320,9 @@ A Video Studio chain renders one long take as a series of links, each continuing
 - **Seamless chains** (the default; `video_studio.seamless_chains: true`) are for the LTX-2.5 tier with a `chain` workflow on `ComfyUI_LTX`, and for H3 tiers with a reference workflow. Every link continues from saved, lossless state, never from an encoded mp4: latents (the model's compressed form of the frames) and uint8 frames under ComfyUI's `output/studio_chain/<chain>/`. The take is encoded once. See section 4.3.1.
 - **Segment chains** (the earlier engine) are for every other tier, or for any tier when the switch is off. See section 4.3.2.
 
-**In the Video Studio page.** The prompt is segment 1, and **+ Segment** adds the next ones. Two or more segments render as a chain. A tag above the prompt names the engine that the selected model uses.
+**In the Video Studio page.** **Length** shows the video's length and its number of segments; its **+** adds a segment and **−** removes the last one, with no upper limit. The prompt is segment 1, and each segment is one clip of the Frames field (121 frames, 5 s, on the LTX-2.5 tiers). Two or more segments render as a chain. An empty segment box is reported by the prompt check and stops Generate. A tag under Length names the engine that the selected model uses.
+
+**Start from** is **Image** by default (or **Text only**). A start image is uploaded into the ComfyUI input folders. On H3 it is the exact first frame; on LTX-2.5 it is the key image (pic1), which guides the render but is not pinned as the first frame. With Image selected and no picture picked, the clip renders from the prompt alone.
 
 Some ⛓ models have a finish pass: LTX-2.5 and the H3 1080p tiers (`video_models.chain_has_finish`). An H3 draft tier delivers its decode-once take directly. For a ⛓ model with a finish pass, **Preview first** renders the draft take, runs QA on it and waits. **Finish 1080p** on the chain's History card then renders the finish from the same drafts.
 
@@ -447,37 +472,109 @@ Segments render one after another (`_run_chain` → `_run_chain_body`), and each
   This removes clicks at the junctions without shortening the audio or drifting the A/V sync, as a crossfade would. The assembly first checks every segment for an audio stream (`ffmpeg -i`) and binds audio only when all of them have one. The LTX-2.5 workflows decode their sound into the video (`LTXVAudioVAEDecode` into `CreateVideo`, in `ltx25_msr_dfr_s6_cq`, `ltx25_t2v_dfr_cq` and the `_chain` template), so by the code an LTX-2.5 segment chain keeps its sound and gets these fades. A segment chain rendered this way has not been checked.
 - **H3 and Wan chains (no trims):** when every segment carries audio, the video streams are joined with the concat demuxer as a stream copy (bit-exact). The audio is rebuilt once with the junction fades and muxed on. If some segment has no audio, the filter pass re-encodes the video (crf 15) without audio. If assembly fails, a plain stream-copy concat is tried. If that also fails, the segments are returned one by one.
 
-### 4.4 Continuity for LTX-2.5 and MiniMax H3 movie shots (`tool/orchestrator.py`, `tool/movie_takes.py`)
-LTX-2.5 and H3 project shots do not use `start_image_for`. Reference images drive them instead (`ltx_refs.resolve_reference_set`).
+### 4.4 Movie shots on LTX-2.5 and MiniMax H3 (`tool/movie_request.py`, `tool/movie_prompts.py`, `tool/opening_frames.py`)
+An LTX-2.5 or H3 project shot renders the way the Video Studio page renders it (`movie_request.build`). The request has the same parts the page sends:
+- the cast as references, each with its name and look (`movie_takes.take_cast`);
+- a start image, or the previous clip's last frame;
+- the page's size and frame count (`studio_size`, `studio_frames`: 121 frames on LTX-2.5 and 124 on H3 for a 5 s clip);
+- no negative prompt, and the model's own steps.
 
-#### 4.4.1 Continuous takes
-A `CONTINUE` shot carries the camera on from the shot before it, so a run of them is one camera take. Some shot models render seamless chains (`video_models.seamless_kind`: the LTX-2.5 quality tier `ltx25_s6_cq` and every H3 tier, marked ⛓ in the pickers). For those, the orchestrator renders the run as one seamless chain (section 4.3.1) instead of one clip per shot:
-- **Which shots (`movie_takes.plan_take`):** the shot the queue picks, plus every following shot that meets all of these:
-  - it continues the one before it (`continuity` `CONTINUE`, `prev_shot` pointing at it);
-  - it stays in the same scene and location;
-  - it is still `pending`/`queued`;
-  - it is not a QA retake (`qa_stage` 0) or forced text-to-video;
-  - it renders on the same model.
+The prompt check that stops Generate (`prompt_check.refusal`) decides whether the request may render. Its prompts are written by an AI or by hand (section 4.4.3), never from a template. These shots do not use `start_image_for` or the keyframes of section 4.2; Wan 2.2 project shots keep that path.
 
-  A fork (two shots continuing one) ends the take. A take holds at most `movie.take_max_shots` shots (default 4: 481 frames, 20 s, at the LTX gate's link length; the 4-link H3 1080p gate took about 2 h 40 min). `CUT` and `MATCH_ACTION` shots (an edit, a new camera set-up) never join a take.
-- **One cast for the take:** the references are resolved once for the whole run (`movie_takes.take_shot`: every shot's characters, the first power, the head shot's location). They are in slot order, which is also the order the chain numbers them in. Each character reference carries its bible name and look (body plus the shot's outfit), and that becomes the chain's cast line in every link prompt. When the take's first shot continues a shot that is already rendered, the take opens on the previous shot's tail frame (LTX: `pic1`; H3: the frame-0 anchor).
-- **One prompt per shot:** each link gets its shot's own prompt and family recipe. For LTX that is the motion-first recipe and reference legend. For H3 it is the Ref2VA sections, where links after the first say the shot carries on instead of opening on `<Picture 1>`. The chain samples with its own recipes (H3: the tier's registry schedule), never the movie tier's step count.
-- **Render:** the take renders through `video_studio.start_chain` with a stable chain id (`movie_takes.take_id`: project, model, shot ids), under one broker lease. The orchestrator waits for the delivery take. Whole-take steps (H3 refine and decode, LTX audio and take decode) get the model's clip time budget once per link (`StudioRunner.step_timeout`).
+The orchestrator renders a project one unit at a time (`Orchestrator._render_unit`). For each unit it:
+1. makes the unit's opening frame when it needs one and it is missing (section 4.4.2);
+2. builds the request and takes the stored prompts written for it (`movie_prompts.prompts_for`). When some are missing or stale and an AI is set up, the AI writes them first;
+3. lets the unit's shots wait with status `prompt` and the reason when there are still no prompts it may render with, or when the prompt check refuses them (section 4.4.3). The loop goes on with the next shot in story order that can render (`Orchestrator._next_shot`): one that does not wait for its prompt and does not open on a shot still to render;
+4. renders a clip (`video_studio.start`) or a seamless take (`video_studio.start_chain`).
+
+#### 4.4.1 Units: clips and seamless takes (`movie_prompts.plan_units`)
+A unit is what the Video Studio renders in one go: one shot (Generate with one prompt), or a run of `CONTINUE` shots rendered as one seamless take (Generate with one prompt per segment, section 4.3.1). The units are planned in story order (scenes in order, each in its `prev_shot` order), whatever the shots' statuses. A shot joins the take of the shot before it when all of these hold:
+- it continues that shot (`movie_takes.continues`: `continuity` `CONTINUE`, `prev_shot` pointing at it, the same scene and location);
+- both render on the same model, and that model has the seamless engine (`video_studio.seamless_engine`: the LTX-2.5 quality tier `ltx25_s6_cq` and every H3 tier, marked ⛓ in the pickers);
+- neither is forced text-to-video, and no other shot continues the same shot (a fork ends the take);
+- the take is shorter than the take length (`movie_takes.max_shots`):
+  - **LTX-2.5:** `movie.ltx_take_max_shots` (default 6), or the project's own (**Shots per take** on the Render page, empty for the studio's), up to a Video Studio chain's 50 segments (`video_studio.CHAIN_MAX_SEGMENTS`). An LTX-2.5 take finishes link by link and decodes in streamed windows, as Video Studio chains do. An 8-link take kept the cast's identity in every link (ArcFace 0.31 to 0.51, following the face's size, not the link number); links 7 and 8 added seam steps larger than any in links 1 to 6, though none showed to the eye. So 6 is the default, and longer takes are a setting away ([MOVIE_CONTINUITY.md](research/MOVIE_CONTINUITY.md) §1).
+  - **H3:** `movie.h3_take_max_shots` (default 4; an older `movie.take_max_shots` counts for H3 only). The H3 1080p refine holds the whole take in memory (`chain_engine.H3Chain.refine`); no H3 take longer than 4 links has rendered, and the 4-link H3 1080p gate took about 2 h 40 min. So a project's take length can only shorten it.
+
+Every other shot is a unit of its own, so a `CUT` or `MATCH_ACTION` shot never joins a take. A shot that renders again renders its whole unit (`movie_prompts.unit_for`, section 4.4.4).
+- **A run longer than the take length** goes on in a new take (`Unit.split`). Its first shot opens on a new angle: a match cut whose opening frame is made from the last frame of the take before (section 4.4.2), so the cast is taken again from their pictures and the new angle hides the join. Without opening frames it carries on from that last frame. Its prompt is written for that opening.
+- **Render order (`Orchestrator._next_shot`):** queued and pending shots in story order, then failed ones. A `CONTINUE` shot waits until the shot before it (in the same scene) has rendered, because it opens on that shot's last frame. A `MATCH_ACTION` shot waits for it too, because its opening frame is made from that last frame, unless the two shots are in different places. When a shot renders again, a rendered shot that opens on its last frame is queued again: one that continues it, or a match cut whose frame is made from that frame (`_cascade`, `movie_prompts.follow_ons`).
+- **One cast for the take:** the references are resolved once for the whole take (`movie_takes.take_shot`: every shot's characters, the first power, the head shot's location). They are in slot order, which is also the order the chain numbers them in. Each character reference carries its bible name and look (body plus the shot's outfit), and that becomes the chain's cast line in every link prompt.
+- **Render:** the take renders through `video_studio.start_chain` with one prompt and one seed per shot (each shot's own: the stored seed, else its stable seed) and a stable chain id (`movie_takes.take_id`: project, model, shot ids), under one broker lease. The chain samples with its own recipes (H3: the tier's registry schedule). The orchestrator waits for the delivery take. Whole-take steps (H3 refine and decode, LTX audio and take decode) get the model's clip time budget once per link (`StudioRunner.step_timeout`).
 - **Cut back into shots (`movie_takes.split_take`):** the delivered take is cut at its seams (the first frame of each later link's new content) into `output/videostudio/take_<id>_<n>_<shot>.mp4`. The cut is frame-exact (one x264 crf 14 pass, BT.709), the audio is cut at the same instants, and every frame count is checked. From there each shot goes on alone: its own render record, tail frame, post-processing and QA, and provenance (`take`: id, index, shots, engine, delivery video, seam QA). For 121-frame shots, LTX shots of a take run 5.0 s (link 1: 5.04 s). H3 shots run 5.9 s (link 1) and 6.4 s (later links), because H3 windows land on its audio grid.
-- **Failures:** a failed take goes back to the queue whole, with the same seeds. Every shot of the take uses one attempt, and the take goes to review when the tightest budget among its shots is spent.
+  - Post-processing (off by default; the Video Studio has none) runs per shot. RIFE has no in-between frame across a cut point and the temporal pass no previous frame there, so with post-processing on, the joins of a take can show.
+- **Failures:** a failed take's shots still to render go back to the queue with the same seeds, and each uses one attempt; they go to review when the tightest budget among them is spent. Shots of the take that had rendered keep their clips.
   - The retry reuses every step the engine already rendered. Each start uploads the references again, but under names derived from their bytes (`renderer.upload_name`), so the graphs and their digests stay the same (`SEAMLESS_CHAINS_04_STUDIO_INTEGRATION.md` §7).
   - A transient failure (the server unreachable while it restarts) retries the same way without using an attempt.
   - The orchestrator waits while the chain renders. The chain's steps end by their own budgets, and an outer deadline of 8 x shots x the model's `timeout_s` only guards against a hung chain thread (`_wait_take`).
-  - If a shot of a take later fails QA, it is re-rendered alone (section 4.4.2), opening on its predecessor's tail.
-- **Switches:** the project's `seamless_takes` (Generate tab, default on), settings `movie.seamless_takes` (default on) and the engine itself (`video_studio.seamless_chains`; `video_studio.seamless_engine` decides for chains, takes and the pickers' ⛓ alike). If any of them is off, or the model has no such engine, every shot renders alone.
+  - A shot of a take that later fails QA renders its take again (section 4.4.4).
+- **Switches:** the project's `seamless_takes` (the Render page, default on), settings `movie.seamless_takes` (default on) and the engine itself (`video_studio.seamless_chains`; `video_studio.seamless_engine` decides for chains, takes and the pickers' ⛓ alike). If any of them is off, or the model has no such engine, every shot renders alone.
 
 Joining the cuts again loses nothing at the seams. The 4-link LTX gate take was cut into 4 shot clips and concatenated the way the assembler does (section 7.1). That gave back all 481 frames at 39.7–42.5 dB PSNR (two encode generations, no dip at the seams). The audio came back sample-aligned (962,000 samples in both, offset 0 samples, no error peak at any seam; the AAC re-encode means it is not bit-identical). This was checked on the CPU, on a lab take.
 
-#### 4.4.2 Shots rendered alone
-- For `CONTINUE` / `MATCH_ACTION`, the previous shot's tail frame is attached with `ltx_refs.add_continuation` (`Orchestrator._continuation_tail`). That tail was extracted from its raw render right after that render finished.
-  - **H3:** the tail goes into a `continuation` slot that Video Studio pins as the frame-0 anchor, so the clip opens on the previous shot's final frame.
-  - **LTX:** the tail takes the last free subject slot, and the prompt's reference legend names it.
-- The tail is skipped with a warning when there is no subject reference, no free LTX slot, or no tail file. A location change between the two shots forces `CUT`, and a missing tail renders the shot as a cut.
+#### 4.4.2 How a unit opens, and opening frames
+The head shot's continuity decides how a unit opens (`movie_request.build`, `continuation_tail`):
+- **`CUT`:** a fresh shot. It opens on the shot's own start image (picked on the Shots page: an upload, an Image Studio still, or a picture made there, with Qwen-Image 2.1 fast when it is installed: `models.default_still_model`), else on its opening frame (below), else on its prompt and references alone.
+- **`CONTINUE`:** the same camera take carries on from the previous shot's last frame. That frame is extracted from the raw render as soon as the render finishes (`continuity.extract_tail`, section 4.1). A clip renders with it as the Video Studio's `continuation`: H3 pins it as frame 0, and on LTX-2.5 it takes a free subject slot (`ltx_refs.add_continuation`). A take starts from it as its start image, the way ↪ starts a Video Studio chain. A `CONTINUE` whose previous shot has no last frame renders as a cut, with a warning.
+- **`MATCH_ACTION`:** a cut to a new camera angle in the middle of the action. It opens like a `CUT`, because the previous frame itself would pin the old angle, and its prompt carries the action on from where the shot before stopped. Its opening frame is made from that shot's last frame (below), so the set, the light and the clothes carry over into the new angle. A `MATCH_ACTION` shot always starts a unit of its own, so a match cut is never asked of a take's seam.
+- **The first shot of a run past the take length** (section 4.4.1) opens the same way as a match cut when opening frames are made, and otherwise carries on from the last frame as a `CONTINUE`.
+- A scene or location change is always a `CUT`, whatever the shot is marked (noted in the shot's `reference_warnings`).
+
+On H3 a start image is the exact first frame; on LTX-2.5 it is the key image (`pic1`), which guides the render but is not pinned as the first frame (section 4.3).
+
+**Opening frames** (`opening_frames.py`). The Video Studio renders best from a start image, so a unit that opens fresh gets one made when it has none of its own:
+- only for a unit's first shot that opens fresh (a `CUT`, a `MATCH_ACTION`, the first shot of a run past the take length, or a `CONTINUE` the render cannot continue). The later shots of a take open on the take itself;
+- never for a shot with its own start image;
+- only when its prompt asks for one. The AI writer writes the frame's prompt together with the shot's prompt (`Opening image:`). A hand or chat prompt without an opening image renders from its references alone;
+- made with Qwen-Image 2.1 fast (`qwen21_fast`: 8 steps, cfg 1.0, port 8190) under one GPU-broker lease, together with the next frames of the project still to make (up to 8, in story order), so the image model loads once. With the keyframes gate manual (Checkpoints and Manual projects), the Director makes the frames of the cuts before the render and waits while they are looked at (`docs/ARCHITECTURE.md`, section 4.1). The frames passed there stay passed after a Stop and Start (`looked_at` in their records); a frame made again, or made later, stops the project at the gate again. Otherwise each frame is made right before its unit renders. A match cut's frame is made when it renders, because it needs the last frame of the shot before;
+- from up to 4 reference pictures, one per person: the lead's picture (the one the video model gets: their outfit or loadout still), the set (for a match cut the last frame of the shot before, else the place picture), the other people's pictures, and for a match cut the place picture when there is room. Given a face close-up and the still of one person, Qwen drew that person more than once in 2 of 16 test frames; given the close-up alone, it drew another outfit in all 10 (section 2 of [MOVIE_CONTINUITY.md](research/MOVIE_CONTINUITY.md)). The prompt gets everyone's look after its first sentence ("The people: …"), as the LTX takes carry it. Landscape frames are 1344x768 and portrait ones 768x1344 (from the model's studio size);
+- **candidates:** `movie.key_image_candidates` (2) frames at consecutive seeds from the shot's seed + 1, each scored with ArcFace against each person's face close-up (`face_drift.likeness`; each person scores their best-matching face, the least-alike person counts, and a candidate with no face in it has no score). The best scored one is kept. When it is under `movie.key_image_min_likeness` (0.25), 2 more are made, and a frame still under it is kept and marked weak. In the key-image tests every frame made this way scored 0.31 or more against the primary still. The score judges faces only: it does not catch a changed outfit, which the still among the references keeps (section 2 of MOVIE_CONTINUITY.md). Without InsightFace one frame is made and not scored (a one-time note in the log);
+- kept in `shots/opening/<project>/<shot>_<key>.png`, with its record beside it (`.json`: the likeness of each person, weak or not, the candidates with their seeds and scores, the references). The key is a hash of the image prompt, the shot, the model, the way frames are made (`opening_frames.KEY_VERSION`) and, for a match cut, the bytes of the last frame it is made from: the same image prompt for the same shot is never made twice, a changed one makes a new frame, frames made the earlier way are made again, and so is a match cut's frame when the shot before renders again. While that shot is still to render, the match cut's frame waits (`opening_frames.waits`);
+- shown on the Shots page in the shot's Start slot, with its likeness (amber when weak) and a refresh button that makes it again from the seeds after the ones tried. The frame it had stays until the new one replaces it;
+- a frame that fails is not tried again for an hour, and the shot renders from its references meanwhile.
+
+Settings `movie.opening_frames` (default on) and whether Qwen-Image 2.1 fast is available decide whether frames are made at all (`opening_frames.enabled`): its weights must be installed, and this PC's card and driver must run the build its venv holds (CUDA 13.0, or CUDA 12.6 on a card or driver that runs only that one; `docs/ARCHITECTURE.md`, section 1.5). The shot record keeps the frame it opened on (`opening_frame`), how it opened (`continuity_applied`) and a summary of its request (`request`).
+
+#### 4.4.3 The video prompts (`movie_prompts.py`)
+Every LTX-2.5 / H3 unit renders with prompts written for its exact request, by one of two authors:
+- **An AI** (the AI writer, section 2.1). The writer sends the unit's brief (`unit_brief`), which holds:
+  - the film: the logline and every scene on one line (its goal, turn and hook), with the unit's scene marked;
+  - the story so far: the scene's beat, up to 6 earlier shots of the scene (or how the scene before ended), and the last 700 characters of the shot before's prompt;
+  - how the unit joins the shot before (a cut, a match cut, or no cut);
+  - the shots to write, with everything in them: camera, action, every character with emotion, outfit and weapon, power and level, dialogue, sounds, the states still true from earlier shots, and the start and end states;
+  - the shot that comes next, so the unit ends where that shot can follow;
+  - the cast sheet of the request (`prompt_check.cast_sheet`): how the model reads a prompt, the pictures it receives and their numbers, how the unit opens and continues, and the MODEL LIMITS: one action and one camera move per segment, faces at medium or closer, at most 3 people who matter on screen, what the model renders badly (written text, small props that carry the plot, fine hand work, many people fighting at once, a fast change inside one shot), slow steady camera moves, and the prompt length of the takes on record (LTX-2.5: 81 to 175 words per segment; H3: 227 to 258). The story rules (`storygen_llm.shot_rules`) take the same words from `prompt_check`.
+
+  A take with more segments to write than `movie.prompt_segments_per_reply` (default 4) is written in parts of even sizes (6 in parts of 3 and 3). Each part gets the whole brief: the prompts the parts before it wrote are kept exactly, and the take's later shots are listed, marked later. Each part is checked on its own, then the whole take once it is complete; a segment the whole-take check names is written again, the others are kept. A hand prompt inside the take stays as it is.
+
+  The system message tells the AI to describe every person only with the look the cast sheet gives, to put no one in a shot who is not listed in it, and to speak every line of dialogue word for word. The reply goes through the prompt check and the story checks (`story_checks`): a line of the shot's dialogue missing from its prompt is an error, and a name of someone not in the shot a warning. The check's own fixes are applied (`AUTO_FIX`: picture-label spelling and placement, the opening and continuity lines, and for an LTX clip the cast sentence of a person whose look the prompt leaves out: "Cast, the same age and look in every shot: …", as the seamless takes carry it), and any error goes back to the AI to fix, at most twice. When the endpoint takes tools, the AI can also look up any shot, scene, character or earlier prompt (`get_shot`, `get_scene`, `get_character`), check its prompts (`check_prompts`), and hand them in with `submit_prompts`, which checks them again. Each attempt has at most 10 tool rounds.
+- **By hand:** typed in the shot's prompt editor on the Shots page (`POST /api/projects/{pid}/shots/{sid}/prompt`), or pasted from a chat AI. A typed prompt is checked like a pasted one: an error refuses it, the check's own fixes are applied, and the story checks only warn. The AI never overwrites a hand prompt; it writes the other shots of the unit around it.
+  - **Use a chat AI** works a batch at a time (`chat_brief`, `POST /api/projects/{pid}/prompts/brief`): the next units still to render without ready prompts, takes of one scene with up to `movie.prompt_segments_per_reply` (4) prompts to write. Ready prompts are kept and the others written around them. A take with more to write comes in parts, the rest of it shown as later, and its shots wait to render until the last part is pasted. Once some shots have their prompts and others still need one, the button reads **Use a chat AI for the next batch** (`State.promptProgress`), as does the one in the note under the top bar; without an AI writer it is the Shots page's main button.
+  - The brief is made when it is asked for, so a batch carries the prompts saved for the shots before it. What the parts share appears once: the film, the story so far before the first part, the shot after the last part, the blocks of the cast sheet that two parts share (RULES OF THE RENDER MODEL) and how to write an opening image. Each part keeps how it joins the shot before, its shots and its own rules. The answer also counts the prompts ready, the shots still to render and the batches left (`brief_progress`).
+  - The chat AI's reply is pasted back and stored by its `Shot <id>:` blocks (`POST .../prompts/import`); **Import & next** then shows the next batch. Each unit is checked with the other prompts of its unit and against its shots, and a unit with an error is refused whole, with **Copy a fix request** for the same chat; the warnings of the saved ones are listed.
+  - Each shot's prompt editor has **Use a chat AI** for its unit alone, whose shots are written again.
+
+Each prompt is stored with what it was written for (`shot_sigs`): the model and clip length, how the shot opens (a cut and what it opens on, a match cut, or carrying on from the shot before), the cast in the model's order, the shot itself and, for a continuation or a match cut, the shot before. The Shots page shows each shot's prompt state:
+- **ready:** written for the request the shot renders with next;
+- **missing:** no prompt yet;
+- **stale:** written for an earlier version of the shot or of how it opens. An AI prompt is written again; a hand prompt waits for its author to check it and save it again;
+- **rendered:** the shot is not to render again.
+
+**Write the prompts** on the Shots page writes every missing and stale prompt in story order, one unit at a time, as a background job that shows its progress. The Director's `prompts` stage runs the same writer (`docs/ARCHITECTURE.md`, section 4.1), and the orchestrator writes a unit's prompts right before its render when they are not ready. A shot that still has none waits with status `prompt` and the reason; a saved prompt queues it again (`movie_prompts.release_waiting`).
+
+Prompts pasted from a chat AI can cover the first shots only. Production then renders those and stops where they end (`Director._held_by_prompts`): once every shot still to render waits for its prompt, or opens on one that does (a `CONTINUE`, or a match cut in the same place, `orchestrator.waits_for`), the Director stops the render queue and waits at the `prompts` stage with "N of M shots are rendered" and the shots that need a prompt. **Continue production** after the next prompts are pasted renders those and goes on from there.
+
+Before its first unit, the writer asks whether the AI answers (`llm.reachable`), so an endpoint where nothing listens stops it at once instead of after the request's retries.
+
+**An AI on this PC** (`llm.is_local`, for example Ollama or LM Studio) shares the GPU with the renders. It writes only while no render holds the GPU or waits for it (`gpu_broker.busy`), and after each unit an Ollama server is asked to unload its model (`keep_alive: 0`). While it waits, it asks whether the AI answers; one that does not (not started) is not waited for (`wait_gpu(base=...)` raises `Unreachable`), for the story writer as well.
+
+#### 4.4.4 Retries and retakes
+- A unit that fails to render goes back to the queue whole, with the same seeds (section 4.4.1, *Failures*), so a take's retry reuses every step the chain already rendered.
+- A retake gets a new seed: the shot's seed + 104729 (`orchestrator.REROLL_SEED`). That applies to **Render again** on the Shots page and to a shot that fails QA with retries left (post-processing on, section 5.4). The prompt stays the one written for the shot; the retry ladder's prompt, LoRA and keyframe steps are not used. The step is not a multiple of the chain engine's seam re-roll step (7919, section 4.3.1), so a retaken link never lands on a seed its re-roll tried, and the engine drafts it from the new seed instead of the one a re-roll kept (`LtxChain.link_seed`).
+- A retake inside a take renders the take again under its chain id, with each shot's own seed. The shots before the retaken one reuse their finished steps (same seed, prompt and inputs), so their latents carry into it as before. The retaken shot and the ones after it render again, and so do the take's audio and decodes. Every shot of the take is delivered again, because the shot before the retaken one ends in the joined decode of both. While prompts are missing, or after a failure, only the shots still to render change status; the rendered ones keep their clips.
+- A rendered shot that opens on the take's last frame (a `CONTINUE` of the take's last shot outside the take, or a match cut whose frame is made from that frame) is queued again, because the frame it opened on no longer exists.
+- **A continuity change** on the Shots page first asks which shots with a clip it would render again (`movie_prompts.rerenders`, a dry run of `POST .../continue` or `.../continuity` with `dry_run`): the take the shot then renders in renders whole, so its other shots that come from another take, and the shots after it, render anew; then each rendered shot that opens on the last frame of a unit rendered again renders again with its own unit, and so on. When there are any, the page names them and asks before anything changes; when the dry run fails, nothing changes.
+- **A changed take length** plans the takes again. The shots still to render get prompts written for their new takes (an AI prompt is written again, a hand prompt waits for its author, section 4.4.3); rendered shots keep their clips.
 
 ---
 
@@ -532,17 +629,22 @@ Rendered clips are checked before they count as `passed`. `QADirector` (`tool/qa
   $$\text{Sim} = \max_{i, j} \left( \hat{e}_{\text{frame}, i} \cdot \hat{e}_{\text{ref}, j} \right)$$
   When no face is detected in those frames, the score is 0.0 (a failure). When no usable reference exists, the metric is skipped.
 - **References:**
-  - Project shots: face QA runs only for characters of tier main / supporting / recurring. It runs only when one of them has a face LoRA (`models/loras/<id>_face.safetensors`) and the shot has an approved keyframe (`keyframe_path`, or the `approved` entry in `shots/keyframes/<shot_id>/candidates.json`). That keyframe is the reference.
+  - LTX-2.5 and H3 project shots: the identity still of every person the shot rendered with (its `character:` references; `Orchestrator._cast_portraits`). Only faces at least `qa.cast_face_size` (0.12) of the frame's short side are judged, about 130 px at 1088 px. A face that is smaller, turned away or off screen gives no score, and no score is not a failure. The best face against any of the portraits counts: with several people on screen, one face that matches passes the shot, and a large face of someone without a portrait (an extra) is judged like a cast face.
+  - Wan 2.2 project shots: face QA runs only for characters of tier main / supporting / recurring. It runs only when one of them has a face LoRA (`models/loras/<id>_face.safetensors`) and the shot has an approved keyframe (`keyframe_path`, or the `approved` entry in `shots/keyframes/<shot_id>/candidates.json`). That keyframe is the reference.
   - Legacy shots: `FaceQA` looks in `ReferenceImages/<id>/`, `roster/<id>/`, `roster/keyframes/<id>/` and `roster/datasets/face/<id>/`.
-- **Pass thresholds:** settings `qa.face_sim` by tier, using the tier of the shot's first QA-eligible character (main / supporting / recurring). A tier missing from settings uses 0.55. Shipped values:
-  - `main` tier: cosine similarity $\ge 0.75$.
-  - `supporting` tier: cosine similarity $\ge 0.65$.
-  - `recurring` tier: cosine similarity $\ge 0.55$.
-  - `crowd` tier: exempt from the face check.
+- **Pass thresholds:**
+  - LTX-2.5 and H3 shots: cosine similarity $\ge$ `qa.cast_face_min` (0.25). The two values come from the approved takes and the movie clips that lost the cast ([MOVIE_CONTINUITY.md](research/MOVIE_CONTINUITY.md) §3): every approved link whose face was at least 0.12 of the short side scored 0.306 to 0.606, and a 99 px approved face scored 0.106, so smaller faces are not judged. The clips that lost the cast scored 0.277 and lower.
+  - Wan 2.2 shots: settings `qa.face_sim` by tier, using the tier of the shot's first QA-eligible character (main / supporting / recurring). A tier missing from settings uses 0.55. Shipped values:
+    - `main` tier: cosine similarity $\ge 0.75$.
+    - `supporting` tier: cosine similarity $\ge 0.65$.
+    - `recurring` tier: cosine similarity $\ge 0.55$.
+    - `crowd` tier: exempt from the face check.
+- **A take's faces:** each shot of a seamless take also keeps the chain's own report of its link (`take.cast` in the shot record: per person the number of faces seen, the mean identity and the apparent age, from `face_drift.cast_drift`), as the Video Studio keeps it for a chain.
 
 ### 5.2 Prompt match (CLIP)
 - The check computes the cosine similarity between the middle frame's image embedding and the prompt's text embedding, with `openai/clip-vit-base-patch32`. The model loads from the local Hugging Face cache only (`local_files_only=True`). When it is not cached, the metric is skipped.
-- **Threshold:** $\text{Cosine} \ge 0.28$ (`qa.clip_score_min`). A clip below it fails QA (`clip_fail`).
+- CLIP reads 77 tokens. For LTX-2.5 and H3 shots a longer prompt (every one of theirs) is cut there; a longer Wan 2.2 prompt gets no score.
+- **Threshold:** $\text{Cosine} \ge 0.28$ (`qa.clip_score_min`). A Wan 2.2 clip below it fails QA (`clip_fail`). For LTX-2.5 and H3 shots the score is recorded and never fails a shot: on the approved takes a link scored 0.222 to 0.379 against its own prompt, 8 of 17 links under 0.28, and as much against the next link's prompt (0.215 to 0.399), so the check cannot tell a right prompt from a wrong one inside a take ([MOVIE_CONTINUITY.md](research/MOVIE_CONTINUITY.md) §3).
 
 ### 5.3 Motion check (Farneback optical flow)
 Diffusion models sometimes freeze into a still image, or blow up into chaotic high-frequency noise:
@@ -555,13 +657,15 @@ Diffusion models sometimes freeze into a still image, or blow up into chaotic hi
 ### 5.4 The 5-stage retry ladder and tier budgets
 What happens after a failed QA depends on the project's post-processing switch (`projects.post_processing`, default off):
 - **Post-processing off (the default):** QA runs on the raw render (`_finalize_raw`). A failure sends the shot to `review` with the QA result in `qa_notes`. There is no re-render.
-- **Post-processing on:** each QA failure increments `attempts`. When `attempts` reaches `qa.max_retries[tier]` (shipped: hero 3, standard 2, volume 1), the shot goes to `review`. Otherwise `QADirector.next_retry_action()` picks the next step from the shot's current `qa_stage`, and the shot is re-queued with `qa_stage + 1` and the next retry seed (`base + attempts × 10000`). Render failures (exceptions) increment the same counter, except connection and timeout errors. Those retry without using it (up to 60 times).
+- **Post-processing on:** each QA failure increments `attempts`. When `attempts` reaches `qa.max_retries[tier]` (shipped: hero 3, standard 2, volume 1), the shot goes to `review`. Render failures (exceptions) increment the same counter, except connection and timeout errors. Those retry without using it (up to 60 times). Otherwise the shot is re-queued with `qa_stage + 1`:
+  - **LTX-2.5 / H3 shots:** with their seed + 104729 and the prompt written for them (section 4.4.4). The steps below are not used. A shot that failed on the cast's likeness goes to `review` with its score instead, without a retake: in a take, a retake renders the shots after it again.
+  - **Wan 2.2 shots:** `QADirector.next_retry_action()` picks the next step from the shot's current `qa_stage`. The re-queue stores a retry seed (`base + attempts × 10000`), but the Wan render takes its seed from `ShotsDB.assign_seed` again: the scene's base seed plus the number of its shots already started.
 
-The steps are:
-1. **`reseed` (stage 0):** re-render with the next retry seed.
+The Wan 2.2 steps are:
+1. **`reseed` (stage 0):** re-render with a new seed (see above).
 2. **`simplify_prompt` (stage 1):** the stored prompt becomes `primary action: <first 8 words of primary_action>`, and the following renders use it (the orchestrator prefers the stored prompt once `qa_stage > 0`).
 3. **`adjust_lora` (stage 2):** from the next render on (`qa_stage >= 3`), effect and camera LoRAs (categories VFX / Camera / Motion) run at half strength (for example $0.7 \to 0.35$). This is meant to get rid of tensor blowout and edge artifacts (`lora_video.soften_effect_loras`). Character, environment, quality and acceleration LoRAs stay unchanged. Wan project renders use the softened LoRA chain. LTX-2.5 / H3 renders are started through Video Studio without it.
-4. **`regen_keyframe` (stage 3):** generates one new keyframe candidate (`KeyframeGen.generate_candidates(..., count=1)`). Legacy Wan 2.2 shots can pick it up as their start image (section 4.2); LTX-2.5 and H3 shots do not use it. The candidate renders with the Images-tab model in `keyframes.model` (default RealVisXL; `wan` keeps the old Wan 2.2 graphs).
+4. **`regen_keyframe` (stage 3):** generates one new keyframe candidate (`KeyframeGen.generate_candidates(..., count=1)`). Legacy Wan 2.2 shots can pick it up as their start image (section 4.2); LTX-2.5 and H3 shots do not use it. The candidate renders with the Image Studio model in `keyframes.model` (default RealVisXL; `wan` keeps the old Wan 2.2 graphs).
 5. **`review` (stage 4+):** the orchestrator does not act on this step and just re-queues the shot. The `review` status only comes from the attempts budget.
 
 Because the budget is checked first, the shipped budgets never reach the later steps:
@@ -591,7 +695,7 @@ Post Worker:             └────────►[ Post & QA Shot N ]─�
 
 ### 6.1 The post queue (`_post_worker`)
 - When shot N finishes rendering, `tool/orchestrator.py` at once extracts its tail frame from the raw render through `continuity.extract_tail()`.
-- The tail frame is written to disk and recorded in `studio.db` as `tail_frame` (status `rendered`), so shot N+1 can use it for `CONTINUE` or `MATCH_ACTION` right away.
+- The tail frame is written to disk and recorded in `studio.db` as `tail_frame` (status `rendered`), so shot N+1 can open on it right away: an LTX-2.5 / H3 `CONTINUE` shot (section 4.4.2), or a Wan 2.2 `CONTINUE` / `MATCH_ACTION` shot (section 4.2).
 - Shot N is put on the queue with `self._post_queue.put((shot, sjson, video, prompt))`.
 - The render loop then picks the next shot.
 - The background thread `_post_worker` takes shot N from `_post_queue`, marks it `post`, and runs the post chain (when the project turned it on) followed by QA (section 5).
@@ -613,7 +717,7 @@ The chain runs only for projects with post-processing switched on. Otherwise the
 9. **Encode:** libx264 veryfast, crf 16, yuv420p at the output fps. The source render's audio track is muxed back (AAC 192k), so H3 sound survives the frame round-trip.
 10. **Draft:** `output/drafts/<scene>_<shot_id>.mp4` with `h264_nvenc` (NVIDIA's hardware video encoder; `-preset p7 -tune hq -rc vbr -cq 19 -b:v 0 -rc-lookahead 20 -spatial-aq 1 -profile:v high`).
     - **NVENC fallback:** if NVENC fails (non-zero exit, or an output under 1 KB), the draft is re-encoded with libx264 veryfast crf 18, and NVENC is skipped for the rest of the process.
-    - The draft path is stored as the shot's `final_path`, and the continuity tail is re-extracted from it.
+    - The draft path is stored as the shot's `final_path`. A Wan 2.2 shot's continuity tail is re-extracted from it; an LTX-2.5 / H3 shot keeps the raw render's last frame, so the next `CONTINUE` opens on what the model rendered.
 
 ### 6.3 Thermal gate
 Long render sessions heat the GPU, so the render loop has a temperature gate:
@@ -625,7 +729,7 @@ Long render sessions heat the GPU, so the render loop has a temperature gate:
 
 ## 7. Film assembly (`tool/assembler.py`)
 
-`tool/assembler.py` builds the film from the project's passed shots. It runs when the Director reaches the `assemble` stage, or when the Film tab's **Assemble** runs (`POST /api/assembly/run` with the project id; see `docs/ARCHITECTURE.md`, section 4.1).
+`tool/assembler.py` builds the film from the project's passed shots. It runs when the Director reaches the `assemble` stage, or when **Assemble the film** on the Film page runs (`POST /api/assembly/run` with the project id; see `docs/ARCHITECTURE.md`, sections 4.1 and 7.4).
 
 ### 7.1 Plain cuts with the concat demuxer (no crossfades)
 Shots are joined with plain cuts. There are no dissolves between shots:

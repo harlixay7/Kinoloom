@@ -3,13 +3,745 @@
 # Changelog
 
 > **In short:** This is the list of notable changes to Kinoloom, grouped by
-> area. Nothing here is released yet. The version in `pyproject.toml` is a
-> placeholder until the first tagged release. The public repository starts
-> with a fresh history at this state, so where an entry says something was
-> renamed, removed or fixed, it compares with the private development tree
-> it came from.
+> area. Releases are tagged on GitHub; 0.1.0 is the first. The public
+> repository starts with a fresh history at 0.1.0, so where an entry under
+> 0.1.0 says something was renamed, removed or fixed, it compares with the
+> private development tree it came from.
 
-## [Unreleased]
+## [0.1.1] - 2026-10-29
+
+### Model files you already have
+- **Weights you already have are used, under any name and in any folder.**
+  `install_components.py` (`INSTALL-MAIN.bat` mode [3]) looks for the files
+  of the parts you choose in the model folders of `tool\settings.yaml` and in
+  `models\`, then asks for the folder of your own copies (a ComfyUI `models`
+  folder, say; Enter alone goes on), or takes it with `--use-folder <folder>`.
+  A file counts with the name and size `install\components.json` gives it,
+  or with that size and its SHA-256 under any other name; a hash is read
+  once and remembered. Your files are never renamed, moved or changed. On
+  the drive of the Kinoloom folder a file is hard-linked into `models\`: no
+  extra space, and deleting either name keeps the other. On another drive
+  it is used where it is when it sits in a ComfyUI-style folder under its
+  own name (that folder becomes a model folder), and otherwise hard-linked
+  on its own drive, in a `Kinoloom-models` folder at the top of that drive
+  that becomes the first model folder: no extra space there either. Only a
+  file on a drive that can't hold links (exFAT, or a network drive), or a
+  post-processing file on another drive (ComfyUI reads those only from
+  Kinoloom's own folder), needs a copy, and you are asked first; with
+  Windows Developer Mode on, it gets a symbolic link instead. The plan
+  shows each file found and how it will be used before anything is linked,
+  copied or downloaded, and running it again changes nothing that is in
+  place. `--h3-dir` is now another name for `--use-folder`, and finds the
+  H3 files under any name too.
+- **A model file saved in another letter case is renamed.** ComfyUI on
+  Windows opens such a file, but its render graphs want the exact name in
+  its list. A file in Kinoloom's own folders saved as `LTX-VAE.safetensors`
+  for `ltx-vae.safetensors`, say, gets the catalog name from the installer,
+  the launcher at start or the search; files elsewhere are never renamed.
+- **Settings › Model files** in the web app lists every model file with
+  where it is (in `models\`, linked or copied from where, or in a model
+  folder), runs the same search, offers the copies, and adds or removes
+  model folders; that changes only `paths.extra_model_dirs` in
+  `tool\settings.yaml` and keeps the file's comments. The tooltip of a model
+  that is not installed points there, and so does the launcher's banner when
+  there are no weights yet.
+- **Model folders count for the image models too.** `paths.extra_model_dirs`
+  was read only by the video models. Image Studio, the keyframe fallback
+  and `verify_restore.py` now find image weights there as well, and the
+  launcher also mounts each folder's `ipadapter\` and ComfyUI's older
+  `unet\` and `clip\` folders on every ComfyUI instance. Kinoloom's own
+  `models\` still comes first.
+- **Another build is not used in its place.** A file in a model folder with
+  a catalog name but another size (another quantisation, say) no longer
+  counts as installed, for the studio or the installer: the installer names
+  it, leaves it as it is and downloads Kinoloom's own copy. Between model
+  folders the studio counts the file ComfyUI loads, the first of that name.
+- **Fixed:** adding a model folder handles every way the list can be
+  written in `tool\settings.yaml` (the web app saves it without indentation),
+  keeps the file's comments and line endings, and checks the result before
+  it saves it.
+- **Tested.** Unit tests cover the search, every way a found file is used
+  (a link in `models\`, a model folder, a link on its own drive, a symbolic
+  link, a copy), read-only files, letter case, running it again, the
+  settings edits and the Settings page's API. On one PC, without
+  administrator rights, with Kinoloom on C: and 57.3 GB of LTX-2.5,
+  Qwen-Image 2.1, Z-Image and post-processing weights on a second drive, D:
+  (read-only; most renamed, some in a ComfyUI install there, one saved in
+  another letter case and one of another size):
+  - mode [3] found 17 files: 11 linked in `D:\Kinoloom-models`, 2 linked
+    into the Kinoloom folder, 3 used in the ComfyUI folder where they were,
+    and one post-processing file (0.02 GB) copied. It named the file of
+    another size as another build and downloaded Kinoloom's own. The files
+    kept their names, sizes, dates and read-only flags. Hashing a renamed
+    12.5 GB file on that drive (a hard disk) took about 2 minutes; the same
+    run again took 5 s and changed nothing;
+  - the studio's renders used the files where they were: a short LTX-2.5
+    clip with two reference images and both its LoRAs, a Qwen-Image 2.1
+    still and a Z-Image still. An earlier build rendered a CyberRealistic XL
+    still with its checkpoint, IP-Adapter and CLIP vision files only in a
+    ComfyUI folder on another drive;
+  - Settings › Model files listed each link and the file it points to, and
+    its search restored a deleted link.
+
+  Not exercised: a drive without hard links (exFAT, say), symbolic links
+  (Developer Mode), a mapped network drive, and a second PC.
+
+### Qwen-Image 2.1 on RTX 50-series cards
+- **The Qwen-Image 2.1 instance (port 8190) runs on PyTorch 2.13.0+cu130**,
+  the build `ComfyUI_LTX\venv` already uses, instead of +cu126. The cu126
+  build has no kernels for RTX 50-series cards (`sm_120`); the cu130 build
+  covers `sm_75` to `sm_120`. ComfyUI v0.37.4, the node packs and every other
+  package of `install\requirements-frozen\qwen21-venv.txt` keep their
+  versions. On cu130, ComfyUI also turns on comfy-kitchen's CUDA kernels,
+  which it leaves off below cu130.
+- On an RTX 3070, the studio's Qwen graphs (fast, quality, and fast with two
+  reference pictures) with the same seeds rendered the same pictures: same
+  composition, faces and light, with differences of about 1 level in 255 on
+  average along fine edges. Two runs on each build gave identical pictures,
+  so the same seed still renders the same picture, and the build alone makes
+  that difference. Speed was the same or a little better: in two runs each,
+  the warm fast render took 40.4 and 42.6 s (42.5 and 42.5 s on cu126) and a
+  12-step quality render 90.0 and 91.0 s (95.9 and 94.1 s). It has not run
+  on a 50-series card.
+- The cu130 build needs NVIDIA driver R580 or newer, like LTX-2.5 and
+  MiniMax H3, and a GTX 16- or RTX 20-series card or newer: it has no
+  kernels for GTX 10-series and older cards. On a card or driver that runs
+  only cu126 (a GTX 900 or 10 card, or a driver from R560 to before R580),
+  the installer builds the Qwen venv from
+  `install\requirements-frozen\qwen21-venv-cu126.txt` instead: the 0.1.0
+  list, with the same pins and torch 2.13.0+cu126. So a card that ran
+  Qwen-Image 2.1 with 0.1.0 gets the same build.
+- An existing `ComfyUI_Qwen21\venv` of the other build no longer matches its
+  list, so the next install says so and builds it again. On disk the venv
+  takes about 4.4 GB on cu130 and 5.7 GB on cu126.
+
+### Install
+- **`start.bat` no longer starts an unfinished install.** When the web app's
+  venv (`tool\.venv`) is missing, still marked unfinished or no longer
+  starts, it says so, shows the last install's failure report if there is
+  one, and offers to run the install again. Before, it started the launcher,
+  which stopped on `No module named 'uvicorn'`. The launcher checks the same
+  marker, skips a ComfyUI part whose venv still has it, and when it stops
+  restarting a part that keeps failing, prints the missing module or DLL from
+  that part's log. Told at the end to start Kinoloom, `INSTALL.bat` starts
+  it in the same window instead of opening a second one.
+- **Every install is logged, and a failure is shown in the window.**
+  `logs\install\install.log` gets every run: the PC (Windows edition and
+  build, processor, free space, NVIDIA driver), each step with its time and
+  commands, everything `install_components.py` and `verify_install.py`
+  print, and each failure. When Windows PowerShell does not run
+  `bootstrap.ps1` to the end (a policy of the PC can allow no scripts, or
+  only signed ones), the log gets its execution policies and language mode.
+  The log and the report are UTF-8: the window switches to UTF-8 while the
+  install writes them, so a folder name in any script reads right.
+  pip keeps a log per venv (`pip-tool-venv.log`, `pip-ComfyUI_LTX.log`,
+  `pip-ComfyUI_Qwen21.log`; the run before as `*.prev.log`), without its line
+  for every file it saw on a package index page. When a step fails, the
+  window shows the step, what happened, what to do and the log lines that
+  show it, and the same report is saved as `logs\install\LAST-FAILURE.txt`.
+  It names the cause: a download that broke off or was refused, a server
+  name the PC could not look up, a certificate check, a proxy, a full disk,
+  an antivirus block, a file that is held open or not writable, a path that
+  got too long, a hash mismatch, a package that did not build or was not
+  found, a missing Media Feature Pack or DLL, or an install that was
+  stopped.
+- **Slow and unstable connections.** pip waits 60 s for a server (its default
+  is 15), retries 10 times and resumes a broken download 10 times; a pip run
+  that still fails on a network error runs once more after 30 s. With no
+  connection at all, these retries take about 4 to 10 minutes before the
+  report. Values set on the PC (`PIP_TIMEOUT`, `PIP_RETRIES`,
+  `PIP_RESUME_RETRIES`) are kept. Python, Git and the Visual C++ runtime
+  download with curl's retries, and with `Invoke-WebRequest`, which uses the
+  Windows proxy settings, when curl fails. ComfyUI, the node packs, ffmpeg and
+  weights from a direct link (`install_components.py`) download with up to 6
+  tries, each going on where the last one stopped when the server allows it,
+  and each download is logged with its size. A server that did not answer at
+  all through those tries (the connection refused, its name not found, no
+  route, or a connection that timed out) is not tried again in that run: the
+  next downloads from it fail at once, with the same cause in the report, so
+  mode [3] with no network ends within a few minutes.
+- **SAM-2 is built against the installed torch.** pip built SAM-2 in an
+  isolated environment, which downloaded a torch of its own for the build and
+  unpacked it under `%TEMP%`, where its long paths could break the build. It
+  now installs after the rest of `tool/requirements.txt` with
+  `--no-build-isolation --no-deps` (the line is marked `[second-pass]`).
+- **pip's downloads stay on the Kinoloom drive.** pip's cache and temporary
+  files go to `temp\pip-cache` and `temp\pip-tmp` in the Kinoloom folder
+  instead of the system drive, and are deleted when the install finishes. A
+  `PIP_CACHE_DIR` set on the PC is kept.
+- **Checks before the long steps.** `INSTALL.bat` and `start.bat` say when
+  they run from inside a ZIP, and stop in a network folder
+  (`\\server\share`), which cmd can't make its current folder.
+  `bootstrap.ps1` asks before it installs into a OneDrive folder (OneDrive
+  syncs and locks the files; the safe answer is no), and on a first install
+  it checks the free disk space. After a venv is built, its main modules
+  must import; on a Windows N edition without the Media Feature Pack the
+  report says so. Step 4 checks that `tool\settings.yaml` was written, and
+  says when the colour-grade LUT could not be.
+- **pip 26.2.2 in every venv,** the version of the frozen base, installed
+  first. It checks certificates against the Windows certificate store, so a
+  network that inspects HTTPS with a certificate Windows trusts works.
+- **Nothing waits on a hidden prompt or a sleeping PC.** The PC stays awake
+  and QuickEdit is off in the window while the long steps run (the web app's
+  packages and the render engines), so a click in the window no longer
+  pauses them. pip and Git never ask for input, pip and the import checks
+  run Python in UTF-8 mode, and pip settings of the PC that would change
+  what is installed (`PIP_USER`, `PIP_TARGET`, `PIP_NO_DEPS`,
+  `PIP_CONSTRAINT` and similar) are cleared for the install.
+- **A second run needs no network for a finished web app venv.**
+  `tool\.venv\.kinoloom-installed` records the `tool\requirements.txt` the
+  venv was finished from (its SHA-256, with the pip pin). A run whose list
+  has not changed only checks that the packages import. Before, every run
+  installed the list again, which needs the network for the two packages
+  from git, and a run that failed there left a working venv to be rebuilt.
+  Now a run that cannot reach a server leaves a venv that worked as it was
+  (pip downloads everything before it changes anything).
+- **A moved Kinoloom folder is repaired.** A venv runs the Python its
+  `pyvenv.cfg` names, which is gone once the folder has moved. `start.bat`
+  says so, the next install run builds such a venv again (the web app's and
+  the ComfyUI ones), and the launcher names the cause when it stops
+  restarting a ComfyUI instance that fails on it.
+- **An unfinished venv stays marked.** The `.kinoloom-incomplete` marker is
+  written before a venv is created and removed last when one is deleted, so
+  an install stopped while it creates or deletes a venv leaves one that
+  `start.bat`, the launcher and the next run treat as unfinished.
+- **Behind a proxy.** pip reads the proxy in the Windows settings itself,
+  with its list of addresses that bypass it. git, which pip runs for the two
+  packages from git, does not, so it now gets that proxy as its own
+  `http.proxy` setting for the install (`GIT_CONFIG_*`), unless git has a
+  proxy of its own or the PC sets `HTTP_PROXY`/`HTTPS_PROXY`.
+- **A damaged download fails only its own part.** A ComfyUI or node pack
+  archive that does not unpack (damaged, or a guest network's sign-in page
+  instead of the zip) is reported with that cause, and the other parts go
+  on. Any other error in `install_components.py` or `bootstrap.ps1` (a
+  damaged `install\components.json`, for one) ends in the same report
+  instead of a traceback, and a part that failed without a report gets one
+  from `INSTALL-MAIN.bat`.
+- **Fixed: folder names.** In a folder whose path has a `%` or `^`,
+  `INSTALL.bat` and `start.bat` could not find the script they call next
+  (`call` read the character as its own), and Python and MinGit did not unpack
+  in a folder whose path has a letter outside the PC's ANSI code page (Chinese
+  on a Western PC, for example). Both work now, as do `&`, `!` and `'`. In a
+  folder whose path has a `'`, the face detector's export (part of
+  post-processing) failed with "No such file or directory", since Ultralytics
+  drops that character from a model path; it works there now too. A path with
+  `[` or `]` stops the install before anything is installed, since Windows
+  PowerShell and parts of Kinoloom read them as wildcards.
+- **Fixed:** every run after the first counted the Qwen-Image 2.1 venv as
+  unfinished and built it again, downloading torch once more. Its list pins
+  `torchaudio==2.11.0`, and the cu126 index installs `2.11.0+cu126`, which
+  that pin allows; the check compared the two as text. A pin without a local
+  label now matches the build pip installed for it.
+- **Fixed: what is typed at a prompt.** A quote or an `&` typed at the
+  yes/no question of `INSTALL.bat` or `start.bat` stopped the script, and a
+  folder pasted in quotes (Explorer's "Copy as path") at a prompt of
+  `INSTALL-MAIN.bat` did not work when its path has an `&`. Both work now.
+- **Fixed:** `INSTALL-MAIN.bat` treated a step that ended with a negative
+  exit code (a crash, or the window's Ctrl+C) as a success. Every step's
+  exit code is now checked exactly. `INSTALL-MAIN.bat /auto` exits 0 when
+  everything installed, 2 when some parts did not, and 1 otherwise.
+- **Fixed:** `INSTALL-MAIN.bat` modes [1] and [3] ended with "DONE. Start the
+  studio" and exit code 0 when a part did not install, so its report scrolled
+  away behind it. They now end with NOT FINISHED, say the parts that did
+  install work and that a run again finishes the others, and exit 2.
+- **The graphics card and driver are checked.** LTX-2.5 and MiniMax H3 run
+  on a CUDA 13.0 build, which needs a GTX 16- or RTX 20-series card or newer
+  and NVIDIA driver R580 or newer. The render farm (the SDXL image models,
+  Z-Image, post-processing and the legacy Wan 2.2) runs on CUDA 12.6, which
+  needs a GTX 900- to RTX 40-series card and R560: its PyTorch holds kernels
+  for `sm_50` to `sm_90`, none for the RTX 50 series. Qwen-Image 2.1 is
+  checked against the build its venv holds. `tool\gpu_support.py` asks
+  `nvidia-smi` for the card, its compute capability and the driver. The
+  install's last check prints them and, for each build the PC cannot run,
+  why (for an old driver: update it from nvidia.com/drivers). The launcher's
+  banner names the card and driver; it does not start a ComfyUI server the
+  card cannot run and says which ones it left out and why. The model lists of
+  Video Studio, Image Studio, the Render page and the Shots page's start
+  pictures show such a model as "not on this graphics card" with the reason,
+  instead of "not installed"; start pictures then open on the first image
+  model the PC can run, and a cut opens without a Qwen-Image frame. When
+  `nvidia-smi` does not answer, nothing is refused.
+- **Tested.** Unit tests run the real `INSTALL.bat`, `start.bat` and
+  `INSTALL-MAIN.bat` against stand-in steps, in folders whose names have
+  spaces, `&`, `%`, `^`, `!`, `'` and letters outside the ANSI code page,
+  from a network path and on code page 437, and parts of `bootstrap.ps1` in
+  PowerShell. End to end on one PC (Windows 11 Pro 25H2, RTX 3070 8 GB,
+  driver 616.64), from a source archive of a release candidate, with no
+  Git or ffmpeg on the PATH (the release differs from it in hydra-core
+  1.3.8, the Shots page's next-batch button, one disk figure in
+  `bootstrap.ps1` and two lines that matter only on Linux):
+  - a first install, in a folder named `Kino & 100% ^ !'s (7) é`: done in
+    19 min 58 s, with 6.3 GB downloaded. It needed 25.2 GB of free space at
+    its peak, and the folder then holds 16.2 GB. Its last check named the
+    card and driver and the parts they run. A run again rebuilt nothing
+    and was done in 10 s;
+  - mode [3] with LTX-2.5 and Qwen-Image 2.1, given a folder that held
+    their 13 files (44.3 GB): all linked in 5 s, nothing copied or
+    downloaded. The install's own ComfyUI servers then rendered a
+    2048×1152 Qwen-Image 2.1 still and, from it, a 640×384 LTX-2.5 clip of
+    25 frames, and the web app listed both models as available;
+  - mode [3] with every connection refused ended with NOT FINISHED and
+    exit code 2 after 3 min 13 s, and with a proxy whose name doesn't
+    resolve, after 31 s, each with its report. With the network back, the
+    refused run was done in 61 s;
+  - as on a GTX 1080 with driver 560.94 (through a stand-in `nvidia-smi`):
+    the Qwen-Image 2.1 venv got the CUDA 12.6 build, which rendered a still,
+    and the last check and the web app's model lists gave the reason the
+    card can't run LTX-2.5 and MiniMax H3;
+  - 0.1.0 with a project in it, the 0.1.1 files copied over it and
+    `INSTALL.bat` run again: done in 9 min 47 s. It built the Qwen-Image 2.1
+    venv again on CUDA 13.0 (2.6 GB downloaded) and kept
+    `tool\settings.yaml` as it was, and the project opened and saved its
+    edits with 0.1.1. As on the GTX 1080, the same update kept the CUDA 12.6
+    venv and took 2 min 38 s.
+
+  A second PC, with a GTX 1080, installed a release candidate and started
+  it; nothing was rendered there.
+
+  An earlier build with the same `bootstrap.ps1` and `start.bat` also ran
+  the failure paths: a package index that refuses connections (the report
+  after about 10 minutes) or whose name doesn't resolve (about 4 minutes),
+  the OneDrive question answered no and yes, the window closed in step 3,
+  and the folder renamed after the install. `start.bat` did not start an
+  unfinished install, and after the closed window and the renamed folder
+  the next run built the venvs again.
+
+  Not exercised in these runs: the Visual C++ runtime install, the
+  long-path prompt, a real proxy, a PowerShell that a policy blocks, a
+  Windows N edition, a Windows in another language, and a render on a
+  graphics card other than the RTX 3070.
+
+### Renders
+- **Fixed:** on a studio where MiniMax H3's server does not run (one without
+  the LTX-2.5 tree, say), the first render after each start, and after the PC
+  wakes from sleep, waited about three and a half minutes: the GPU check
+  restarted that server and waited for it to come back. With nothing running
+  there, it now goes on. In a test install with no ComfyUI running, the first
+  render could start after 33 s instead of 212 s.
+- **Fixed:** when the GPU broker restarted a ComfyUI server to free the
+  card's memory (Qwen-Image's, when its models did not unload), the launcher
+  reported it in red as a server that died and counted it toward the crashes
+  after which it stops restarting one. It now says the broker restarted it
+  on purpose and starts it again at once. A restart mark older than 5
+  minutes counts as a crash again.
+
+### Video Studio
+- **Start from** is a switch, **Image** (the default) or **Text only**.
+  Before, the mode menu started on T2V and the start image field appeared only
+  after switching it. The start image sits under the switch: Browse, drop a
+  picture on it, or type the name of a file already in the ComfyUI input
+  folder. A thumbnail shows a picked file, and a line says what the selected
+  model does with it: H3 opens exactly on it; LTX-2.5 takes it as the key
+  image, which guides the render but is not pinned as the first frame. With
+  Image selected and no picture, the clip renders from the prompt alone, as
+  before.
+- **Length** sits beside the prompt and shows the video's length and number
+  of segments ("10 s · 2 segments"). Its **+** adds a segment and **−**
+  removes the last one, with no upper limit; it replaces the **+ Segment**
+  button. A line under it says how the segments render. An empty segment box
+  now stops Generate with a prompt-check error. Before, it was skipped, so a
+  chain could have fewer segments than shown.
+- The LTX-2.5 10 s tier is now "Slow motion 10 s (not recommended)", last in
+  its group, with a note under the picker in Video Studio and on the movie's
+  Render page. It stretches one 5 s clip, so the extra time adds no new
+  action; for a 10 s video, use Quality 5 s with Length 10 s. Its registry
+  note no longer says the tier has no audio: its graph attaches the 5 s
+  render's audio track, unstretched. The H3 draft "Cinematic 768p
+  single-pass" is now "768p single-pass".
+- The question before a clip without references is now "No start image or
+  references". It is not asked when Text only is picked on LTX-2.5.
+
+### Movie pipeline: the Video Studio's request and written prompts
+- **Movie shots on LTX-2.5 and H3 render the way Video Studio renders them.**
+  Each unit (one shot, or a seamless take of shots that continue each other)
+  gets exactly the request the Video Studio page sends: the cast as
+  references with their names and looks, a start image or the previous
+  clip's last frame, the page's size and frame count, no negative prompt,
+  the model's own steps, and the same prompt check as Generate. Before,
+  movie shots ignored the start images picked on the Shots page, their
+  prompts came from a template, and an H3 take whose cast had no pictures
+  went out with empty prompts.
+- **Prompts are written by an AI or by hand, never from a template.** The AI
+  gets a brief per unit: the story so far, where the shot before left off,
+  the shots with their cast, dialogue and sounds, the shot that comes next,
+  and the model's rules for its pictures. When the endpoint supports
+  function calling, it can also look up shots, scenes, characters and
+  earlier prompts, check its prompts, and hand them in. Its reply goes
+  through the prompt check: the check's own fixes are applied, and errors go
+  back to the AI, at most twice. Each prompt remembers what it was written
+  for. When the shot, how it opens or its cast changes, an AI prompt is
+  written again and a hand prompt is marked stale.
+- **The Shots page** shows each shot's prompt and its state (ready, missing,
+  stale, rendered), with a prompt editor, **Write the prompts** (a background
+  job with its progress and a Stop button) and **Use a chat AI**: a brief to
+  paste into any chat AI, whose reply is pasted back and stored by its
+  `Shot <id>:` blocks. A shot without a prompt it may render with waits
+  with the reason (status `prompt`), and saving its prompt queues it again
+  (when production has stopped for prompts, it renders on **Continue
+  production**).
+- **The AI writer** (System menu, Settings › AI writer, and the Story and
+  Shots pages):
+  - provider presets for OpenAI, Google Gemini, OpenRouter, DeepSeek, Groq,
+    Mistral, Ollama and LM Studio, or any other OpenAI-compatible endpoint;
+  - a key field with a link to the provider's key page, plus **List models**
+    and **Test**.
+
+  The key is shown masked and is cleared when the endpoint moves to another
+  host. An AI on this PC writes only while no render uses the GPU, and
+  Ollama unloads its model after each unit.
+- **Opening frames.** A cut with no start image of its own opens on a frame
+  made just before it renders, with Qwen-Image 2.1 fast. The frame is drawn
+  from the cast's pictures and the opening image prompt the AI wrote with
+  the shot's prompt. Frames are made only for shots that open on one, up to
+  8 under one model load, and kept: the same prompt for the same shot is
+  never made twice. `movie.opening_frames` turns them off.
+- **Continuity follows Video Studio.** `CONTINUE` is the same camera take: a
+  clip continues the previous shot's last frame, and a run renders as one
+  seamless take. `MATCH_ACTION` is a cut to a new angle while the action
+  carries on, so it opens like a cut instead of on the previous frame. The
+  Story Architect's shot rules and the linter say the same. The linter warns
+  about a run of `CONTINUE` shots longer than a take (the project's own
+  length, else 6 shots on LTX-2.5 and 4 on H3) and about a match cut that
+  keeps the shot size and camera; before, it warned after two bridges in a
+  row.
+- **An LTX-2.5 take renders like a Video Studio chain**, so every join inside
+  it is a latent carry; how many shots it holds is under **A take holds 6
+  shots on LTX-2.5** below. Before, a take stopped at 4 shots and the next one
+  opened on a still of the last frame. An H3 take still holds at most 4
+  shots, because its 1080p refine holds the whole take in memory:
+  `movie.h3_take_max_shots` (an older `movie.take_max_shots` now applies to
+  H3 only).
+- **The Director has a `prompts` stage** after `shots`. With an AI set up it
+  writes the prompts; the shots that have theirs render, and production
+  stops at the shots still without one (see **Production renders the prompts
+  it has** below).
+- **Retakes take a new seed.** **Render again** on the Shots page and a QA
+  retry give an LTX-2.5 / H3 shot its seed + 104729 with the same prompt. A
+  failed render keeps its seeds, so a take's retry reuses its finished steps.
+  A retake inside a take renders the take again under its chain id, with each
+  shot's own seed: the shots before it reuse their finished steps, so the
+  latent carry into it stays, and only it and the shots after it take GPU
+  time. A rendered shot that continues the take renders again. Before, a QA
+  retry's seed was replaced at render, and a retake inside a take rendered
+  that shot alone from a still of the shot before.
+- **Video Studio chains take one seed per segment** from in-process callers
+  (`video_studio.start_chain(seeds=...)`), and a seam re-roll's kept seed
+  applies only while the link keeps the seed it was rolled from.
+- **A `CONTINUE` shot waits until the shot before it has rendered.** Before,
+  queued shots rendered before pending ones, so an edited `CONTINUE` shot
+  could render before the shot it continues.
+- **Compact shots hold more.** The Story Architect's compact shot entries take
+  `with` (the other characters on screen, so each gets a reference picture),
+  `end` (the shot's last frame, for the shot that carries on from it), and
+  `tier` together with `continuity`. Before, a compact shot had one
+  character.
+- **Fixed:** the linter gave MiniMax H3 projects the LTX-2.5 reference budget
+  (5 pictures instead of 6).
+- **Fixed:** importing a story replaced each character's powers with the AI's
+  text and dropped the power-level pictures added on the Cast page. The AI's
+  text is now merged into each power.
+
+### Movie pipeline: from the idea to the render with any AI
+- **The story is written with a chat AI or with the AI writer, by the same
+  prompts.** On the Story page, **Copy prompt** gives the whole film in one
+  reply for a short film (up to 60 shots) and the outline for a longer one (an
+  hour is 26 scenes and 720 shots); before, it asked one reply for every shot.
+  Then each scene row has its own prompt and **Paste reply**. The AI writer
+  sends the same text, with the authority rule (ids exactly as the cast lists
+  them) and the cast as it is (see **The story keeps to the cast**). Each
+  scene prompt now also carries the story around the scene: the logline, every
+  scene on one line, how the scene before ended and the scene that follows, so
+  a model that writes one scene at a time knows where it sits.
+- **One click writes a scene.** With an AI writer set up, each scene row has
+  **Write**, and the list has **Write the *N* missing scenes**. **Rewrite
+  part** on the Story page and **Rewrite the story around this cast** on Cast
+  & World use the AI writer too; before, they ran the built-in generator from
+  templates. Without an AI writer, Cast & World's rewrite opens the Story
+  page, whose prompt carries the cast.
+- **Start production goes from the story to the render.** The Director has the
+  AI writer write the outline, then the scenes that have no shots. With no AI
+  writer, it waits and says what to paste and where, and the scenes already
+  written go on to their video prompts and their render. The film is cut once
+  every scene has its shots (deleting a scene removes its beat), and a
+  finished project runs again on Start when it has new scenes or shots to
+  render. Before, the Director wrote a story from templates when there was
+  none, cut a film from whichever scenes had shots, and a finished project
+  ignored scenes added later. The Story page and the Director share one AI
+  writer, so a project is written by one run at a time, and **Stop** stops it
+  too.
+- **A reply's names take the cast's spelling.** A chat AI that writes `sara`
+  for `Sara`, `Calm` for the palette's `calm` or `Close_Up` for `close_up` is
+  read as meaning the existing names: characters, crowds, places, the
+  project's scenes, powers, weapons, loadouts, named views, emotions and the
+  shot vocabulary. **Fixed:** on Windows such a reply replaced the character's
+  file with the reply's text, and its weapons, loadouts and picked looks were
+  lost; every shot that named the character then failed the check. No id can
+  now be saved that differs from an existing one only in capitals, from the
+  story import or from Cast & World's **New character** and **New place**.
+- **A refused reply says why, and only a scene's own problems refuse it.** The
+  paste window stays open with every problem listed and **Copy a fix
+  request**, to paste into the same chat. A scene that is imported reports the
+  problems still left in other scenes; a reply that also holds other scenes
+  imports only the one pasted for, and names the others. **Fixed:** one scene
+  with a problem made every later scene import fail with only "lint failed",
+  and such a problem also hid the shot-order checks of the other scenes.
+- **An AI writer that is not running is reported in seconds.** A fresh install
+  has no AI writer set up, and the Story page checks that the one set up
+  answers ("Set up, but nothing answers at …"); saving the settings lets the
+  writers ask again at once. The story writer and the prompt writer stop at
+  the first refused request and name the address instead of trying every scene
+  or unit, and the shots that already have a video prompt render while the
+  others wait. Before, every install counted a local Ollama as connected, and
+  **Start production** could spend minutes on retries with nothing on the GPU.
+- **Fixed:** the AI writer no longer copies the global story bible into a
+  project before it writes. For a project without its own universe file,
+  that copy cleared the project's characters, places and scenes.
+- **Video prompts from a chat AI, batch by batch.** **Use a chat AI** on the
+  Shots page gives a brief for the next prompts of one scene, up to
+  `movie.prompt_segments_per_reply` (4; a take with more is written in parts),
+  and says how many prompts are ready and how many batches are left. **Import
+  & next** saves the pasted reply and shows the next brief, made from the
+  prompts just saved, so every batch carries the end of the prompt before it;
+  a refused shot stays, with **Copy a fix request** for the same chat. A brief
+  says the film (every scene on one line), the story so far and the render
+  model's rules once, and each shot only what is its own: a brief for 8 shots
+  of the 3-minute test film (measured when a batch held 8) took about 14,000
+  characters, where the single brief for 24 took 112,000 and its later shots
+  could not see the prompts written before them. Once a first batch is in, the
+  button reads **Use a chat AI for the next batch**, and so does the one in the
+  note under the top bar; without an AI writer it is the Shots page's main
+  button. Each shot's prompt editor has **Use a chat AI** too, for that shot or
+  its take alone.
+- **Start production says why it waits.** When production stops at once (no
+  story, scenes without shots, or shots without video prompts and no AI
+  writer that answers), the button answers with the reason, and a note under
+  the top bar keeps it on every Movie page with the one action that moves it
+  on (**Write them with a chat AI**, **Open the Story page**). While shots
+  render, the note counts the shots that wait for a prompt. Before, the
+  reason was only a tooltip on the status, so Start looked like it did
+  nothing. With an AI writer set up but not answering, **Use a chat AI**
+  becomes the Shots page's main button.
+- **Production renders the prompts it has, stops where they end and goes on
+  from there.** With video prompts for only some shots (a first batch pasted
+  from a chat AI, say, and no AI writer), every shot that has its prompt
+  renders, then production stops at the shots without one and the shots that
+  open on them (the rest of their take, and a match cut in the same place).
+  The note says how many shots are rendered and which ones need a prompt,
+  and the render queue stops with it. The prompts pasted or written next
+  render on **Continue production**, which the chat window also offers after
+  **Import & next**. Before, the shots behind the first missing prompt stayed
+  pending, and the project showed "rendering" with nothing on the GPU until
+  it was stopped. When the AI writer did not answer or could not write a
+  prompt, the stop says that, with the AI writer's address.
+- **The story keeps to the cast.** The story writer can't see the cast's
+  pictures, so the looks it wrote pulled the renders away from them. Now an
+  existing character keeps its name, tier, look (body and outfit), powers,
+  weapons and loadouts; the story bible adds its arc, and a voice style and
+  emotions where none were set. Places, crowd types and camera defaults the
+  cast has stay as they are, and a character or place the cast does not
+  have is added only to a project with no cast yet (otherwise the shots that
+  use it fail the check). Every story prompt lists each character's look as
+  fixed, and the Story page shows the cast as it stands.
+- **A picked look writes the character's look.** Picking a look from a
+  Casting batch fills an empty Body and Outfit from what the picture was made
+  with (the **Fill in from a Casting picture** text), and a character card
+  with pictures but no look says so. Compact shots no longer get a made-up
+  "foreground centre, facing the camera" on every character.
+- **Every prompt keeps its shot.** A prompt for an LTX-2.5 clip that leaves
+  out a person's look from the cast gets the cast sentence the seamless takes
+  already carry ("Cast, the same age and look in every shot: …"); the Video
+  Studio's check offers the same fix. A prompt written by an AI or pasted
+  from a chat AI must speak the shot's dialogue word for word (refused with
+  the line otherwise; a warning for a hand prompt), and a name of someone not
+  in the shot is a warning.
+- **A local AI writer that is not running is found out at once.** The prompt
+  writer asks whether the AI answers before its first request, instead of
+  after the request's retries, and an AI on this PC that does not answer is
+  no longer waited for behind the render that holds the GPU.
+- **Cast & World.** **New place** asks for the place's name and numbers a
+  name already taken; a place is renamed by typing its new name and pressing
+  Enter. The batch picker selects a picture on a click and adds it with **Use
+  this picture**; a double-click adds it once, and the card's picture count
+  follows. When another program holds the project's copy of a picture open
+  (a viewer, the virus check), the copy is tried again for a few seconds,
+  then the picker names the file that is held.
+- **Fixed: changes on Cast & World were lost.** A character's name and part,
+  and whether a character or place is in the movie, sit on the card's head,
+  where nothing saved them; they now save as they change. Edits in an open
+  card mark it **Unsaved changes** (its button reads **Save changes**), the
+  page no longer draws itself again over them when the project changes, and
+  leaving the page or reloading it asks first.
+- **Tested.** Unit and integration tests cover the name matching, the case
+  guard, the scene import, the AI writer's modes, its one-run claim and its
+  stop on an endpoint that does not answer, the Director's stages and the
+  reachability check, and the chat batches, the cast contract of the story
+  bible, the look written from a picked picture, the story checks of a
+  prompt and Start's answer. A test runs a real render queue with stand-in
+  renders on a five-shot scene with the first take's three prompts pasted:
+  the take renders, production stops at the fourth shot and the match cut
+  that opens on it, and after the next reply is pasted the fourth renders
+  and it stops at the fifth. The Story, Cast & World, Shots and Start
+  production flows were checked in a browser on a copy of a project, with no
+  AI writer and with one that does not answer; nothing rendered on the GPU.
+
+### Movie pipeline: continuous takes and a cast that stays itself
+- **The story is written in takes.** A scene is a few takes; a take is one
+  continuous camera passage in one place, its shots consecutive moments that
+  render as one video. The cuts follow from the takes: another place is a
+  cut, a new take in the same place a match cut (a new angle while the
+  action goes on), and every other shot continues the one before. Before,
+  the story AI marked each shot itself, and most shots of a scene came out
+  as cuts that each opened a new clip. The story rules also keep faces at
+  medium range or closer for dialogue, emotion and hero moments, use wide
+  shots only to set a place or show big movement, and stage the action in
+  the set the place's picture shows. The older shot format still imports.
+- **A take holds 6 shots on LTX-2.5, and that is a setting.** An 8-shot
+  LTX-2.5 take kept the cast in every shot; shots 7 and 8 had larger steps
+  at their joins than any before them, though none showed. So
+  `movie.ltx_take_max_shots` is 6, and **Shots per take** on the Render page
+  sets a project's own (empty for the studio's). H3 takes stay at 4
+  (`movie.h3_take_max_shots`). A longer run goes on in a new take that
+  opens on a new angle made from the last frame of the one before.
+- **The look comes from the picture.** A character's Body and Outfit text
+  comes from the Casting record of its main picture and follows it when
+  another picture becomes the main one; text typed by hand is never
+  replaced. A text that names the other gender, another age or other
+  clothes than the picture is shown on its card with **Use the picture's
+  look** and **Keep mine**, and Start production waits until it is settled.
+  Every prompt says woman or man: a Body text without the word gets the
+  picture's. Places are described by their pictures' records too, so the
+  story is staged in the set the video model receives.
+- **A cut opens on a frame made from the cast's pictures.** A cut without a
+  start image of its own opens on a frame Qwen-Image 2.1 makes from the
+  shot's opening-image prompt, one picture per person (the outfit or loadout
+  still the video model gets) and the place's picture; a match cut's frame
+  is made from the last frame of the shot before, and made again when that
+  shot renders again. Of two candidates the one most like the cast is kept,
+  and under `movie.key_image_min_likeness` (0.25) two more are tried. In the
+  key-image tests a face close-up next to the still drew the lead more than
+  once in 2 of 16 frames, and the close-up alone drew another outfit in all
+  10, so each person gets one picture, the still. With Checkpoints the
+  project stops before the render while the frames are looked at on the
+  Shots page, where a frame's refresh button makes it again; the frames
+  passed there stay passed after a Stop.
+- **Start pictures are made with Qwen-Image 2.1 fast.** The Shots page's
+  **Start pictures** and a shot's picture studio open on Qwen-Image 2.1 fast,
+  the image model the installer sets up (it does not download RealVisXL), or
+  on the first installed image model when it is missing. A Qwen-Image picture
+  is made on Qwen-Image's own server, from each person's still and the
+  place's picture as the opening frames are; before, these windows opened on
+  RealVisXL, and a Qwen-Image picture was sent to the SDXL server, which has
+  no Qwen-Image, without the cast's pictures. The picture studio shows the
+  pictures the chosen model gets, and controls a model does not use (LoRAs,
+  the sharpen pass, the fast mode's negative prompt) are hidden.
+- **A long take's prompts are written a few at a time.** An AI reply writes
+  at most `movie.prompt_segments_per_reply` (4) of a take's prompts, with the
+  whole brief and the prompts written before it; then the whole take is
+  checked, and only a segment the check names is written again. A chat
+  brief follows the same parts. The cast sheet tells the writer what the
+  video model renders well and badly (MODEL LIMITS for LTX-2.5 and H3), and
+  the story writer gets the same words.
+- **The QA checks the cast on LTX-2.5 and H3 shots.** A shot's last frames
+  are compared with the identity pictures of the people it rendered with.
+  A face large enough to judge (`qa.cast_face_size`) that is less like the
+  cast than `qa.cast_face_min` (0.25) sends the shot to review with its
+  score, without a retake. A face too small, turned away or off screen is
+  not a failure. Each shot of a take also keeps the take's face report for
+  its part. The prompt-to-picture score is recorded for these shots and
+  never fails one: on the approved takes it was as high against the next
+  shot's prompt as against the shot's own. A prompt longer than the score's
+  77 tokens, which gave no score, is cut there for these shots.
+- **A continuity change says what it renders again.** Changing a shot to
+  continue or to cut on the Shots page first lists the rendered shots it
+  would render again (in its take, and the shots that open on a last frame
+  that changes), and asks.
+- **Tested.** Unit and integration tests cover the takes format and its edit,
+  the take length and the split, the opening frames' references, candidates
+  and likeness, the match cut's frame, the keyframes stop and a Stop after it,
+  the prompt writer's parts, the QA's cast check and its review, the take's
+  face report, the continuity warning and what it renders again, the
+  take-length setting, and the start pictures' default model, server and
+  references. The Shots, Render and Cast & World pages were checked in a
+  browser on a copy with a test movie. On the GPU: the 8-shot take, the
+  opening-frame comparison, and one five-shot LTX-2.5 scene through the movie
+  path, run by the studio's code outside the web server: two takes joined by
+  a match cut, every shot passed the QA and all six seams passed the seam QA.
+  Its whole-take measures failed both takes, as they fail the showcase's
+  cliff-walk take ([MOVIE_CONTINUITY.md](docs/research/MOVIE_CONTINUITY.md)
+  §1, §2 and §4).
+
+### Interface: a Movie side and a Studio side
+- **Two sides, one sidebar.** A switch at the top of the sidebar picks
+  **Movie** or **Studio**, and each side opens on the page it was last on.
+  Movie lists the steps of a film in the order they are done, numbered:
+  Casting, Cast & World, Story, Shots, Render, Review and Film, with Overview
+  above them. Each step shows whether it is done, partly done, running or
+  still to do, and Overview names the one thing to do next, with a button that
+  goes there. Studio holds Video Studio, Image Studio and the Library.
+- **Production that stops for you says so.** When production waits at a
+  checkpoint or stops with an error, a dialog on either side says what
+  it waits for, in the director's words, and opens the page that needs you
+  (opening frames: Shots; the cast's look text: Cast & World); the tab's
+  title starts with "Waiting for you" or "Stopped" until it goes on, and
+  while the window is in the background a desktop notification says the
+  same (the browser asks once, on Start production). Each stop is announced
+  once, and closing its dialog settles it for every tab. The note under the
+  top bar gives the same reason and a link to that page. Before, a stop
+  reached minutes after Start showed only in that note.
+- **The System menu** at the foot of the sidebar, under the GPU meter, holds
+  the Render queue, Worker PCs, the AI writer, Settings and Logs. Before,
+  each had its own row.
+- **Renamed pages.** Training is now Casting (step 1: make the cast's
+  looks), Generate is Render, Images is Image Studio, Queue is Render queue
+  and Workers is Worker PCs. Cast & World now comes before Story. Links to
+  the old names (`#training`, `#generate`) open the new pages.
+- **Wan 2.2 LoRA training is out of the way.** It applies to the legacy
+  Wan 2.2 model only, so Casting no longer shows it as a tab: a line at the
+  foot of the page opens it and the trained LoRAs, and the caption, licence
+  and train steps of a batch sit in a closed "Wan 2.2 LoRA training" fold.
+  Anatomy and quality batches are marked legacy.
+- **The AI writer has templates.** Each provider is a card with a line on
+  what it is and a few model names to start from, grouped into "In the
+  cloud, with a key" and "On this PC, free". After **List models**, a
+  suggested model that the endpoint does not list for your key is marked.
+- **Casting** works one batch at a time: pick it from a list, then keep or
+  reject pictures on cards with round selection marks. Each batch card has
+  its next actions on it: Pick the best, Finish the batch, Send to Cast &
+  World.
+- **Image Studio** asks for a model, a prompt and a shape, in that order.
+  Steps, guidance, seed, the worker, the negative prompt, upscaling, LoRAs
+  and references sit in folds. Models list the installed ones first, with
+  their variants together, and Wan only when it is picked.
+- **The Library** shows the count on each tab, skips empty sections and
+  shows each video's length on its poster.
+- **Worker PCs** shows each PC as a card with its GPU, roles and disk, and
+  the steps to add a PC. **Settings** opens on Model files; the settings
+  file is under Advanced.
+- **A new look.** Archivo and Courier Prime replace Barlow; script text
+  (the story, scene and beat lines) is set in Courier Prime. Page copy is
+  shorter and in sentence case, and on/off choices are switches.
+
+### Security updates of third-party packages
+- hydra-core 1.3.7 -> 1.3.8 in `tool/requirements.txt` and the `tool-venv`
+  snapshot, for GHSA-wf6j-7hvr-gr93 (Hydra's legacy blocklist of targets
+  allowed unsafe PyYAML loading). SAM-2 needs it; no Kinoloom code uses
+  Hydra itself. pip-audit reports no other known vulnerability in the
+  pinned lists.
+
+### Docs
+- `docs/setup/RESTORE_INSTRUCTIONS.md` says what the install logs and where,
+  and its manual commands use pip 26.2.2 and the SAM-2 second pass.
+  **Fixed:** it said the installer falls back to ComfyUI's own
+  `requirements.txt` when a pinned list fails; it never does.
+- The bug report template asks for `install.log` and `LAST-FAILURE.txt`.
+- `docs/PIPELINE_AND_CONTINUITY.md` §4.4 describes the movie's request,
+  opening frames, prompts and retakes, and `docs/ARCHITECTURE.md` §4.1 the
+  `prompts` stage.
+- New [docs/research/MOVIE_CONTINUITY.md](docs/research/MOVIE_CONTINUITY.md):
+  the measurements behind the take length, the opening frames' references
+  and the QA's cast check, and a five-shot scene through the movie path.
+
+## [0.1.0] - 2026-10-25
 
 ### Video Studio: prompt checks and the cast sheet
 - **Prompt check** (`tool/prompt_check.py`). It works out what a request

@@ -44,7 +44,7 @@ Architecture details: `docs/setup/DISTRIBUTED_FLEET.md` section 3.
 
 1. **Tailscale.** Install it on the PC and log in. Note the PC's IP: `tailscale ip -4` → for example `100.x.y.z`. In the admin console, create a **reusable auth key** (Settings → Keys). The bootstrap joins with `--ephemeral`.
 2. **Make the studio reachable.** Set `ui.host: 0.0.0.0` in `tool/settings.yaml` and restart the control room. On the first start with a non-loopback host, it generates `security.api_token`, which remote browsers must enter. Worker callbacks use the fleet token instead.
-3. **Fleet token.** The control room generates `workers.shared_token` on first start. It sits in plain text in `settings.yaml` and in every worker's `worker_config.yaml`. To rotate it before a cloud box joins, use Workers page → *New install token*. Every existing worker then needs the new value (reinstall, or edit `token` in its `worker_config.yaml`).
+3. **Fleet token.** The control room generates `workers.shared_token` on first start. It sits in plain text in `settings.yaml` and in every worker's `worker_config.yaml`. To rotate it before a cloud box joins, use the Worker PCs page (System menu) → *New token*. Every existing worker then needs the new value (reinstall, or edit `token` in its `worker_config.yaml`).
 4. **Publish the weights** (once; re-run to resume). Run this from the studio root, because the manifest's `source` paths are relative:
    ```
    "tool\.venv\Scripts\python.exe" -m pip install huggingface_hub hf_transfer
@@ -84,8 +84,8 @@ PASS means ComfyUI reported success with no execution error. Nothing in the stud
 ## 3. Daily flow
 
 1. Open the Colab notebook and choose **Run all**. It runs the secrets, the repo clone, then `bootstrap.sh` (see below), then a status cell. How long it takes depends mostly on the model download.
-2. On the PC, open the **Workers page**. `kinoloom-colab` shows **online** with GPU, disk and model inventory. `Test` pings the agent and runs its selftest (ComfyUI up, the H3 node classes the bootstrap configured, disk).
-3. Assign work: in Video Studio or the queue, pick worker `kinoloom-colab`, or `any` (the dispatcher then uses whichever lane is idle first, the local one included). Local 3070 lanes keep rendering in parallel, because the GPU broker does not serialize remote workers. Movie-pipeline shots stay sequential, even when they hop machines.
+2. On the PC, open the **Worker PCs** page (System menu). `kinoloom-colab` shows **online** with GPU, disk and model inventory. `Test` pings the agent and runs its selftest (ComfyUI up, the H3 node classes the bootstrap configured, disk).
+3. Assign work: in Video Studio or the Render queue (System menu), pick worker `kinoloom-colab`, or `any` (the dispatcher then uses whichever lane is idle first, the local one included). Local 3070 lanes keep rendering in parallel, because the GPU broker does not serialize remote workers. Movie-pipeline shots stay sequential, even when they hop machines.
 4. Artifacts are pushed back automatically to `temp/worker_results/{job}/` and copied to the same output paths local renders use.
 
 ### What `bootstrap.sh` does
@@ -107,10 +107,10 @@ In smoke mode (`SMOKE=1`), `MAIN_URL` and `WORKER_TOKEN` may be unset. The scrip
 
 ### Model management from the PC
 
-- **Install group**: Workers page → *Install group* → tick groups. The worker pulls them from the HF repo on its own connection, resuming `.part` files. Files are sha256-checked only when the manifest has a hash, and skipped only when the manifest size matches (see section 4).
-- **Delete**: Workers page → *Delete model* removes one file on the worker (the PC copy and the HF repo are untouched).
+- **Add a group**: Worker PCs page → *Add a group* → tick groups. The worker pulls them from the HF repo on its own connection, resuming `.part` files. Files are sha256-checked only when the manifest has a hash, and skipped only when the manifest size matches (see section 4).
+- **Delete**: Worker PCs page → the trash button (*Delete a model file*) removes one file on the worker (the PC copy and the HF repo are untouched).
 - **Arbitrary file**: `POST /api/workers/<wid>/install_url` `{path, url|hf_repo+hf_file, hf_revision?, bytes?, sha256?}`. It is streamed to disk with resume, never buffered in RAM.
-- Disk guards: `fetch_models.py` (bootstrap) refuses a selection whose manifest sizes exceed `disk_budget_gb` (60) or the free disk minus 3 GiB. Workers-page installs skip the budget. The agent refuses a file only when its declared size plus 2 GiB exceeds the free disk.
+- Disk guards: `fetch_models.py` (bootstrap) refuses a selection whose manifest sizes exceed `disk_budget_gb` (60) or the free disk minus 3 GiB. Installs from the Worker PCs page skip the budget. The agent refuses a file only when its declared size plus 2 GiB exceeds the free disk.
 
 ### After a session death
 
@@ -141,13 +141,13 @@ Colab ends runtimes on its own schedule (free-tier sessions last at most ~12 h).
 | Symptom | Where to look | Fix |
 |---|---|---|
 | Worker never appears online | `colab/agent.out` | `registration/heartbeat failed` → check that `MAIN_URL` is the PC's **tailnet IP**, Tailscale is up on the PC, `ui.host` is not loopback, and `WORKER_TOKEN` matches `workers.shared_token` (401 = wrong token) |
-| Online but `Test` fails | Workers page | PC→Colab inbound is blocked → check `tailscale serve status` in Colab; the bootstrap falls back to the raw tailnet IP. The advertised address is in the bootstrap output (`tailscale up: ...`) and the agent's start line (`advertise=...`) |
+| Online but `Test` fails | Worker PCs page | PC→Colab inbound is blocked → check `tailscale serve status` in Colab; the bootstrap falls back to the raw tailnet IP. The advertised address is in the bootstrap output (`tailscale up: ...`) and the agent's start line (`advertise=...`) |
 | ComfyUI down / job fails "local ComfyUI is not reachable" | `tool/worker/comfyui.log` (worker mode; the smoke notebook logs to `colab/comfyui.log`) | import error of a custom node → re-run the bootstrap (it checks out the pinned commits again, but ignores checkout errors, so confirm with `git -C ComfyUI/custom_nodes/<pack> rev-parse --short HEAD`); check the `PINNED_VERSIONS.md` pins |
-| `HTTP 401` during model pull | bootstrap output (`fetch_models.py`), or `colab/agent.out` for Workers-page installs | `HF_TOKEN` lacks read access on the repo, or the models are not published yet |
+| `HTTP 401` during model pull | bootstrap output (`fetch_models.py`), or `colab/agent.out` for installs from the Worker PCs page | `HF_TOKEN` lacks read access on the repo, or the models are not published yet |
 | `manifest hf_repo not published yet` | bootstrap output | publish the weights and push the updated manifest (section 1, step 4) |
 | `REFUSING: not enough disk` / `REFUSING: selection exceeds the 60GB disk budget` | bootstrap output | drop a DiT group for this session (`MODEL_GROUPS` in cell 1) |
 | Render killed by timeout | control-room log | raise `workers.remote_timeout_scale` in `tool/settings.yaml` |
-| 503 "worker blocked — missing required models" | job error | group install incomplete → re-run *Install group* (it resumes; `.part` files continue) |
+| 503 "worker blocked — missing required models" | job error | group install incomplete → run *Add a group* again (it resumes; `.part` files continue) |
 | W4A8 node crashes at load | `tool/worker/comfyui.log` | the stack does not run on this GPU/torch combination (see section 2, FAIL); keep H3 work on the PC |
 
 ## 7. What runs where (change map)
