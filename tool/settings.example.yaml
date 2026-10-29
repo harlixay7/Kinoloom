@@ -2,6 +2,8 @@ paths:
   root: .
   comfyui: ComfyUI
   models: models
+  # model folders kept elsewhere (a ComfyUI models folder, say), with the same
+  # subfolders as models/; INSTALL-MAIN.bat [3] and Settings > Model files add them
   extra_model_dirs: []
   shots: shots
   output: output

@@ -724,6 +724,7 @@
         <h1>Settings</h1>
         <div class="seg" id="set-tabs">
           <button class="on" type="button" data-pane="config">Configuration</button>
+          <button type="button" data-pane="models">Model files</button>
           <button type="button" data-pane="bible">Bible files</button>
           <button type="button" data-pane="access">Access</button>
         </div>
@@ -738,6 +739,43 @@
             <button class="btn small primary" id="btn-settings-save" type="button">Save</button>
           </div>
           <textarea id="settings-yaml" class="mono code-area" rows="30" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <div class="set-pane hidden" data-pane="models">
+        <div class="card" style="max-width:980px">
+          <div class="card-head"><h2>Use model files you already have</h2></div>
+          <p class="muted small" style="margin:-4px 0 12px">If ComfyUI or another program already has some of Kinoloom's model files, under any name and in any folder, Kinoloom uses them instead of downloading them. Paste the folder they are in (from Explorer's address bar; its subfolders are searched too) and press Find. Your files stay where they are, under their own names: Kinoloom links each one, which gives the same file a second name with no extra space (on another drive, the links go in a Kinoloom-models folder at the top of that drive). Only a file that can't be linked (on an exFAT USB drive, say) needs a copy, and Kinoloom asks first.</p>
+          <div class="ctl-row">
+            <input id="mf-find-input" type="text" placeholder="e.g. C:\ComfyUI\models" style="flex:1;min-width:260px" spellcheck="false" autocomplete="off">
+            <button class="btn primary" id="btn-mf-find" type="button">Find my files</button>
+          </div>
+          <div id="mf-job" class="hidden" style="margin-top:12px">
+            <div class="ctl-row small"><span class="pill" id="mf-job-state"></span><span class="muted" id="mf-job-sum"></span></div>
+            <pre id="mf-job-log" class="mono small log-box" style="margin-top:8px;max-height:220px"></pre>
+            <div id="mf-copy" class="ctl-row small hidden" style="margin-top:8px">
+              <span id="mf-copy-text"></span>
+              <button class="btn small" id="btn-mf-copy" type="button">Copy them</button>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="max-width:980px">
+          <div class="card-head"><h2>Model folders</h2></div>
+          <p class="muted small" style="margin:-4px 0 12px">Kinoloom also reads model files from these folders, where they sit under Kinoloom's names and subfolders (<span class="mono">diffusion_models\</span>, <span class="mono">loras\</span>, ...; ComfyUI's older <span class="mono">unet\</span> and <span class="mono">clip\</span> count too). Restart Kinoloom after a change, so its render engines see it.</p>
+          <div id="mf-folders" class="small"></div>
+          <div class="ctl-row" style="margin-top:10px">
+            <input id="mf-folder-input" type="text" placeholder="a folder, e.g. D:\ComfyUI\models" style="flex:1;min-width:260px" spellcheck="false" autocomplete="off">
+            <button class="btn" id="btn-mf-folder-add" type="button">Add folder</button>
+          </div>
+        </div>
+        <div class="card" style="max-width:980px">
+          <div class="card-head">
+            <h2>Model files</h2>
+            <span class="head-meta muted small" id="mf-summary"></span>
+            <span class="spacer"></span>
+            <button class="btn small" id="btn-mf-refresh" type="button">Refresh</button>
+          </div>
+          <div class="table-wrap"><table class="table" id="mf-table"></table></div>
         </div>
       </div>
 
@@ -890,8 +928,8 @@ document.querySelectorAll("[data-icon]").forEach(function (el) {
 });
 </script>
 <script src="/static/js/shell.js?v=2"></script>
-<script src="/static/js/model-catalog.js?v=3"></script>
-<script src="/static/app.js?v=20261025g"></script>
+<script src="/static/js/model-catalog.js?v=4"></script>
+<script src="/static/app.js?v=20261026e"></script>
 <script src="/static/js/workers-page.js?v=9"></script>
 <script src="/static/js/queue-page.js?v=9"></script>
 </body>

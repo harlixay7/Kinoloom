@@ -22,7 +22,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-from core import ROOT, log_setup
+import gpu_support
+import model_files
+from core import ROOT, load_config, log_setup
 
 log = log_setup("models")
 
@@ -323,36 +325,56 @@ def get_model(mid: str) -> dict | None:
     return MODELS.get(mid)
 
 
-def is_available(mid: str) -> bool:
+def gpu_problem(mid: str) -> str:
+    """Why this PC's card or driver cannot run the model's ComfyUI build
+    (gpu_support: Qwen-Image 2.1 on 8190 needs CUDA 13.0, the rest of the
+    image models run on the render farm), or ""."""
+    m = MODELS.get(mid) or {}
+    return gpu_support.port_problem(m.get("comfy_port"))
+
+
+def has_weights(mid: str) -> bool:
     """Is the model's primary weight file actually on disk?
 
     The check depends on the declared loader, because a checkpoint and a bare
     unet live in different directories and are loaded by different nodes:
       * loader "gguf"       -> models/diffusion_models/<unet>
       * loader "checkpoint" -> models/checkpoints/<ckpt>
+    The file counts in the studio's own models/ folder and, as for the video
+    models, in a model folder of settings paths.extra_model_dirs
+    (tool/model_files.py), which every ComfyUI instance mounts.
     """
     m = MODELS.get(mid)
     if not m:
         return False
     files = m["files"]
+    cfg = load_config()
     if m.get("loader") == "checkpoint":
         ck = files.get("ckpt")
-        return bool(ck) and (ROOT / "models" / "checkpoints" / ck).exists()
+        return bool(ck) and model_files.exists(f"models/checkpoints/{ck}", cfg, ROOT)
     for key in ("unet",):
         if key in files:
-            if not (ROOT / "models" / "diffusion_models" / files[key]).exists():
+            if not model_files.exists(f"models/diffusion_models/{files[key]}", cfg, ROOT):
                 return False
     return True
 
 
+def is_available(mid: str) -> bool:
+    """The model can render here: its weights are installed and this PC's
+    card and driver run its ComfyUI build."""
+    return has_weights(mid) and not gpu_problem(mid)
+
+
 def model_info(mid: str) -> dict:
     """Serializable info for the UI (registry consumed from the backend —
-    no duplicated model lists in the frontend)."""
+    no duplicated model lists in the frontend). `gpu`: why this PC's card
+    cannot run it, when that is what makes it unavailable."""
     m = MODELS.get(mid)
     if not m:
         return {}
     info = dict(m)
-    info["available"] = is_available(mid)
+    info["gpu"] = gpu_problem(mid)
+    info["available"] = not info["gpu"] and has_weights(mid)
     info["estimate_s"] = estimate_seconds(mid)
     return info
 

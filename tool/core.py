@@ -14,6 +14,8 @@ from typing import Any
 
 import yaml
 
+import model_files
+
 ROOT = Path(__file__).resolve().parent.parent
 LOG_DIR = ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
@@ -172,9 +174,9 @@ def media_roots(cfg: dict[str, Any] | None = None) -> list[Path]:
         v = paths.get(key)
         if v:
             roots.append(Path(v) if Path(v).is_absolute() else ROOT / v)
-    for v in (paths.get("extra_model_dirs") or []):
-        if v:
-            roots.append(Path(v))
+    # a list, or one folder written as a plain string
+    for v in model_files.listed_dirs(paths.get("extra_model_dirs")):
+        roots.append(model_files.resolve_dir(v, ROOT))
     for v in ((cfg.get("security") or {}).get("media_roots") or []):
         if v:
             roots.append(Path(v))

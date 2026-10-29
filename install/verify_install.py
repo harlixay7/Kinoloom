@@ -3,6 +3,7 @@
   python install/verify_install.py                # full: manifest sizes + sha256 + REQUIRED
   python install/verify_install.py --quick        # sizes only, missing assets are warnings
   python install/verify_install.py --manifest X   # default install/manifest.json
+  python install/verify_install.py --log FILE     # also append the output to FILE
 
 Checks, in order:
   1. layout      the core repo files exist; optional folders are reported
@@ -18,7 +19,8 @@ Checks, in order:
                  canonical per-file gate the stack already trusts) when a
                  venv python is available; skipped with --quick
 
-Read-only: never writes anything.
+Read-only: it writes nothing but the --log file (INSTALL-MAIN.bat passes
+logs/install/install.log).
 Exit code 0 only when no hard failure remains.
 """
 from __future__ import annotations
@@ -47,13 +49,48 @@ def sha256_of(path: Path, chunk: int = 1 << 20) -> str:
     return h.hexdigest()
 
 
+class Tee:
+    """sys.stdout that also appends to the log; a log that cannot be written
+    never stops the check."""
+
+    def __init__(self, stream, fh):
+        self.stream, self.fh = stream, fh
+
+    def write(self, s: str) -> int:
+        n = self.stream.write(s)
+        try:
+            self.fh.write(s)
+        except (OSError, ValueError):
+            pass
+        return n
+
+    def flush(self) -> None:
+        self.stream.flush()
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--manifest", default=None,
                     help="asset manifest to compare with (default: install/manifest.json)")
+    ap.add_argument("--log", default=None, help="also append what is printed to this file")
     args = ap.parse_args(argv)
+    if not args.log:
+        return check(args)
+    try:
+        fh = open(args.log, "a", encoding="utf-8", errors="replace")
+    except OSError:
+        return check(args)
+    out = sys.stdout
+    sys.stdout = Tee(out, fh)
+    try:
+        return check(args)
+    finally:
+        sys.stdout = out
+        fh.close()
 
+
+def check(args: argparse.Namespace) -> int:
     fails: list[str] = []
     warns: list[str] = []
 

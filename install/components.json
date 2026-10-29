@@ -4,7 +4,8 @@
   "packs by git commit, weights and tools by size and sha256 (for weights, my own copies, or the served file where I have",
   "none). 'manual' files are never downloaded: MiniMax H3 (its license) and RealVisXL (no public",
   "copy I could check). 'derive' files are made locally from another file. A venv's size_gb is",
-  "what that venv took in a fresh install (10^9 bytes, measured 2026-10-25)."
+  "what that venv took in a fresh install (10^9 bytes, measured 2026-10-25; the qwen venv on cu130 2026-10-27). A venv's",
+  "'fallback' is the build it gets on a card or driver that cannot run its 'cuda' build but can run the fallback's."
  ],
  "schema": 1,
  "trees": {
@@ -42,8 +43,16 @@
    },
    "venv": {
     "requirements": "install/requirements-frozen/qwen21-venv.txt",
-    "index": "https://download.pytorch.org/whl/cu126",
-    "size_gb": 5.69
+    "index": "https://download.pytorch.org/whl/cu130",
+    "size_gb": 4.38,
+    "cuda": "cu130",
+    "fallback": {
+     "requirements": "install/requirements-frozen/qwen21-venv-cu126.txt",
+     "index": "https://download.pytorch.org/whl/cu126",
+     "size_gb": 5.69,
+     "cuda": "cu126",
+     "note": "for a card or driver that runs only cu126 (tool/gpu_support.py): the 0.1.0 build"
+    }
    }
   }
  },
@@ -381,8 +390,7 @@
      "hf": "Winnougan/ltx-2.5-w4a8-convrot-int4-convrot-Winnougan-Blessing",
      "file": "diffusion_models/ltx-2.5-22b-distilled-transformer-w4a8_convrot.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "ltx25_text_encoder_gemma4": {
    "path": "models/text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors",
@@ -393,8 +401,7 @@
      "hf": "Winnougan/ltx-2.5-w4a8-convrot-int4-convrot-Winnougan-Blessing",
      "file": "text_encoders/gemma4-12b-with-proj-ltx-2.5-w4a8_convrot.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "ltx25_vae_conv": {
    "path": "models/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
@@ -405,8 +412,7 @@
      "hf": "lxxxy6/LTX-2.5",
      "file": "ltx-2.5-video-vae-conv-bf16.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "ltx25_audio_vae": {
    "path": "models/checkpoints/ltx-2.5-audio-vae-bf16.safetensors",
@@ -421,8 +427,7 @@
      "hf": "yuvraj108c/LTX-2.5",
      "file": "ltx-2.5-audio-vae-bf16.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "ltx25_upscaler_spatial": {
    "path": "models/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
@@ -433,8 +438,7 @@
      "hf": "yuvraj108c/LTX-2.5",
      "file": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "ltx25_upscaler_temporal": {
    "path": "models/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
@@ -449,8 +453,7 @@
      "hf": "lxxxy6/LTX-2.5",
      "file": "ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "ltx25_lora_msr_v1": {
    "path": "models/loras/LTX-2.5-Licon-MSR-V1.safetensors",
@@ -461,8 +464,7 @@
      "hf": "LiconStudio/LTX-2.5-Multiple-Subject-Reference",
      "file": "LTX-2.5-Licon-MSR-V1.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "ltx25_lora_cq_enhancer": {
    "path": "models/loras/ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors",
@@ -485,8 +487,7 @@
      "hf": "Kaarunya2005/LTX-2.5-CQ-Video-and-Image-Enhancer-LoRAs",
      "file": "ltx2.5-CQ-enhancer-lora-for-videos-rank128.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "qwen21_dit_base_q5km": {
    "path": "models/diffusion_models/qwen_image_2.1_Q5_K_M.gguf",
@@ -553,7 +554,6 @@
    "sha256": "808e3b351e71e3dd2444e2cdd6accc701e5b40254ede13d481936e6332c7a0e2",
    "manual": true,
    "needed_by": "every MiniMax H3 tier",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/koongrizzly/MiniMax_H3_int4_W4A8_ConvRot_Pruned"
   },
   "h3_video_vae_fp16": {
@@ -562,7 +562,6 @@
    "sha256": "7c1f131492e7eddacaac9069a61b81bdd39de5cc96561e677c5eab1cdce5e522",
    "manual": true,
    "needed_by": "every MiniMax H3 tier",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/Comfy-Org/MiniMax-H3"
   },
   "h3_audio_vae_fp32": {
@@ -571,7 +570,6 @@
    "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48",
    "manual": true,
    "needed_by": "every MiniMax H3 tier",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/Comfy-Org/MiniMax-H3"
   },
   "h3_dit_ref2va_w4a8": {
@@ -580,7 +578,6 @@
    "sha256": "16be87247dff1f49c7141d6bcde4c0465fc254128e2de60e34aebc744a8177df",
    "manual": true,
    "needed_by": "the ref2va tiers: hero, hero v2, base25, larry6, turbo4 and the PDD-8 draft",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/koongrizzly/MiniMax_H3_int4_W4A8_ConvRot_Pruned"
   },
   "h3_dit_fl2va_w4a8": {
@@ -589,7 +586,6 @@
    "sha256": "8b624de0ab7554bb507c4486093d4c93e0bf2eb2a40c2382f26eb0af7cd97407",
    "manual": true,
    "needed_by": "the fl2va draft tiers: 768p, 544p and 544p/25",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/koongrizzly/MiniMax_H3_int4_W4A8_ConvRot_Pruned"
   },
   "h3_dit_singularity": {
@@ -598,7 +594,6 @@
    "sha256": "2a319b6fafbd646c123ac12a28b1908c7468b148a8c03164172b2f72370264ec",
    "manual": true,
    "needed_by": "the two Singularity tiers",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/WarmBloodAban/Minimax-h3_Singularity"
   },
   "h3_upscaler_3d": {
@@ -607,7 +602,6 @@
    "sha256": "4f57821f5837f32f7142b67d815606dbd7550f194e5c769f7d6c3f83b146a5e6",
    "manual": true,
    "needed_by": "the 1080p tiers, and the 1080p refine of every H3 seamless chain",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/LBH-123-AI/Minimax_h3_latent_Upscaler"
   },
   "h3_lora_larryvrh_v4_ema": {
@@ -616,7 +610,6 @@
    "sha256": "5f3a626cd72c93a8b9318d6760c510bc5092d2ab13aaba1f932c5bab07a416d3",
    "manual": true,
    "needed_by": "the larry6 1080p tier",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/larryvrh/MiniMax-H3-Turbo-Lora"
   },
   "h3_lora_lightx2v_turbo4": {
@@ -625,7 +618,6 @@
    "sha256": "5b9ab5ade15d0775676d01a907268a69a1468dc6033b3b0d3ded5502f3ebb84c",
    "manual": true,
    "needed_by": "the turbo4 1080p tier",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/RunningHubAI/rh-minimax-h3-ref2v-turbo-4step-v0.1-comfyui-bf16.safetensors-lora"
   },
   "h3_lora_pdd8": {
@@ -634,7 +626,6 @@
    "sha256": "111c82e669f6e20e628228172edf39395f1a9fc3ad049793895e542c0f55b18c",
    "manual": true,
    "needed_by": "the PDD-8 draft tier",
-   "extra_roots_ok": true,
    "published_at": "https://huggingface.co/alibaba-pai/MiniMax-H3-Acc-LoRAs"
   },
   "zimage_unet": {
@@ -915,8 +906,7 @@
      "hf": "QuantStack/Wan2.2-TI2V-5B-GGUF",
      "file": "Wan2.2-TI2V-5B-Q4_K_M.gguf"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "wan22_text_encoder": {
    "path": "models/text_encoders/umt5-xxl-encoder-Q4_K_M.gguf",
@@ -927,8 +917,7 @@
      "hf": "city96/umt5-xxl-encoder-gguf",
      "file": "umt5-xxl-encoder-Q4_K_M.gguf"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "wan22_vae": {
    "path": "models/vae/wan2.2_vae.safetensors",
@@ -943,8 +932,7 @@
      "hf": "QuantStack/Wan2.2-TI2V-5B-GGUF",
      "file": "VAE/Wan2.2_VAE.safetensors"
     }
-   ],
-   "extra_roots_ok": true
+   ]
   },
   "wan22_turbo_lora": {
    "path": "models/loras/Wan22_TI2V_5B_Turbo_lora_rank_64_fp16.safetensors",

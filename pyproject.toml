@@ -8,7 +8,7 @@
 
 [project]
 name = "kinoloom"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local multi-model AI film studio: FastAPI control room orchestrating ComfyUI render farms on 8 GB GPUs"
 readme = "README.md"
 requires-python = "==3.12.*"

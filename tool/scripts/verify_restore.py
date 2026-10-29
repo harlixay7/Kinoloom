@@ -58,10 +58,26 @@ print("=" * 68)
 print("2. MODEL FILES (tool/workflows.py SUBST)")
 print("=" * 68)
 
+# A file counts in models/ and in the model folders of the settings, as it
+# does for the studio (tool/model_files.py).
+import model_files  # noqa: E402
+
+try:
+    from core import load_config
+    _EXTRA = model_files.extra_roots(load_config(), ROOT)
+except Exception:  # noqa: BLE001 - section 3 reports a studio module that does not import
+    _EXTRA = model_files.extra_roots({}, ROOT)
+
+
+def _where(sub: str, name: str) -> Path | None:
+    rel = f"models/{sub}/{name}"
+    return model_files.find(rel, _EXTRA, ROOT, model_files.catalog_size(rel, ROOT))
+
+
 # An SDXL image model on disk turns its IP-Adapter pair into a hard
 # requirement (see the reference-image block below).
 _SDXL_INSTALLED = any(
-    (ROOT / "models" / sub / name).exists()
+    _where(sub, name) is not None
     for sub, name in (("diffusion_models", "RealVisXL_V5.0-Q5_K_M.gguf"),
                       ("checkpoints", "cyberrealisticXL_v100_fp16.safetensors")))
 
@@ -116,9 +132,10 @@ REQUIRED = [
     ("upscale_models", "4xNomos8kDAT.safetensors", False),
 ]
 for sub, name, hard in REQUIRED:
-    p = ROOT / "models" / sub / name
-    if p.exists() and p.stat().st_size > 1_000_000:
-        line(OK, f"{sub}/{name}  ({p.stat().st_size / 1048576:.0f} MB)")
+    p = _where(sub, name)
+    if p is not None and p.stat().st_size > 1_000_000:
+        line(OK, f"{sub}/{name}  ({p.stat().st_size / 1048576:.0f} MB)"
+                 + ("" if p == ROOT / "models" / sub / name else f"  in {p}"))
     else:
         line(BAD if hard else WARN, f"{sub}/{name}  MISSING")
 
@@ -140,10 +157,15 @@ try:
         movie.append(st["id"])
         if st["available"]:
             line(OK, f"{st['id']}  available")
-        else:
+        elif st.get("missing"):
             line(WARN, f"{st['id']}  missing: {', '.join(st['missing'])}")
+        else:
+            line(WARN, f"{st['id']}  not on this graphics card: {st.get('gpu') or st.get('reason') or '?'}")
     default = video_models.default_model_id()
-    if default is None:
+    import gpu_support
+    if default is None and gpu_support.problem("cu130"):
+        line(BAD, f"no movie model runs on this PC: {gpu_support.problem('cu130')}")
+    elif default is None:
         line(BAD, f"no movie model installed (checked {len(movie)} LTX-2.5 / "
                   f"H3 tiers) — see docs/setup/RESTORE_INSTRUCTIONS.md step 6")
     elif default != video_models.DEFAULT_MODEL:
@@ -178,7 +200,7 @@ print("3. STUDIO MODULE IMPORTS")
 print("=" * 68)
 MODULES = [
     "core", "workflows", "bible", "linter", "renderer", "orchestrator",
-    "post", "assembler", "face_qa", "shots_db", "support", "models",
+    "post", "assembler", "face_qa", "shots_db", "support", "models", "model_files",
     "prompts", "pipeline", "training", "lora_registry", "photo_gen",
     "dataset_gen", "images", "shot_images", "director", "keyframe_gen",
     "lora_video", "projects", "storygen_llm", "batch_gen", "dataset",

@@ -36,6 +36,8 @@ def test_extra_model_dirs_and_generated_config(tmp_path, monkeypatch):
     block = doc["studio_extra_0"]
     assert block["base_path"] == real.as_posix()
     assert block["diffusion_models"] == "diffusion_models"
+    # ComfyUI's older folder names, and the IP-Adapter folder, are mounted too
+    assert block["unet"] == "unet" and block["clip"] == "clip" and block["ipadapter"] == "ipadapter"
 
 
 def test_no_extra_dirs_passes_no_flag(monkeypatch):
@@ -67,6 +69,122 @@ def test_missing_comfyui_tree_skips_component(monkeypatch, tmp_path):
     lz.launch("comfy-ui")
     lz.launch("comfy-ui")
     assert spawned == [] and lz.not_installed == ["comfy-ui"]
+
+
+def test_a_venv_the_installer_did_not_finish_is_not_started(monkeypatch, tmp_path):
+    import launcher
+    lz = launcher.Launcher.__new__(launcher.Launcher)
+    lz.host, lz.port, lz.not_installed = "127.0.0.1", 8080, []
+    spawned = []
+    lz.spawn = lambda *a, **k: spawned.append(a)
+    (tmp_path / "ComfyUI_Qwen21").mkdir()
+    (tmp_path / "ComfyUI_Qwen21" / "main.py").write_text("", encoding="utf-8")
+    venv = tmp_path / "ComfyUI_Qwen21" / "venv"
+    (venv / "Scripts").mkdir(parents=True)
+    (venv / "Scripts" / "python.exe").write_bytes(b"")
+    (venv / launcher.INSTALL_MARKER).write_text("", encoding="utf-8")
+    monkeypatch.setattr(launcher, "ROOT", tmp_path)
+    monkeypatch.setattr(launcher, "QWEN_PY", venv / "Scripts" / "python.exe")
+    monkeypatch.setattr(launcher, "_settings", lambda: {})
+    lz.launch("qwen-render")
+    assert spawned == [] and lz.not_installed == ["qwen-render"]
+    (venv / launcher.INSTALL_MARKER).unlink()
+    lz.launch("qwen-render")
+    assert len(spawned) == 1
+
+
+class _Dead:
+    returncode = 1
+
+    def poll(self):
+        return 1
+
+
+def _health_launcher(launcher, monkeypatch, tmp_path):
+    lz = launcher.Launcher.__new__(launcher.Launcher)
+    lz.procs, lz._born, lz._fast_crashes, lz._gave_up = {"qwen-render": _Dead()}, {}, {}, set()
+    relaunched = []
+    lz.launch = relaunched.append
+    monkeypatch.setattr(launcher, "LOG_DIR", tmp_path)
+    monkeypatch.setattr(launcher.time, "sleep", lambda s: None)
+    return lz, relaunched
+
+
+def test_a_restart_the_gpu_broker_made_is_not_reported_as_a_crash(monkeypatch, tmp_path, capsys):
+    # the broker ends an instance whose /free did not give the memory back; the
+    # launcher printed "!! DIED (exit 1) - restarting (crash 0/3)" in red
+    import gpu_broker
+    import launcher
+    (tmp_path / "logs").mkdir()
+    monkeypatch.setattr(gpu_broker, "ROOT", tmp_path)
+    monkeypatch.setattr(gpu_broker, "_port_pids", lambda port: [])
+    monkeypatch.setattr(gpu_broker, "_vram_free_mb", lambda port: 7100)
+    monkeypatch.setattr(gpu_broker.time, "sleep", lambda s: None)
+    b = gpu_broker._Broker()
+    monkeypatch.setattr(b, "_registry", lambda: {8190: {"h3": False, "models": ["qwen21_fast"]}})
+    b._restart_instance(b._instance(8190))
+    lz, relaunched = _health_launcher(launcher, monkeypatch, tmp_path / "logs")
+    lz._health()
+    out = capsys.readouterr().out
+    assert "restarted it to free the card's memory (planned, not a crash)" in out and "DIED" not in out
+    assert relaunched == ["qwen-render"] and lz._fast_crashes["qwen-render"] == 0
+    assert not (tmp_path / "logs" / ".planned-restart-8190").exists()       # used once
+    lz.procs["qwen-render"] = _Dead()                                      # a real crash after it
+    lz._health()
+    assert "DIED (exit 1)" in capsys.readouterr().out
+
+
+def test_an_old_restart_mark_does_not_hide_a_crash(monkeypatch, tmp_path, capsys):
+    import os
+    import launcher
+    mark = tmp_path / ".planned-restart-8190"
+    mark.write_text("0", encoding="utf-8")
+    os.utime(mark, (1, 1))
+    lz, relaunched = _health_launcher(launcher, monkeypatch, tmp_path)
+    lz._health()
+    assert "DIED (exit 1)" in capsys.readouterr().out and relaunched == ["qwen-render"]
+    assert not mark.exists()
+
+
+def test_an_unfinished_studio_install_stops_the_start(monkeypatch, tmp_path):
+    import launcher
+    monkeypatch.setattr(launcher, "ROOT", tmp_path)
+    assert launcher.unfinished_install() == []
+    venv = tmp_path / "tool" / ".venv"
+    venv.mkdir(parents=True)
+    (venv / launcher.INSTALL_MARKER).write_text("", encoding="utf-8")
+    lines = launcher.unfinished_install()
+    assert len(lines) == 2 and "did not finish" in lines[0] and "INSTALL.bat" in lines[1]
+    last = tmp_path / "logs" / "install" / "LAST-FAILURE.txt"
+    last.parent.mkdir(parents=True)
+    last.write_text("x", encoding="utf-8")
+    assert str(last) in launcher.unfinished_install()[-1]
+
+
+def test_run_checks_the_install_before_it_touches_any_port():
+    """run() is never called here: its port check can restart a running
+    studio. The order in the source is checked instead."""
+    import inspect
+
+    import launcher
+    src = inspect.getsource(launcher.Launcher.run)
+    assert 0 < src.index("unfinished_install()") < src.index("conflicts = ")
+
+
+def test_a_crash_on_a_missing_package_points_to_the_installer(tmp_path):
+    from launcher import crash_hint
+    log = tmp_path / "ui.log"
+    log.write_text("INFO: started\nTraceback (most recent call last):\n"
+                   "ModuleNotFoundError: No module named 'uvicorn'\n", encoding="utf-8")
+    hint = crash_hint(log)
+    assert hint and "No module named 'uvicorn'" in hint and "INSTALL.bat" in hint
+    log.write_text("torch.OutOfMemoryError: CUDA out of memory\n", encoding="utf-8")
+    assert crash_hint(log) is None
+    assert crash_hint(tmp_path / "missing.log") is None
+    # a venv made before the Kinoloom folder was moved
+    log.write_text("No Python at 'C:\\Old\\Kinoloom\\tools\\python\\python.exe'\n", encoding="utf-8")
+    hint = crash_hint(log)
+    assert hint and "moved" in hint and "INSTALL.bat" in hint
 
 
 # ------------------------------------------------- where the web app is
@@ -124,7 +242,7 @@ def test_open_browser_setting_defaults_to_on(monkeypatch):
 
 def _ready_launcher(launcher, open_browser):
     lz = launcher.Launcher.__new__(launcher.Launcher)
-    lz.stop, lz.open_browser, lz.not_installed = threading.Event(), open_browser, []
+    lz.stop, lz.open_browser, lz.not_installed, lz.unsupported = threading.Event(), open_browser, [], {}
     return lz
 
 
@@ -140,11 +258,14 @@ def test_ready_banner_title_and_browser(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(launcher, "extra_model_dirs", lambda cfg=None: [])
     lz = _ready_launcher(launcher, True)
     lz.not_installed = ["qwen-render"]
+    lz.unsupported = {"ltx-render": "the GTX 1080 cannot run LTX-2.5"}
     lz._announce_ready("http://127.0.0.1:8080/")
     out = capsys.readouterr().out
     assert len(polls) == 2                                           # waited for it
     assert "Kinoloom is ready" in out and "http://127.0.0.1:8080/" in out
     assert "qwen-render" in out and "No model weights yet" in out
+    assert "Not started on this PC: ltx-render: the GTX 1080 cannot run LTX-2.5." in out
+    assert "Settings > Model files" in out                           # weights you already have
     assert "http://127.0.0.1:8080/" in titles[-1] and opened == ["http://127.0.0.1:8080/"]
 
     (tmp_path / "models").mkdir()

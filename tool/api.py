@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Kinoloom", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Kinoloom", version="0.1.1", lifespan=lifespan)
 
 
 # ------------------------------------------------------------- error mapping
@@ -194,6 +194,7 @@ from routers import (  # noqa: E402
     videostudio as _r_videostudio,
     fleet as _r_fleet,
     queue as _r_queue,
+    model_folders as _r_model_folders,
 )
 
 _ROUTERS = [
@@ -211,6 +212,7 @@ _ROUTERS = [
     _r_videostudio.router,
     _r_fleet.router,
     _r_queue.router,
+    _r_model_folders.router,
 ]
 
 for _router in _ROUTERS:

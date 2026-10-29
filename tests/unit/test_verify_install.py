@@ -48,3 +48,18 @@ def test_the_default_manifest_is_checked_when_it_is_there(vi, capsys):
     assert vi.main([]) == 1
     assert "FAIL missing: models/b.safetensors" in capsys.readouterr().out
     assert vi.main(["--quick"]) == 0                     # --quick: a missing asset is a warning
+
+
+def test_log_gets_what_the_console_gets(vi, capsys, tmp_path):
+    import sys
+    log = tmp_path / "logs" / "install.log"
+    log.parent.mkdir()
+    log.write_text("earlier run\n", encoding="utf-8")
+    stdout = sys.stdout
+    assert vi.main(["--quick", "--log", str(log)]) == 0
+    assert sys.stdout is stdout                          # given back
+    out = capsys.readouterr().out
+    logged = log.read_text(encoding="utf-8")
+    assert logged.startswith("earlier run\n") and logged.endswith(out) and "RESULT: PASS" in out
+    # a log that cannot be opened does not stop the check
+    assert vi.main(["--quick", "--log", str(tmp_path / "missing" / "x.log")]) == 0

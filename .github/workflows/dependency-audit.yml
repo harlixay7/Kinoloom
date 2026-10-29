@@ -87,7 +87,8 @@ jobs:
           $lists = @(
             @{ file = "tool/requirements.txt"; index = $null },
             @{ file = "install/requirements-frozen/ltx-venv.txt"; index = "https://download.pytorch.org/whl/cu130" },
-            @{ file = "install/requirements-frozen/qwen21-venv.txt"; index = "https://download.pytorch.org/whl/cu126" }
+            @{ file = "install/requirements-frozen/qwen21-venv.txt"; index = "https://download.pytorch.org/whl/cu130" },
+            @{ file = "install/requirements-frozen/qwen21-venv-cu126.txt"; index = "https://download.pytorch.org/whl/cu126" }
           )
           $status = 0
           foreach ($l in $lists) {

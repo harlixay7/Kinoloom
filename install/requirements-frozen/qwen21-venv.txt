@@ -74,10 +74,10 @@ spandrel==0.4.2
 sqlalchemy==2.1.1
 sympy==1.14.0
 tokenizers==0.23.2
-torch==2.13.0+cu126
+torch==2.13.0+cu130
 torchaudio==2.11.0
 torchsde==0.2.6
-torchvision==0.28.0+cu126
+torchvision==0.28.0+cu130
 tqdm==4.70.1
 trampoline==0.1.2
 transformers==5.18.0

@@ -25,8 +25,12 @@ client for any Host header / peer address, e.g. a remote LAN browser.
 from __future__ import annotations
 
 import atexit
+import gc
+import logging
 import os
 import shutil
+import sqlite3
+import stat
 import sys
 import tempfile
 from pathlib import Path
@@ -73,11 +77,39 @@ def _build_sandbox() -> Path:
     return sandbox
 
 
+def _remove_sandbox(path: Path) -> None:
+    """Delete the sandbox, read-only files too: git makes the objects of the
+    tests' project repositories read-only, and rmtree alone left them behind
+    (a kinoloom-tests-* folder in %TEMP% after every run). The studio's log
+    files and databases are closed first (Windows deletes no open file); this
+    runs before logging's own exit hook."""
+    logging.shutdown()
+    for obj in gc.get_objects():        # a module's ShotsDB keeps studio.db open
+        if type(obj) is sqlite3.Connection:     # (isinstance wakes torch's deprecated proxies)
+            try:
+                obj.close()
+            except sqlite3.Error:
+                pass
+
+    def writable_again(func, p, _exc):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except OSError:
+            pass
+    shutil.rmtree(path, onexc=writable_again)
+
+
 SANDBOX = _build_sandbox()
-atexit.register(shutil.rmtree, SANDBOX, ignore_errors=True)
+atexit.register(_remove_sandbox, SANDBOX)
 
 os.environ["KINOLOOM_TESTING"] = "1"
-for _var in ("KINOLOOM_API_TOKEN", "KINOLOOM_BROKER_URL"):
+# the suite's model availability must not depend on the card of the PC it runs
+# on (tool/gpu_support.py; tests/unit/test_gpu_support.py checks the rules)
+os.environ["KINOLOOM_GPU_CHECK"] = "0"
+# the last three add model folders of a development PC (tool/model_files.py)
+for _var in ("KINOLOOM_API_TOKEN", "KINOLOOM_BROKER_URL", "KINOLOOM_EXTRA_MODEL_PATHS",
+             "H3_LAB_MODELS", "LTX25_LAB_MODELS"):
     os.environ.pop(_var, None)
 
 # The sandbox copy must win over any path that points at the real tree

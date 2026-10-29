@@ -35,6 +35,7 @@
       m.vram_note || "",
       m.experimental && m.declared_status !== "production" ? "Experimental (not promoted to production)" : "",
       m.available ? "" : "Unavailable — missing: " + (m.missing || []).join(", "),
+      m.available ? "" : "Already have these files, under any name? Settings › Model files finds them.",
       "id: " + m.id,
     ].filter(Boolean).join("\n");
   }

@@ -1,5 +1,6 @@
 """Video Studio adapter for seamless chains: link lengths, reference policy, the H3
 tier recipe read from the studio's own graph, records, and the ComfyUI runner."""
+import time
 from pathlib import Path
 
 import pytest
@@ -236,6 +237,29 @@ def test_broker_restarts_only_the_active_lease_and_keeps_it(monkeypatch):
     assert res["ok"] and killed == [8199]
     inst = b._instance(8199)
     assert (inst.state, inst.lease_id, inst.model) == ("busy", lease.id, "h3") and b._active is lease
+
+
+def test_broker_does_not_wait_for_an_h3_server_that_is_not_running(monkeypatch):
+    """A studio without H3 (or before the launcher starts it) has nothing on its
+    port: the start-up check must not restart it and wait 180 s for it."""
+    import gpu_broker
+    b = gpu_broker._Broker()
+    monkeypatch.setattr(b, "_registry", lambda: {8199: {"h3": True, "models": {"h3"}}})
+    s = dict(b.settings(), h3_mode="restart", verify_timeout_s=60)
+    monkeypatch.setattr(b, "settings", lambda: s)
+    restarted = []
+    monkeypatch.setattr(b, "_restart_instance", lambda inst: restarted.append(inst.port))
+    monkeypatch.setattr(gpu_broker, "_queue_empty", lambda port: None)
+    monkeypatch.setattr(gpu_broker, "_listening", lambda port: False)
+    pids: list = []
+    monkeypatch.setattr(gpu_broker, "_port_pids", lambda port: pids)
+    t0 = time.time()
+    assert b._reconcile_body("startup")["results"] == {"8199": "empty"}
+    assert restarted == [] and time.time() - t0 < 5
+    pids.append(4242)                       # a server starting up there is restarted
+    b._instance(8199).state = "unknown"
+    b._reconcile_body("startup")
+    assert restarted == [8199]
 
 
 class _FilesRunner:

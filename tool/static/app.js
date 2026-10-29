@@ -2751,9 +2751,11 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* --------------------------------------------------------- settings */
-/* Three panes: the studio configuration (settings.yaml as JSON), the global
-   bible files (universe, crowd types, legacy characters / locations / scenes;
-   every save is a git commit) and this browser's API token. */
+/* Four panes: the studio configuration (settings.yaml as JSON), the model
+   files (where each weight file is, the model folders, and the model files a
+   user already has), the global bible files (universe, crowd types, legacy
+   characters / locations / scenes; every save is a git commit) and this
+   browser's API token. */
 document.querySelectorAll("#set-tabs button").forEach((b) => {
   b.addEventListener("click", () => setSettingsPane(b.dataset.pane));
 });
@@ -2763,6 +2765,9 @@ function setSettingsPane(pane) {
   document.querySelectorAll("#page-settings .set-pane").forEach((p) =>
     p.classList.toggle("hidden", p.dataset.pane !== pane));
   if (pane === "bible") loadBibleFiles();
+  if (pane === "models") loadModelFiles();
+  // shown again unedited: the current settings (model folders may have changed)
+  if (pane === "config" && $("settings-yaml").value === SETTINGS_TEXT) loadSettings();
   if (pane === "access") renderTokenSettings();
 }
 
@@ -2794,9 +2799,24 @@ $("btn-settings-token-clear").onclick = () => {
   toast("API token cleared");
 };
 
+let SETTINGS_TEXT = "";          // the document as loaded, to tell an edited one apart
 async function loadSettings() {
   const s = await api("/api/settings");
-  $("settings-yaml").value = JSON.stringify(s.settings || s, null, 2);
+  SETTINGS_TEXT = JSON.stringify(s.settings || s, null, 2);
+  $("settings-yaml").value = SETTINGS_TEXT;
+}
+/* Model folders change on the Model files pane, and through the installer, while
+   this document is open: the saved document keeps the current list unless its
+   own list was edited (a save replaces the whole settings file). */
+async function settingsWithCurrentFolders(doc) {
+  const dirs = (d) => JSON.stringify(((d || {}).paths || {}).extra_model_dirs || []);
+  let base;
+  try { base = JSON.parse(SETTINGS_TEXT || "{}"); } catch (e) { return doc; }
+  if (!doc.paths || dirs(doc) !== dirs(base)) return doc;
+  const now = await api("/api/settings");
+  const cur = (now.settings || now).paths || {};
+  if (dirs({ paths: cur }) !== dirs(base)) doc.paths.extra_model_dirs = cur.extra_model_dirs;
+  return doc;
 }
 $("btn-settings-format").onclick = () => {
   try {
@@ -2811,10 +2831,143 @@ $("btn-settings-save").onclick = async () => {
   try {
     // secrets come back from GET as "********"; the server keeps the stored
     // value for any placeholder left untouched
-    const r = await post("/api/settings", { settings: parsed });
+    const r = await post("/api/settings", { settings: await settingsWithCurrentFolders(parsed) });
     toast(r.ok ? "settings saved" : "error: " + r.error, !r.ok);
+    if (r.ok) loadSettings();
   } catch (e) { toast("settings not saved: " + e.message, true); }
 };
+
+/* Model files (routers/model_folders.py, tool/model_files.py). Folders are
+   typed as Windows shows them; the server reads them, so no JSON escaping. */
+let mfPollTimer = null;
+const MF_STATE = { running: "searching", done: "done", failed: "failed", idle: "" };
+function mfGB(bytes) {
+  if (!bytes) return "";
+  return (bytes / 1e9).toFixed(bytes < 1e9 ? 2 : 1) + " GB";
+}
+function mfWhere(f) {
+  if (f.state === "ok") {
+    if (f.how === "link" || f.how === "symlink") return "linked to " + esc(f.from);
+    if (f.how === "drivelink") return "linked to " + esc(f.from) +
+      "<br><span class='muted'>the link: " + esc(f.where) + "</span>";
+    if (f.how === "copy") return "copied from " + esc(f.from);
+    if (f.how === "folder") return "in " + esc(f.where);
+    return "in Kinoloom's models folder";
+  }
+  if (f.state === "other build") return esc(f.where) + " has another size (another build)";
+  if (f.state === "letter case") return "saved as " + esc(f.where) +
+    ": Find, or the next start of Kinoloom, gives it the letter case Kinoloom loads";
+  let s = f.manual ? "missing: you bring this one" : (f.made_here ? "missing: the installer makes it" : "missing");
+  (f.other_builds || []).forEach((p) => { s += "<br><span class='muted'>" + esc(p) + " has another size (another build)</span>"; });
+  return s;
+}
+async function loadModelFiles() {
+  let r;
+  try { r = await api("/api/model-files"); }
+  catch (e) { $("mf-summary").textContent = "could not load: " + e.message; return; }
+  renderMfFolders(r.folders || []);
+  renderMfFiles(r.files || []);
+  renderMfJob(r.job || {});
+  if (r.job && r.job.state === "running") mfPoll();
+}
+function renderMfFolders(folders) {
+  const box = $("mf-folders");
+  if (!folders.length) {
+    box.innerHTML = '<span class="muted">No model folders yet: Kinoloom reads only its own models folder.</span>';
+    return;
+  }
+  box.innerHTML = folders.map((f, i) =>
+    '<div class="ctl-row" style="margin:4px 0"><span class="mono">' + esc(f.path) + "</span>" +
+    (f.exists ? "" : ' <span class="pill paused">not found</span>') +
+    '<span class="spacer"></span><button class="btn small" type="button" data-mf-remove="' + i + '">Remove</button></div>'
+  ).join("");
+  box.querySelectorAll("[data-mf-remove]").forEach((b) => {
+    b.onclick = () => mfFolder(folders[+b.dataset.mfRemove].path, "remove");
+  });
+}
+function renderMfFiles(files) {
+  const have = files.filter((f) => f.state === "ok").length;
+  $("mf-summary").textContent = have + " of " + files.length + " files in place";
+  const parts = [];
+  files.forEach((f) => { const p = f.parts[0]; if (parts.indexOf(p) < 0) parts.push(p); });
+  let html = "<thead><tr><th>File</th><th>Size</th><th>Where</th></tr></thead><tbody>";
+  parts.forEach((p) => {
+    html += '<tr><td colspan="3" class="muted small" style="padding-top:14px"><b>' + esc(p) + "</b></td></tr>";
+    files.filter((f) => f.parts[0] === p).forEach((f) => {
+      const cls = f.state === "ok" ? "on" : (f.state === "missing" ? "off" : "paused");
+      html += '<tr><td class="mono small">' + esc(f.file) + '</td><td class="small" style="white-space:nowrap">' +
+        mfGB(f.size) + '</td><td class="small"><span class="pill ' + cls + '">' +
+        (f.state === "ok" ? "ok" : esc(f.state)) + "</span> " + mfWhere(f) + "</td></tr>";
+    });
+  });
+  $("mf-table").innerHTML = html + "</tbody>";
+}
+function renderMfJob(job) {
+  const box = $("mf-job");
+  if (!job || !job.kind) { box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  const st = $("mf-job-state");
+  st.className = "pill " + (job.state === "running" ? "run" : (job.state === "failed" ? "paused" : "on"));
+  st.textContent = (job.kind === "copy" ? (job.state === "running" ? "copying" : "copy " + MF_STATE[job.state])
+    : MF_STATE[job.state]) || job.state;
+  const bits = [];
+  if ((job.found || []).length) bits.push(job.found.length + " file(s) now in use");
+  if ((job.added || []).length) bits.push("model folder added: restart Kinoloom so its render engines see it");
+  if (job.error) bits.push(job.error);
+  $("mf-job-sum").textContent = bits.join(" · ");
+  const log = $("mf-job-log");
+  log.textContent = (job.lines || []).join("\n");
+  log.scrollTop = log.scrollHeight;
+  const cp = $("mf-copy");
+  if ((job.copy || []).length && job.state !== "running") {
+    const one = job.copy.length === 1;
+    $("mf-copy-text").textContent = (one
+      ? "1 file can't be linked from where it is (the log above says why), so Kinoloom can use it only as a copy. Copying it takes "
+      : job.copy.length + " files can't be linked from where they are (the log above says why), so Kinoloom can use them only as copies. Copying them takes ") +
+      mfGB(job.copy.reduce((n, c) => n + (c.size || 0), 0)) + " on Kinoloom's drive. With Windows Developer Mode on " +
+      "(Settings > System > For developers), Find links " + (one ? "it" : "them") + " instead, with no extra space.";
+    $("btn-mf-copy").textContent = one ? "Copy it" : "Copy them";
+    cp.classList.remove("hidden");
+  } else {
+    cp.classList.add("hidden");
+  }
+  $("btn-mf-find").disabled = job.state === "running";
+}
+function mfPoll() {
+  clearTimeout(mfPollTimer);
+  mfPollTimer = setTimeout(async () => {
+    let job;
+    try { job = await api("/api/model-files/job"); } catch (e) { return; }
+    renderMfJob(job);
+    if (job.state === "running") mfPoll();
+    else loadModelFiles();
+  }, 1500);
+}
+async function mfFolder(folder, action) {
+  try {
+    const r = await post("/api/model-files/folders", { folder: folder, action: action });
+    toast(/^(added|removed) /.test(r.message)
+      ? r.message + " · restart Kinoloom so its render engines see it" : r.message);
+    if (action === "add") $("mf-folder-input").value = "";
+    loadModelFiles();
+  } catch (e) { toast(e.message, true); }
+}
+$("btn-mf-folder-add").onclick = () => mfFolder($("mf-folder-input").value, "add");
+$("btn-mf-find").onclick = async () => {
+  try {
+    const r = await post("/api/model-files/find", { folder: $("mf-find-input").value });
+    renderMfJob(r.job);
+    mfPoll();
+  } catch (e) { toast(e.message, true); }
+};
+$("btn-mf-copy").onclick = async () => {
+  try {
+    const r = await post("/api/model-files/copy", {});
+    renderMfJob(r.job);
+    mfPoll();
+  } catch (e) { toast(e.message, true); }
+};
+$("btn-mf-refresh").onclick = () => loadModelFiles();
 
 /* global bible files (projects edit their own cast on the Workspace's
    Cast & World page) */

@@ -6,7 +6,7 @@ packs and venvs, the model weights, and ffmpeg.
   python install/install_components.py --check          # report only, change nothing
   python install/install_components.py --components ltx25,qwen21 --yes
   python install/install_components.py --components all --dry-run
-  python install/install_components.py --h3-dir D:\\H3\\models   # H3 weights you keep elsewhere
+  python install/install_components.py --use-folder D:\\ComfyUI\\models   # files you already have
 
 Everything it fetches is pinned in install/components.json: the ComfyUI
 release commits, the node packs by git commit, the venv requirements, and
@@ -20,24 +20,34 @@ studio look for them (post-processing files go under ComfyUI/). Two sets are
 never downloaded: MiniMax H3, because the MiniMax H3 Community License does
 not cover every country, and RealVisXL, because I have no public copy to
 check against. Their components install the runtime and list the files to
-bring, where they are published and where they go; --h3-dir registers a
-folder that already holds H3 weights (paths.extra_model_dirs).
+bring, where they are published and where they go.
+
+Weight files already on the PC are used instead of a download, whatever
+their name or folder (tool/model_files.py): the model folders of the settings
+and Kinoloom's own models folder are searched by themselves, and the installer
+asks for more folders (or takes them with --use-folder). A file found by size
+and sha256 is hard-linked into place when it is on the same drive (no extra
+space), used where it is when it sits in a model folder under its own name and
+place (the folder goes into paths.extra_model_dirs), or copied, if the user
+agrees.
 """
 from __future__ import annotations
 
 import argparse
 import ctypes
 import hashlib
+import http.client
 import json
 import os
 import re
 import shutil
-import stat
+import socket
 import subprocess
 import sys
 import tarfile
 import tempfile
 import time
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -47,13 +57,28 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
+if str(HERE) not in sys.path:       # loaded by file path (the tests), not run as a script
+    sys.path.insert(0, str(HERE))
+# the studio's own lookup of model files (tool/model_files.py, standard library
+# only); appended, so nothing in tool/ can stand in for an installed package
+if str(ROOT / "tool") not in sys.path:
+    sys.path.append(str(ROOT / "tool"))
+import gpu_support  # noqa: E402
+import install_support as support  # noqa: E402
+import model_files as mf  # noqa: E402
+
 CATALOG = HERE / "components.json"
 UA = {"User-Agent": "kinoloom-installer"}
 GB = 1e9
+# the servers no connection could be made to in this run, with why: a later
+# download from one of them fails at once instead of through all its tries again
+UNREACHABLE: dict[str, str] = {}
 
 
 class InstallError(RuntimeError):
-    pass
+    def __init__(self, message: str = "", failure: support.Failure | None = None):
+        super().__init__(message)
+        self.failure = failure      # a pip failure's details, for the report
 
 
 # ------------------------------------------------------------------ catalog
@@ -103,50 +128,43 @@ def _settings_path(root: Path) -> Path:
     return root / "tool" / "settings.yaml"
 
 
-def extra_model_roots(root: Path) -> list[Path]:
-    """The extra model roots the studio reads (tool/video_models.py
-    _get_extra_model_dirs): env vars, then settings paths.extra_model_dirs."""
-    roots: list[Path] = []
-    for var in ("KINOLOOM_EXTRA_MODEL_PATHS", "H3_LAB_MODELS", "LTX25_LAB_MODELS"):
-        for p in (os.environ.get(var) or "").split(os.pathsep):
-            if p.strip() and Path(p.strip()) not in roots:
-                roots.append(Path(p.strip()))
+def read_settings(root: Path) -> dict:
+    """tool/settings.yaml, or {} when there is none yet (or it is broken,
+    which is reported)."""
     sp = _settings_path(root)
-    if sp.exists():
-        try:
-            import yaml
-            cfg = yaml.safe_load(sp.read_text(encoding="utf-8")) or {}
-            raw = (cfg.get("paths") or {}).get("extra_model_dirs") or []
-            for p in [raw] if isinstance(raw, str) else raw:
-                if isinstance(p, str) and p.strip():
-                    q = Path(p.strip())
-                    q = q if q.is_absolute() else root / q
-                    if q not in roots:
-                        roots.append(q)
-        except Exception as e:  # noqa: BLE001 - a broken settings file is reported, not fatal
-            print(f"  [WARN] could not read {sp}: {e}")
-    return roots
+    if not sp.exists():
+        return {}
+    try:
+        import yaml
+        cfg = yaml.safe_load(sp.read_text(encoding="utf-8")) or {}
+        return cfg if isinstance(cfg, dict) else {}
+    except Exception as e:  # noqa: BLE001 - a broken settings file is reported, not fatal
+        print(f"  [WARN] could not read {sp}: {e}")
+        return {}
+
+
+def extra_model_roots(root: Path) -> list[Path]:
+    """The model folders the studio reads (tool/model_files.py): env vars,
+    then settings paths.extra_model_dirs."""
+    return mf.extra_roots(read_settings(root), root)
 
 
 def find_model(root: Path, entry: dict, extra: list[Path]) -> Path | None:
-    """Where a weight file already is: the studio tree first, then (for files
-    the video registry also finds there) the extra model roots."""
-    p = root / entry["path"]
-    if p.is_file():
-        return p
-    if entry.get("extra_roots_ok") and entry["path"].startswith("models/"):
-        tail = entry["path"][len("models/"):]
-        for r in extra:
-            q = r / tail
-            if q.is_file():
-                return q
-    return None
+    """Where a weight file already is: the studio tree first, then (a models/
+    file) the same place in a model folder, where only a file of the
+    catalog's size counts: the studio looks there the same way."""
+    return mf.find(entry["path"], extra, root, entry.get("size"))
 
 
 def model_state(root: Path, entry: dict, extra: list[Path]) -> tuple[str, Path | None]:
-    """'ok', 'missing' or 'wrong size'."""
+    """'ok', 'missing', 'wrong size' (the studio's own copy has another size)
+    or 'letter case' (the studio's own copy is saved under another letter
+    case, which an install fixes)."""
     p = find_model(root, entry, extra)
     if p is None:
+        wrong = mf.case_mismatch(entry["path"], root)
+        if wrong is not None:
+            return "letter case", (root / entry["path"]).parent / wrong
         return "missing", None
     if entry.get("size") and p.stat().st_size != entry["size"]:
         return "wrong size", p
@@ -178,46 +196,68 @@ def venv_python(root: Path, tree: dict) -> Path:
 
 # Sits in a venv while pip fills it, so a run that stopped part-way is seen as
 # unfinished (INSTALL-MAIN.bat uses the same name for tool\.venv).
-INCOMPLETE = ".kinoloom-incomplete"
+INCOMPLETE = support.MARKER    # a venv pip has not finished (install_support.py)
 
 
 def _dist_key(name: str) -> str:
     return re.sub(r"[-_.]+", "_", name).lower()
 
 
+def venv_base_exists(venv: Path) -> bool:
+    """A venv runs the python named in its pyvenv.cfg ("home ="); once the
+    Kinoloom folder has moved, that one is gone and the venv cannot start."""
+    try:
+        cfg = (venv / "pyvenv.cfg").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    m = re.search(r"^\s*home\s*=\s*(.+?)\s*$", cfg, re.M)
+    return bool(m) and Path(m.group(1)).is_dir()
+
+
+def venv_spec(tree: dict) -> dict:
+    """The tree's venv list: its own, or its fallback build when this PC's card
+    or driver cannot run its own but can run the fallback's (Qwen-Image 2.1:
+    CUDA 13.0, else CUDA 12.6 for a GTX 900 or 10 card or a driver older than
+    R580; tool/gpu_support.py)."""
+    spec = tree.get("venv") or {}
+    alt = spec.get("fallback")
+    if alt and spec.get("cuda") and gpu_support.pick(spec["cuda"], alt["cuda"]) == alt["cuda"]:
+        return alt
+    return spec
+
+
 def venv_state(root: Path, tree: dict) -> str:
-    """'ok', 'missing' or 'incomplete'. Incomplete: the marker is still there,
-    a package lacks its RECORD (pip writes it last, so an install that broke
-    off leaves none), or a pin of the tree's list is not installed."""
+    """'ok', 'missing', 'incomplete', 'outdated' or 'moved'. Incomplete: the
+    marker is still there, or a package lacks its RECORD (pip writes it last,
+    so an install that broke off leaves none). Outdated: a pin of the tree's
+    list (venv_spec) is not installed: the list changed since (an update), or
+    it was built for another card. Moved: made in another folder, so its
+    python no longer starts."""
     venv = root / tree["dir"] / "venv"
     if not venv_python(root, tree).is_file():
         return "missing"
     if (venv / INCOMPLETE).exists():
         return "incomplete"
-    have = set()
+    if not venv_base_exists(venv):
+        return "moved"
+    have: dict[str, set[str]] = {}
     for d in (venv / "Lib" / "site-packages").glob("*.dist-info"):
         if not (d / "RECORD").is_file():
             return "incomplete"
         name, _, version = d.name[:-len(".dist-info")].partition("-")
-        have.add((_dist_key(name), version))
-    req = root / tree.get("venv", {}).get("requirements", "")
+        have.setdefault(_dist_key(name), set()).add(version)
+    req = root / venv_spec(tree).get("requirements", "")
     if req.is_file():
         for line in req.read_text(encoding="utf-8").splitlines():
             m = re.match(r"\s*([A-Za-z0-9_.\-]+)==([^\s;#]+)", line)
-            if m and (_dist_key(m.group(1)), m.group(2)) not in have:
-                return "incomplete"
+            if not m:
+                continue
+            pin, got = m.group(2), have.get(_dist_key(m.group(1)), set())
+            # a pin without a local label matches a build with one (PEP 440):
+            # torchaudio==2.11.0 from the cu130 index installs 2.11.0+cu130
+            if pin not in got and ("+" in pin or pin not in {v.split("+", 1)[0] for v in got}):
+                return "outdated"
     return "ok"
-
-
-def remove_tree(path: Path) -> None:
-    """rmtree that also reaches files past 260 characters and read-only ones."""
-    def unlock(func, p, _exc):
-        os.chmod(p, stat.S_IWRITE)
-        func(p)
-    target = str(path.resolve())
-    if os.name == "nt" and not target.startswith("\\\\?\\"):
-        target = "\\\\?\\" + target
-    shutil.rmtree(target, onexc=unlock)
 
 
 def find_ffmpeg(root: Path) -> Path | None:
@@ -248,35 +288,83 @@ def verify(path: Path, size: int | None, sha256: str | None) -> str | None:
     return None
 
 
-def http_download(url: str, dest: Path, size: int | None = None, tries: int = 3) -> None:
-    """Stream a URL to dest (via dest.part), with a progress line."""
+def no_answer(err: BaseException | None) -> BaseException | None:
+    """The error in err's chain that says no server answered at all (the
+    connection was refused, the name not found, no route, or it timed out),
+    or None when one did, with an error of its own."""
+    seen = 0
+    while err is not None and seen < 10:
+        if isinstance(err, urllib.error.HTTPError):
+            return None
+        e = err.reason if isinstance(err, urllib.error.URLError) else err
+        if isinstance(e, BaseException) and (
+                isinstance(e, (ConnectionRefusedError, socket.gaierror))
+                or (isinstance(e, TimeoutError) and e is not err)   # urlopen's, not a read's
+                or getattr(e, "winerror", None) in (10051, 10060, 10061, 10065)
+                or type(e).__name__ in ("ConnectError", "ConnectTimeout")):     # httpx
+            return e
+        err, seen = err.__cause__ or err.__context__, seen + 1
+    return None
+
+
+def not_reached(host: str | None) -> None:
+    """Refuse a download from a server that could not be reached earlier in
+    this run: a PC that is offline gets its report in minutes, not hours."""
+    if host and host in UNREACHABLE:
+        raise InstallError(f"not tried: {host} could not be reached a moment ago ({UNREACHABLE[host]})")
+
+
+def http_download(url: str, dest: Path, size: int | None = None, tries: int = 6) -> None:
+    """Stream a URL to dest (via dest.part), with a progress line. A transfer
+    that breaks off goes on where it stopped when the server allows it (HTTP
+    Range), and each new try waits longer: 5, 10, 20, 40, then 60 s."""
+    host = urllib.parse.urlparse(url).hostname
+    not_reached(host)
     dest.parent.mkdir(parents=True, exist_ok=True)
     part = dest.with_name(dest.name + ".part")
-    last = None
+    part.unlink(missing_ok=True)
+    last = err = None
     for attempt in range(1, tries + 1):
+        have = part.stat().st_size if part.exists() else 0
+        headers = {**UA, "Range": f"bytes={have}-"} if have else UA
         try:
-            req = urllib.request.Request(url, headers=UA)
-            with urllib.request.urlopen(req, timeout=60) as r, open(part, "wb") as fh:
-                total = size or int(r.headers.get("Content-Length") or 0)
-                done, shown = 0, time.monotonic()
-                for block in iter(lambda: r.read(1 << 20), b""):
-                    fh.write(block)
-                    done += len(block)
-                    if total and time.monotonic() - shown > 5:
-                        print(f"      {done / total:6.1%}  {done / GB:.2f} / {total / GB:.2f} GB")
-                        shown = time.monotonic()
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=60) as r:
+                if have and r.status != 206:        # the server sends the whole file again
+                    have = 0
+                length = r.headers.get("Content-Length")
+                expected = have + int(length) if length else None
+                total = size or expected or 0
+                with open(part, "ab" if have else "wb") as fh:
+                    done, shown = have, time.monotonic()
+                    for block in iter(lambda: r.read(1 << 20), b""):
+                        fh.write(block)
+                        done += len(block)
+                        if total and time.monotonic() - shown > 5:
+                            print(f"      {done / total:6.1%}  {done / GB:.2f} / {total / GB:.2f} GB")
+                            shown = time.monotonic()
+                if expected is not None and done < expected:
+                    # http.client ends a body the server cut short without an error
+                    raise http.client.IncompleteRead(b"", expected - done)
             part.replace(dest)
+            support.log(f"  downloaded {url}: {done:,} bytes"
+                        + (f" in {attempt} tries" if attempt > 1 else ""))
             return
         except urllib.error.HTTPError as e:
-            last = f"HTTP {e.code}"
-            if e.code in (401, 403, 404):
+            last, err = f"HTTP {e.code}", e
+            if e.code == 416:                       # nothing left to resume: start over
+                part.unlink(missing_ok=True)
+            elif e.code in (401, 403, 404):
                 break
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
-            last = f"{type(e).__name__}: {e}"
-        part.unlink(missing_ok=True)
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
+            last, err = f"{type(e).__name__}: {e}", e
         if attempt < tries:
-            time.sleep(3 * attempt)
+            wait = min(60, 5 * 2 ** (attempt - 1))
+            print(f"      the download failed ({last}); trying again in {wait} s")
+            time.sleep(wait)
     part.unlink(missing_ok=True)
+    if host and no_answer(err) is not None:
+        UNREACHABLE[host] = last or "no answer"
     raise InstallError(f"download failed: {url} ({last})")
 
 
@@ -290,9 +378,16 @@ def hf_download(repo: str, repo_file: str, dest: Path, staging: Path) -> None:
         http_download(url, dest)
         return
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+    host = urllib.parse.urlparse(os.environ.get("HF_ENDPOINT") or "https://huggingface.co").hostname
+    not_reached(host)
     try:
         got = Path(hf_hub_download(repo_id=repo, filename=repo_file, local_dir=staging))
     except Exception as e:  # noqa: BLE001 - every hub error is a failed source
+        why = no_answer(e)
+        if host and why is not None:    # the hub's own words say only "check your connection"
+            UNREACHABLE[host] = f"{type(why).__name__}: {why}"
+            raise InstallError(f"Hugging Face {repo}/{repo_file}: {host} could not be reached "
+                               f"({UNREACHABLE[host]})") from e
         raise InstallError(f"Hugging Face {repo}/{repo_file}: {type(e).__name__}: {str(e)[:200]}") from e
     dest.parent.mkdir(parents=True, exist_ok=True)
     got.replace(dest)
@@ -378,7 +473,9 @@ class Installer:
     def __init__(self, root: Path, cat: dict, dry_run: bool = False):
         self.root, self.cat, self.dry = root, cat, dry_run
         self.fails: list[str] = []
+        self.failures: list[support.Failure] = []   # the same, for the report
         self.notes: list[str] = []
+        self.added: list[Path] = []     # model folders a failed link was used through
         self.total = 0      # steps in the plan, for the progress in the title
         self.done = 0
 
@@ -391,9 +488,20 @@ class Installer:
         try:
             fn(*args)
             return True
-        except (InstallError, OSError, subprocess.CalledProcessError) as e:
-            self.fails.append(f"{label}: {e}")
-            print(f"  FAIL {label}: {e}")
+        except Exception as e:  # noqa: BLE001 - a failed part is reported, and the others go on
+            expected = isinstance(e, (InstallError, OSError, subprocess.CalledProcessError,
+                                      http.client.HTTPException))
+            text = str(e) if expected else f"{type(e).__name__}: {e}"
+            if not expected:    # a damaged archive, or a bug: its traceback is in the log
+                support.log(f"  {label} stopped with an error:",
+                            *traceback.format_exc().splitlines())
+            self.fails.append(f"{label}: {text}")
+            failure = getattr(e, "failure", None)
+            if failure is None:
+                cause, lines = support.classify(text)
+                failure = support.Failure(label, cause, lines, [support.INSTALL_LOG])
+            self.failures.append(failure)
+            print(f"  FAIL {label}: {text}")
             return False
         finally:
             took = time.monotonic() - t0
@@ -445,9 +553,9 @@ class Installer:
     # -- venvs
     def venv(self, tid: str) -> None:
         tree = self.cat["trees"][tid]
-        spec = tree.get("venv")
-        if not spec:
+        if not tree.get("venv"):
             return
+        spec = venv_spec(tree)
         py = venv_python(self.root, tree)
         venv = py.parent.parent
         state = venv_state(self.root, tree)
@@ -456,25 +564,39 @@ class Installer:
             return
         if state == "incomplete":
             print(f"  ...  {tree['dir']}\\venv was not finished last time; building it again")
+        elif state == "outdated":
+            print(f"  ...  {tree['dir']}\\venv has other packages than {Path(spec['requirements']).name} "
+                  "(from an older Kinoloom, or for another graphics card); building it again")
+        elif state == "moved":
+            print(f"  ...  {tree['dir']}\\venv no longer starts (was the Kinoloom folder moved?); "
+                  "building it again")
         print(f"  ...  {tree['dir']}\\venv (Python 3.12, {spec['requirements']}, {spec['index']})")
+        if spec is not tree["venv"]:
+            why = gpu_support.problem(tree["venv"]["cuda"], tree["title"])
+            print(f"       {why[:1].upper()}{why[1:]}: it gets the CUDA "
+                  f"{gpu_support.RUNTIMES[spec['cuda']]['cuda']} build instead")
         if self.dry:
             return
         print(f"       about {spec.get('size_gb', 0):.1f} GB of packages, torch among them: this "
               "takes several minutes, and pip's bars show its progress")
-        if venv.exists():
-            remove_tree(venv)
+        # its marker goes in first and comes out last, so a run that stops while it
+        # removes, creates or fills the venv leaves one marked unfinished
+        support.remove_venv(venv)
         base = Path(getattr(sys, "_base_executable", sys.executable))
         subprocess.run([str(base), "-c", "import sys; assert sys.version_info[:2] == (3, 12)"],
                        check=True)
+        venv.mkdir(parents=True)
+        (venv / INCOMPLETE).write_text(support.MARKER_TEXT, encoding="utf-8")
         subprocess.run([str(base), "-m", "venv", str(venv)], check=True)
-        (venv / INCOMPLETE).write_text("pip has not finished this venv; the installer "
-                                       "builds it again\n", encoding="utf-8")
-        subprocess.run([str(py), "-m", "pip", "install", "--upgrade", "pip"], check=True)
-        r = subprocess.run([str(py), "-m", "pip", "install", "--extra-index-url", spec["index"],
-                            "-r", str(self.root / spec["requirements"])])
-        if r.returncode != 0:
-            raise InstallError(f"pip could not install {spec['requirements']} (its messages "
-                               "are above); the next run builds this venv again")
+        # pip pinned, the list, one more try after a broken download, then torch
+        # must import; pip's own log is logs/install/pip-<tree>.log
+        fail = support.install_venv_packages(
+            py, self.root / spec["requirements"], tree["dir"], step=f"{tree['dir']}\\venv",
+            index=spec["index"], imports=("torch",))
+        if fail:
+            what = (fail.what or support.CAUSES[fail.cause][0]).rstrip(".")
+            raise InstallError(f"{what} ({spec['requirements']}); the next run builds this "
+                               "venv again", failure=fail)
         (venv / INCOMPLETE).unlink()
         relay(self.root, venv / "Lib" / "site-packages")
 
@@ -482,9 +604,18 @@ class Installer:
     def model(self, mid: str, extra: list[Path]) -> None:
         e = self.cat["models"][mid]
         state, where = model_state(self.root, e, extra)
+        if state == "letter case" and where is not None and not self.dry:
+            mf.repair_case(self.root, {"models": {mid: e}}, lambda s: print(f"       {s}"))
+            state, where = model_state(self.root, e, extra)
         if state == "ok":
             print(f"  OK   {e['path']}" + ("" if where == self.root / e["path"] else f"  (in {where})"))
             return
+        if state == "letter case" and where is not None:
+            if self.dry:
+                print(f"  OK   {e['path']}  (saved as {where.name}: the install fixes the letter case)")
+                return
+            raise InstallError(f"{where} must be named {Path(e['path']).name} (the letter case "
+                               "Kinoloom loads), and it could not be renamed: rename it, then re-run")
         if state == "wrong size" and where is not None:
             raise InstallError(f"{where} has the wrong size ({where.stat().st_size:,}, "
                                f"expected {e['size']:,}); delete or move it, then re-run")
@@ -492,6 +623,9 @@ class Installer:
             self.derive(mid)
             return
         print(f"  ...  {e['path']}  ({e['size'] / GB:.2f} GB)")
+        for other in mf.other_builds(e["path"], extra, e.get("size")):
+            print(f"       {other} has this name but another size (another build of the "
+                  "model): it stays as it is, and Kinoloom downloads its own copy")
         if self.dry:
             return
         dest = self.root / e["path"]
@@ -511,7 +645,41 @@ class Installer:
                 return
             dest.unlink(missing_ok=True)
             problems.append(f"{src.get('hf') or src.get('url')}: {bad}")
-        raise InstallError("; ".join(problems) or "no source")
+        raise InstallError("; ".join(dict.fromkeys(problems)) or "no source")     # a server once
+
+    def use_found(self, found: mf.Found, extra: list[Path]) -> None:
+        """A file the user already has, linked (or, where no link works,
+        copied) under Kinoloom's name; the user's file stays as it is. A link
+        that does not work after all falls back to the file's model folder,
+        else the download."""
+        e = self.cat["models"][found.mid]
+        if found.how in mf.LINKED:
+            where = f"  (in {found.folder})" if found.how == "drivelink" else ""
+            print(f"  LINK {found.rel}{where}\n       = {found.src}")
+        else:
+            print(f"  COPY {found.rel}  ({found.size / GB:.2f} GB)\n       from {found.src}")
+        if self.dry:
+            return
+        try:
+            mf.use(found, self.root, self.cat, print)
+        except OSError as err:
+            if found.how not in mf.LINKED:
+                raise InstallError(f"could not copy {found.src}: {err}") from err
+            # a link that did not work after all: its model folder used as it
+            # is, else the download
+            folder = mf.mount_root(found.src, found.rel)
+            if folder is not None:
+                print(f"       could not link it ({err}); using it where it is")
+                print(f"       {register_extra_dir(self.root, folder)}")
+                self.added.append(folder)
+                return
+            if e.get("sources"):
+                print(f"       could not link it ({err}); downloading it instead")
+                self.model(found.mid, extra)
+                return
+            raise InstallError(f"could not link {found.src} ({err}): put a copy of it at "
+                               f"{self.root / found.rel}, or re-run") from err
+        support.log(f"  {found.how}: {found.rel} <- {found.src} ({found.checked})")
 
     def derive(self, mid: str) -> None:
         """Make a file from another one (the face detector's ONNX export from
@@ -538,11 +706,17 @@ class Installer:
         with tempfile.TemporaryDirectory(dir=self.root / "temp") as td:
             work = Path(td) / src_path.name
             shutil.copy2(src_path, work)
-            r = subprocess.run([sys.executable, "-I", "-c", code, str(work), json.dumps(d["export"])],
+            # the copy by its name in the work folder: ultralytics drops every '
+            # from a model path, so a full path would break in a folder like D:\O'Neil
+            r = subprocess.run([sys.executable, "-I", "-c", code, work.name, json.dumps(d["export"])],
                                cwd=td, env=env, capture_output=True, text=True, timeout=1800)
             if r.returncode != 0:
-                raise InstallError(f"the export failed: {(r.stderr or r.stdout).strip()[-400:]}")
+                said = (r.stderr or r.stdout).strip()
+                support.log(f"  the export of {e['path']} failed (exit code {r.returncode}):", said)
+                raise InstallError("the export failed: "
+                                   + (said.splitlines()[-1] if said else f"exit code {r.returncode}"))
             got = json.loads(r.stdout.strip().splitlines()[-1])
+            got["path"] = str(Path(td, got["path"]))
             want = d.get("expect") or {}
             if want and (got["input"] != want["input"] or got["output"] != [want["output"]]):
                 raise InstallError(f"the export has input {got['input']} and output {got['output']}, "
@@ -577,36 +751,14 @@ def relay(root: Path, site_packages: Path) -> None:
         shutil.copy2(root / "install" / "overlay" / "progress_relay.html", static)
 
 
-def register_extra_dir(root: Path, folder: Path) -> str:
+def register_extra_dir(root: Path, folder: Path, first: bool = False) -> str:
     """Add a folder to tool/settings.yaml paths.extra_model_dirs, keeping the
-    file's comments. Returns what happened."""
-    sp = _settings_path(root)
-    if not sp.exists():
-        shutil.copy2(root / "tool" / "settings.example.yaml", sp)
-    text = sp.read_text(encoding="utf-8")
-    entry = folder.as_posix()
-    lines = text.splitlines(keepends=True)
-    for i, line in enumerate(lines):
-        m = re.match(r"^(\s+)extra_model_dirs:\s*(\[\s*\])?\s*(#.*)?$", line.rstrip("\r\n"))
-        if not m:
-            continue
-        indent = m.group(1)
-        nl = "\r\n" if line.endswith("\r\n") else "\n"
-        j = i + 1
-        items = []
-        while j < len(lines) and re.match(rf"^{indent}\s+-\s", lines[j]):
-            items.append(lines[j].split("-", 1)[1].strip().strip("'\""))
-            j += 1
-        if any(Path(x) == folder for x in items):
-            return f"{entry} is already in paths.extra_model_dirs"
-        new_item = f"{indent}  - {entry}{nl}"
-        if m.group(2) is not None:
-            lines[i] = f"{indent}extra_model_dirs:{nl}"
-        lines.insert(j, new_item)
-        sp.write_text("".join(lines), encoding="utf-8")
-        return f"added {entry} to paths.extra_model_dirs in tool/settings.yaml"
-    raise InstallError("tool/settings.yaml has no paths.extra_model_dirs line; add "
-                       f"'{entry}' to it by hand")
+    file's comments (tool/model_files.py); first: before the others. Returns
+    what happened."""
+    try:
+        return mf.add_dir_to_settings(root, folder, first)
+    except Exception as e:  # noqa: BLE001 - a settings file that is not valid YAML, or locked
+        raise InstallError(f"could not add {folder} to tool/settings.yaml: {e}") from e
 
 
 # ------------------------------------------------------------------ reports
@@ -619,12 +771,17 @@ def component_status(root: Path, cat: dict, cid: str, extra: list[Path]) -> tupl
         if tree_state(root, t) != "ok":
             missing.append(f"{t['dir']} (ComfyUI {t['core']['version']})")
         elif t.get("venv") and (vs := venv_state(root, t)) != "ok":
-            missing.append(f"{t['dir']}\\venv" + (" (not finished)" if vs == "incomplete" else ""))
+            missing.append(f"{t['dir']}\\venv" + {"incomplete": " (not finished)",
+                                                   "outdated": " (other packages than its list)",
+                                                   "moved": " (made in another folder)"}.get(vs, ""))
     missing += [f"{cat['nodes'][n]['dir']} node pack" for n in c.get("nodes", [])
                 if node_state(root, cat, n) != "ok"]
     for mid in c.get("models", []) + c.get("manual", []):
-        state, _ = model_state(root, cat["models"][mid], extra)
-        if state != "ok":
+        state, where = model_state(root, cat["models"][mid], extra)
+        if state == "letter case" and where is not None:
+            missing.append(f"{cat['models'][mid]['path']} (saved as {where.name}: "
+                           "an install or the next start fixes the letter case)")
+        elif state != "ok":
             missing.append(f"{cat['models'][mid]['path']} ({state})")
     total = (len(c.get("trees", [])) + len(c.get("nodes", [])) + len(c.get("models", []))
              + len(c.get("manual", [])))
@@ -656,9 +813,9 @@ MANUAL_WHY = {
            ["The MiniMax H3 Community License grants no use in the EU, the UK, South Korea",
             "or the USA, so the installer never downloads these. Where the license lets you",
             "use H3, get them from where they are published (below) and put them in the",
-            "folders shown, or keep them in one folder with the same subfolders and run",
-            "the installer again with --h3-dir <that folder>. Sizes are those of the",
-            "published files the studio was tested with."]),
+            "folders shown, or keep them where they are, under any name, and run the",
+            "installer again: give it their folder when it asks (or --use-folder <folder>).",
+            "Sizes are those of the published files the studio was tested with."]),
     "realvis": ("RealVisXL V5",
                 ["I have no public copy of these four files to check against mine, so the",
                  "installer does not download them. Any RealVisXL V5 Q5_K_M GGUF, the SDXL",
@@ -689,8 +846,13 @@ def print_manual(root: Path, cat: dict, plan: Plan, extra: list[Path]) -> None:
                 print(f"        found in {where}")
             elif state == "wrong size":
                 print(f"        found {where} with the wrong size")
-            elif e.get("published_at"):
-                print(f"        published at {e['published_at']}")
+            elif state == "letter case" and where is not None:
+                print(f"        saved as {where.name}: an install or the next start fixes the letter case")
+            else:
+                for other in mf.other_builds(e["path"], extra, e.get("size")):
+                    print(f"        {other} has another size: another build, not used")
+                if e.get("published_at"):
+                    print(f"        published at {e['published_at']}")
 
 
 def studio_report(root: Path) -> None:
@@ -710,7 +872,116 @@ def studio_report(root: Path) -> None:
         print(f"  (studio check failed: {e})")
 
 
+# ------------------------------------------------------------------ your own files
+CHECKED = {"sha256": "sha256 checked", "name and size": "same name and size",
+           "name": "same name"}
+
+
+def print_found(found: list[mf.Found]) -> bool:
+    for f in found:
+        print(f"  FOUND {f.rel}")
+        print(f"        {f.src}  ({CHECKED[f.checked]})")
+        print(f"        -> {f.describe()}")
+    return bool(found)
+
+
+def find_own_files(root: Path, cat: dict, finder: mf.Finder, extra: list[Path],
+                   folders: list[str], ask: bool) -> None:
+    """Look for the files the plan still needs among the files already on this
+    PC, under any name: in the model folders, in Kinoloom's own models folder,
+    in the folders given with --use-folder and, when ask is set, in the
+    folders the user types."""
+    auto = [p for p in [*extra, root / "models"] if p.is_dir()]
+    if not (auto or folders or ask):
+        return
+    print("\n== Model files already on this PC ==")
+    if auto:
+        print_found(finder.search(auto))
+    for f in folders:
+        print_found(finder.search([Path(f).expanduser()]))
+    if not ask or not finder.missing():
+        return
+    missing = [cat["models"][m] for m in finder.missing()]
+    gb = sum(e.get("size") or 0 for e in missing) / GB
+    print(f"\n  Kinoloom still needs {len(missing)} model file(s)"
+          + (f" ({gb:.1f} GB)." if gb else "."))
+    print("  If ComfyUI or another program already has some of them, under any name,")
+    print("  Kinoloom can use those instead of downloading them, with no extra space:")
+    print("  your files stay where they are, under their own names. Type or paste the")
+    print("  folder they are in (its subfolders are searched too); Enter alone goes on.")
+    if any(e.get("manual") for e in missing):
+        print("  The files you bring yourself (MiniMax H3, RealVisXL) are found the same way.")
+    prompt = "Folder: "
+    while finder.missing():
+        raw = mf.clean(input(prompt))
+        prompt = "Another folder (Enter: go on): "
+        if not raw:
+            return
+        if mf.is_network_path(raw):
+            print("  A network folder (\\\\server\\share) is not searched: map it to a drive")
+            print("  letter, or copy the files to this PC.")
+            continue
+        folder = Path(raw).expanduser()
+        if not folder.is_dir():
+            print(f"  {folder} is not a folder on this PC")
+            continue
+        if not print_found(finder.search([folder])):
+            print("  None of the files Kinoloom still needs are in that folder.")
+
+
+def confirm_copies(finder: mf.Finder, root: Path, ask: bool) -> None:
+    """Found files that no link can reach (a drive that cannot hold one, or a
+    file ComfyUI reads only from Kinoloom's own folder, on another drive) get
+    copied, if the user agrees; otherwise they are downloaded like the rest
+    (or, the ones you bring yourself, stay missing)."""
+    copies = [f for f in finder.found.values() if f.how == "copy"]
+    if not copies:
+        return
+    gb = sum(f.size for f in copies) / GB
+    if len(copies) == 1:
+        print("\n  1 file found cannot be linked from where it is (the reason is above), so")
+        print(f"  Kinoloom can use it only as a copy; copying it takes {gb:.1f} GB on {root.anchor}")
+        q = "Copy it? (n: download it instead) [Y/n] "
+    else:
+        print(f"\n  {len(copies)} files found cannot be linked from where they are (the reasons are")
+        print("  above), so Kinoloom can use them only as copies; copying them takes")
+        print(f"  {gb:.1f} GB on {root.anchor}")
+        q = "Copy them? (n: download them instead) [Y/n] "
+    if os.name == "nt":
+        it = "it" if len(copies) == 1 else "them"
+        print(f"  (With Windows Developer Mode on, Kinoloom links {it} instead, with no extra")
+        print("  space: Settings > System > For developers, then run this again.)")
+    if ask and input(q).strip().lower() not in ("", "y", "yes"):
+        for f in copies:
+            del finder.found[f.mid]
+        print("  Not copied: " + ("it is downloaded instead (a file you bring yourself stays missing)."
+                                  if len(copies) == 1 else
+                                  "they are downloaded instead (the files you bring yourself stay missing)."))
+
+
+def add_model_folder(root: Path, folder: Path, dry_run: bool, first: bool = False) -> None:
+    if dry_run:
+        print(f"  ...  {folder} would become a model folder")
+        return
+    print(f"  {register_extra_dir(root, folder, first)}")
+
+
 # ------------------------------------------------------------------ main
+def windows_argv(argv: list[str]) -> list[str]:
+    """A folder given in quotes with a backslash at the end ("D:\\models\\")
+    reaches Python with the closing quote kept and the arguments after it run
+    into it (Windows reads \\" as a quote): split them out again."""
+    out: list[str] = []
+    for a in argv:
+        head, quote, rest = a.partition('"')
+        if not quote:
+            out.append(a)
+            continue
+        out.append(head + "\\" if head.endswith(":") else head)
+        out.extend(rest.split())
+    return out
+
+
 def choose(cat: dict) -> list[str]:
     ids = list(cat["components"])
     default = [c for c in ids if cat["components"][c].get("default")]
@@ -740,20 +1011,51 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="show what would be installed")
     ap.add_argument("--yes", action="store_true",
                     help="no questions: accept the plan and the model licenses it lists")
-    ap.add_argument("--h3-dir", help="a folder that already holds MiniMax H3 weights "
-                                     "(subfolders diffusion_models, text_encoders, vae, ...)")
+    ap.add_argument("--use-folder", action="append", metavar="FOLDER",
+                    help="a folder with model files you already have, under any name "
+                         "(ComfyUI's models folder, say); give it more than once for more folders")
+    ap.add_argument("--h3-dir", help="the same as --use-folder (older name, for MiniMax H3 weights)")
     ap.add_argument("--skip-models", action="store_true", help="install everything but the weights")
-    args = ap.parse_args(argv)
+    args = ap.parse_args(windows_argv(sys.argv[1:]) if argv is None else argv)
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if reconfigure:     # print each line as it comes, in step with pip's own output
-        reconfigure(line_buffering=True)
+        reconfigure(line_buffering=True, errors="replace")
+    if args.list or args.check or args.dry_run:
+        return run(args)
+    # an install run: everything it prints also goes to logs/install/install.log
+    support.keep_awake()
+    support.no_quick_edit()
+    tee = support.Tee(sys.stdout, support.INSTALL_LOG)
+    sys.stdout = tee
+    try:
+        print(f"---- install_components.py {' '.join(sys.argv[1:] if argv is None else argv)}"
+              f"  ({time.strftime('%Y-%m-%d %H:%M:%S')})")
+        return run(args)
+    except KeyboardInterrupt:
+        support.report([support.Failure("the parts of Kinoloom", "stopped")])
+        return 1
+    except Exception as e:  # noqa: BLE001 - every failure is reported, never a bare traceback
+        support.log("  install_components.py stopped with an error:",
+                    *traceback.format_exc().splitlines())
+        cause, lines = support.classify(f"{type(e).__name__}: {e}")
+        support.report([support.Failure("the parts of Kinoloom", cause, lines,
+                                        [support.INSTALL_LOG])])
+        return 1
+    finally:
+        sys.stdout = tee.stream
+        tee.close_log()
 
+
+def run(args: argparse.Namespace) -> int:
     cat = load_catalog()
     root = ROOT
     extra = extra_model_roots(root)
     print("== Kinoloom components ==")
     print(f"  studio: {root}")
     print(f"  weights go to {root / 'models'}\\<folder>\\\n")
+    if not (args.list or args.check or args.dry_run):
+        # a model file of Kinoloom's own saved under another letter case
+        mf.repair_case(root, cat, lambda s: print(f"  {s}"))
     print_components(root, cat, extra)
     if args.list:
         return 0
@@ -786,32 +1088,45 @@ def main(argv: list[str] | None = None) -> int:
         print("Nothing selected.")
         return 0
 
-    h3_missing = "h3" in plan.components and any(
-        model_state(root, cat["models"][m], extra)[0] != "ok" for m in cat["components"]["h3"]["manual"])
-    if h3_missing and not (args.h3_dir or args.yes or args.dry_run):
-        print("\nMiniMax H3 weights are never downloaded (see its license). If you already have")
-        print("them in a folder with the subfolders diffusion_models, text_encoders, vae,")
-        print("latent_upscale_models and loras, type that folder; Enter skips this, and you")
-        print(f"can put the files under {root / 'models'} later.")
-        args.h3_dir = input("H3 folder: ").strip().strip('"') or None
-    if args.h3_dir and not args.dry_run:
-        h3 = Path(args.h3_dir).expanduser().resolve()
-        if not h3.is_dir():
-            print(f"[FAIL] --h3-dir {h3} is not a folder")
+    # files the user already has, anywhere on this PC and under any name
+    folders = [mf.clean(f) for f in (args.use_folder or []) + ([args.h3_dir] if args.h3_dir else [])]
+    for f in folders:
+        if mf.is_network_path(f) or not Path(f).expanduser().is_dir():
+            print(f"[FAIL] {f} is not a folder on this PC")
             return 2
-        print(f"  {register_extra_dir(root, h3)}")
-        extra = extra_model_roots(root)
+    finder = mf.Finder(cat, [] if args.skip_models else [
+        m for m in plan.models + plan.manual
+        if model_state(root, cat["models"][m], extra)[0] == "missing"], root, say=print,
+        remember=not args.dry_run)
+    if finder.entries:
+        ask = not (args.yes or args.dry_run)
+        find_own_files(root, cat, finder, extra, folders, ask)
+        confirm_copies(finder, root, ask)
+    found = finder.found
 
     todo = [] if args.skip_models else [
-        m for m in plan.models if model_state(root, cat["models"][m], extra)[0] != "ok"]
+        m for m in plan.models
+        if m not in found and model_state(root, cat["models"][m], extra)[0] != "ok"]
     need = _gb(cat, todo) * GB
+    copy_bytes = sum(f.size for f in found.values() if f.how == "copy")
     print(f"\n== Plan: {', '.join(plan.components)} ==")
     print(f"  ComfyUI trees: {', '.join(cat['trees'][t]['dir'] for t in plan.trees) or '-'}")
     print(f"  node packs:    {len(plan.nodes)}")
     print(f"  weights:       {len(todo)} file(s) to download, {need / GB:.1f} GB, into {root / 'models'}")
+    link_dirs = sorted({str(f.folder) for f in found.values() if f.how == "drivelink"})
+    if found:
+        hows = [f.how for f in found.values()]
+        linked = sum(h in mf.LINKED for h in hows)
+        kinds = [f"{n} {word}" for n, word in (
+            (linked, "linked (no extra space)"), (hows.count("folder"), "used where they are"),
+            (hows.count("copy"), "copied")) if n]
+        print(f"  your files:    {len(found)} found on this PC: {', '.join(kinds)}"
+              + (f" ({copy_bytes / GB:.1f} GB)" if copy_bytes else ""))
+        if link_dirs:
+            print(f"                 links on other drives go in {', '.join(link_dirs)}")
     venvs = [cat["trees"][t] for t in plan.trees if cat["trees"][t].get("venv")
              and venv_state(root, cat["trees"][t]) != "ok"]
-    venv_gb = sum(t["venv"].get("size_gb", 0) for t in venvs)
+    venv_gb = sum(venv_spec(t).get("size_gb", 0) for t in venvs)
     if venvs:
         print(f"  venvs:         {', '.join(t['dir'] for t in venvs)}, about {venv_gb:.1f} GB")
     if plan.manual:
@@ -828,9 +1143,9 @@ def main(argv: list[str] | None = None) -> int:
         print("  The weights come under these licenses; read them before you use the models:")
         for lic in licenses:
             print(f"    - {lic}")
-    if free < need * 1.05 + (venv_gb + 5) * GB:
-        print(f"  [WARN] {need / GB:.0f} GB of weights and {venv_gb:.0f} GB of venvs may not fit "
-              f"in {free / GB:.0f} GB")
+    if free < need * 1.05 + copy_bytes + (venv_gb + 5) * GB:
+        print(f"  [WARN] {(need + copy_bytes) / GB:.0f} GB of weights and {venv_gb:.0f} GB of "
+              f"venvs may not fit in {free / GB:.0f} GB")
     if not args.yes and not args.dry_run:
         if input("\nGo ahead? [Y/n] ").strip().lower() not in ("", "y", "yes"):
             print("Stopped; nothing was changed.")
@@ -838,10 +1153,23 @@ def main(argv: list[str] | None = None) -> int:
 
     (root / "temp").mkdir(exist_ok=True)
     inst = Installer(root, cat, dry_run=args.dry_run)
+    # the model folders that hold found files where they are, and the
+    # Kinoloom-models folders with the links on other drives (those first:
+    # their files are checked, and ComfyUI loads the first file of a name)
+    added: list[Path] = []
+    first: list[Path] = []
+    for f in found.values():
+        if f.how in ("folder", "drivelink") and f.folder is not None \
+                and not any(mf.same_dir(f.folder, d, root) for d in added):
+            added.append(f.folder)
+            if f.how == "drivelink":
+                first.append(f.folder)
+    own_manual = [m for m in plan.manual if m in found and found[m].how != "folder"]
     # one step per tree, node pack, venv (a tree without one returns at once),
-    # ffmpeg and weight file
+    # ffmpeg, weight file, model folder added and file you bring yourself
     inst.total = (2 * len(plan.trees) + len(plan.nodes) + 1
-                  + (0 if args.skip_models else len(plan.models)))
+                  + (0 if args.skip_models else len(plan.models))
+                  + len(added) + len(own_manual))
     if plan.trees:
         print("\n== ComfyUI ==")
         for t in plan.trees:
@@ -851,10 +1179,22 @@ def main(argv: list[str] | None = None) -> int:
                 inst.step(f"{cat['trees'][t]['dir']}\\venv", inst.venv, t)
     print("\n== ffmpeg ==")
     inst.step("ffmpeg", inst.ffmpeg)
-    if plan.models and not args.skip_models:
+    added_ok: list[Path] = []
+    if (plan.models or own_manual or added) and not args.skip_models:
         print("\n== Weights ==")
+        for d in added:
+            if inst.step(f"model folder {d}", add_model_folder, root, d, args.dry_run, d in first):
+                added_ok.append(d)
+        extra = extra_model_roots(root) + (added if args.dry_run else [])
         for m in plan.models:
-            inst.step(cat["models"][m]["path"], inst.model, m, extra)
+            if m in found and found[m].how != "folder":
+                inst.step(cat["models"][m]["path"], inst.use_found, found[m], extra)
+            else:
+                inst.step(cat["models"][m]["path"], inst.model, m, extra)
+        for m in own_manual:
+            inst.step(cat["models"][m]["path"], inst.use_found, found[m], extra)
+        if inst.added:                          # a failed link used through its folder
+            extra = extra_model_roots(root)
         staging = root / "models" / ".downloads"
         if not args.dry_run and staging.exists() and not any(
                 p.is_file() and not p.name.endswith((".lock", ".metadata"))
@@ -871,10 +1211,20 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  settings:      {_settings_path(root)}")
     for n in inst.notes:
         print(f"  [NOTE] {n}")
+    if any(f.how in mf.LINKED for f in found.values()):
+        print("  Linked files are your own files under a second name, Kinoloom's: they take")
+        print("  no extra space, and your files keep their names and places.")
+        if link_dirs:
+            print(f"  The links on other drives are in {', '.join(link_dirs)}; deleting that")
+            print("  folder never deletes your files.")
+    if (added_ok or inst.added) and not args.dry_run:
+        print("  Model folders were added: if Kinoloom is running, close it and start it")
+        print("  again, so its render engines see them.")
     if inst.fails:
         print(f"  {len(inst.fails)} step(s) failed; re-run to retry them (finished steps are skipped):")
         for f in inst.fails:
             print(f"    FAIL {f}")
+        support.report(inst.failures, "SOME PARTS DID NOT INSTALL")
         return 1
     print("  dry run: nothing was changed." if args.dry_run else
           "  Done. Start the studio with start.bat.")

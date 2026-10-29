@@ -22,10 +22,11 @@ Design notes
 """
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
+import gpu_support
+import model_files
 from core import ROOT, load_config
 
 WF_DIR = ROOT / "tool" / "workflows"
@@ -281,50 +282,24 @@ _REQUIRED_FIELDS = ("path", "text_encoder", "vae", "workflow")
 
 def _get_extra_model_dirs() -> list[Path]:
     """Extra model roots, in order: env vars (os.pathsep-separated), then
-    settings.yaml paths.extra_model_dirs. Keep in step with the extra roots
-    in each ComfyUI install's extra_model_paths.yaml."""
-    dirs: list[Path] = []
-    for var in ("KINOLOOM_EXTRA_MODEL_PATHS", "H3_LAB_MODELS", "LTX25_LAB_MODELS"):
-        val = os.environ.get(var)
-        if val:
-            for p in val.split(os.pathsep):
-                p = p.strip()
-                if p:
-                    path_obj = Path(p)
-                    if path_obj not in dirs:
-                        dirs.append(path_obj)
+    settings.yaml paths.extra_model_dirs (tool/model_files.py, which the
+    launcher's generated extra_model_paths config follows too)."""
     try:
         cfg = load_config()
-        extra_cfg = (cfg.get("paths") or {}).get("extra_model_dirs") or []
-        if isinstance(extra_cfg, str):
-            extra_cfg = [extra_cfg]
-        for p in extra_cfg:
-            if p and isinstance(p, str):
-                path_obj = Path(p.strip())
-                if not path_obj.is_absolute():
-                    path_obj = ROOT / path_obj
-                if path_obj not in dirs:
-                    dirs.append(path_obj)
     except Exception:
-        pass
-    return dirs
+        cfg = {}
+    return model_files.extra_roots(cfg, ROOT)
 
 
 def _exists(rel: str) -> bool:
-    """True when the file exists under the studio root OR a mounted root.
-
-    Keep this list in step with the extra roots in `extra_model_paths.yaml`.
-    """
+    """True when the file is under the studio root, or in a model folder in
+    its place (ComfyUI's older unet/ and clip/ names too) with the catalog's
+    size: another build under the same name there does not count."""
     if (ROOT / rel).exists():
         return True
-    tail = rel.split("models/", 1)[-1] if "models/" in rel else rel
-    for extra in _get_extra_model_dirs():
-        try:
-            if extra.exists() and (extra / tail).exists():
-                return True
-        except OSError:
-            continue
-    return False
+    rel = rel.replace("\\", "/")
+    return model_files.find(rel, _get_extra_model_dirs(), ROOT,
+                            model_files.catalog_size(rel, ROOT)) is not None
 
 
 def workflow_exists(name: str) -> bool:
@@ -535,6 +510,10 @@ def model_status(mid: str) -> dict:
     i2v_note = i2v_problem(mid) if "i2v" in modes else None
     if i2v_note:
         modes.remove("i2v")
+    # LTX-2.5 and MiniMax H3 run on ComfyUI_LTX's CUDA 13.0 build, the legacy
+    # Wan 2.2 on the render farm's CUDA 12.6 one (gpu_support)
+    fam = str(m.get("family") or "")
+    gpu = gpu_support.problem("cu126", "Wan 2.2") if fam.startswith("wan") else gpu_support.problem("cu130")
     return {
         "id": mid,
         # --- display fields. These were MISSING, so the UI could only show
@@ -551,9 +530,11 @@ def model_status(mid: str) -> dict:
         "moe": m.get("moe", False),
         "source": m.get("source", "studio"),
         "vram_note": m.get("vram_note"),
-        # --- availability
-        "available": not missing,
+        # --- availability: installed, and this PC's card and driver run it
+        "available": not missing and not gpu,
         "missing": missing,
+        "gpu": gpu,
+        **({"reason": gpu} if gpu else {}),
         "declared_status": m.get("status"),
         "workflow": m.get("workflow"),
         "supported_modes": modes,

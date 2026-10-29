@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core import ROOT, ffmpeg_exe, load_config, log_setup
+import model_files
 import video_models
 
 log = log_setup("video_studio")
@@ -348,7 +349,7 @@ def _build(mid: str, mode: str, prompt: str, negative: str, seed: int,
     # no Wan LoRA at all (their graphs carry their own adapters).
     is_wan = fam.startswith("wan")
     if is_wan and not m.get("moe") and not any(c["name"] == TURBO_LORA for c in chain):
-        if not (ROOT / "models" / "loras" / TURBO_LORA).exists():
+        if not model_files.exists(f"models/loras/{TURBO_LORA}", cfg_yaml, ROOT):
             raise ValueError(
                 f"Turbo LoRA missing: {TURBO_LORA}. Generating without it at "
                 f"8 steps produces unusable output — install it or raise steps.")
@@ -1223,8 +1224,7 @@ def start(mid: str, prompt: str, *, mode: str = "t2v", negative: str = "",
     if te:
         if Path(te).name != te or te in (".", ".."):
             raise ValueError(f"invalid text encoder name: {te!r}")
-        tp = ROOT / "models" / "text_encoders" / te
-        if not tp.exists():
+        if not model_files.exists(f"models/text_encoders/{te}", load_config(), ROOT):
             raise ValueError(f"text encoder not found: {te}")
 
     wf, template, te_node = _build(mid, mode, prompt, negative, seed, width,

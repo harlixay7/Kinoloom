@@ -19,6 +19,7 @@ import ctypes
 import http.client
 import json
 import os
+import re
 import signal
 import socket
 import subprocess
@@ -38,6 +39,13 @@ VENV_SITE = ROOT / "tool" / ".venv" / "Lib" / "site-packages"
 # through PYTHONPATH (_base_env). Appended, so the base's own packages win.
 if VENV_SITE.is_dir() and str(VENV_SITE) not in sys.path:
     sys.path.append(str(VENV_SITE))
+# tool/model_files.py sits next to this file (on sys.path when Python runs a
+# script by its path; this keeps it there however the launcher is started)
+if str(ROOT / "tool") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tool"))
+import gpu_support  # noqa: E402
+import model_files  # noqa: E402
+
 LOG_DIR = ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -64,18 +72,22 @@ H3_PORT = 8199
 QWEN_PORT = 8190
 QWEN_PY = ROOT / "ComfyUI_Qwen21" / "venv" / "Scripts" / "python.exe"
 COMFY_PORTS = (COMFY_PORT, LTX_PORT, H3_PORT, QWEN_PORT)
+COMPONENT_PORTS = {"comfy-ui": COMFY_PORT, "ltx-render": LTX_PORT, "h3-render": H3_PORT,
+                   "qwen-render": QWEN_PORT}
 RESTART_CAP = 3          # consecutive fast crashes before giving up
 RESTART_WINDOW_S = 45    # a crash is "fast" if it dies within this window
 READY_TIMEOUT_S = 300    # how long to wait for the web app before saying so
 WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".pth", ".ckpt")
+# install/INSTALL-MAIN.bat and install/install_components.py keep this file in a
+# venv until pip has finished it: such a venv counts as not installed
+INSTALL_MARKER = ".kinoloom-incomplete"
 
 # Generated from settings paths.extra_model_dirs and passed to EVERY ComfyUI
 # instance, so the farms see exactly the model roots the studio's
-# availability checks (video_models) see.
+# availability checks (tool/model_files.py) see: every subfolder a catalog
+# file uses, and ComfyUI's older unet/ and clip/ names.
 EXTRA_PATHS_YAML = ROOT / "temp" / "extra_model_paths.studio.yaml"
-_MODEL_SUBDIRS = ("checkpoints", "diffusion_models", "text_encoders", "vae",
-                  "loras", "upscale_models", "latent_upscale_models",
-                  "clip_vision")
+_MODEL_SUBDIRS = model_files.MOUNTED
 
 
 def _settings() -> dict:
@@ -93,18 +105,63 @@ def _settings() -> dict:
 def extra_model_dirs(cfg: dict | None = None) -> list[str]:
     """Existing paths.extra_model_dirs roots (relative = studio root)."""
     raw = ((cfg if cfg is not None else _settings()).get("paths") or {}) \
-        .get("extra_model_dirs") or []
-    if isinstance(raw, str):
-        raw = [raw]
+        .get("extra_model_dirs")
     out: list[str] = []
-    for d in raw:
-        if not isinstance(d, str) or not d.strip():
-            continue
-        p = Path(d.strip())
-        p = p if p.is_absolute() else ROOT / p
+    for d in model_files.listed_dirs(raw):
+        p = model_files.resolve_dir(d, ROOT)
         if p.is_dir() and p.as_posix() not in out:
             out.append(p.as_posix())
     return out
+
+
+PLANNED_RESTART_S = 300
+
+
+def planned_restart(port: int) -> bool:
+    """Did the GPU broker end the instance on `port` on purpose a moment ago?
+    It leaves logs/.planned-restart-<port> first (gpu_broker.planned_restart_file);
+    the mark is used once."""
+    mark = LOG_DIR / f".planned-restart-{int(port)}"
+    try:
+        fresh = time.time() - mark.stat().st_mtime < PLANNED_RESTART_S
+        mark.unlink()
+    except OSError:
+        return False
+    return fresh
+
+
+def unfinished_install() -> list[str]:
+    """Why the studio cannot start: the installer did not finish tool/.venv,
+    which the web app and the render farm run on. start.bat checks the same
+    before it runs this; empty when all is well."""
+    if not (ROOT / "tool" / ".venv" / INSTALL_MARKER).exists():
+        return []
+    lines = ["!! Kinoloom's install did not finish (tool\\.venv), so it cannot start.",
+             "   Run INSTALL.bat again: the steps that are done are skipped."]
+    last = ROOT / "logs" / "install" / "LAST-FAILURE.txt"
+    if last.exists():
+        lines.append(f"   What stopped the last install: {last}")
+    return lines
+
+
+def crash_hint(log: Path) -> str | None:
+    """A component that dies on a missing or broken package says so at the end
+    of its log; restarting it never helps, the installer does."""
+    try:
+        with open(log, "rb") as fh:
+            fh.seek(max(0, log.stat().st_size - 16384))
+            tail = fh.read().decode("utf-8", "replace")
+    except OSError:
+        return None
+    found = re.findall(r"ModuleNotFoundError: No module named '[^']+'|DLL load failed[^\r\n]*"
+                       r"|No Python at '[^'\r\n]*'", tail)
+    if not found:
+        return None
+    if found[-1].startswith("No Python at"):
+        return (f"   Its log ends with \"{found[-1]}\": its venv was made in another folder "
+                "(was the Kinoloom folder moved?). Run INSTALL.bat again; it builds it again.")
+    return (f"   Its log ends with \"{found[-1]}\": a package is missing or broken. "
+            "Run INSTALL.bat again.")
 
 
 def is_studio_cmd(cmd: str, ui_port: int) -> bool:
@@ -302,6 +359,7 @@ class Launcher:
         self.port = port
         self.open_browser = open_browser    # None = ui.open_browser
         self.not_installed: list[str] = []  # components launch() skipped
+        self.unsupported: dict[str, str] = {}   # skipped: the card cannot run them
 
     @staticmethod
     def _load_ui_settings() -> tuple[str, int]:
@@ -420,6 +478,17 @@ class Launcher:
             time.sleep(0.5)
 
     @staticmethod
+    def _fix_model_names() -> None:
+        """A model file in Kinoloom's own folders saved under another letter
+        case gets the name the render graphs ask for (ComfyUI lists names as
+        they are on disk), before any ComfyUI starts. Never stops the start."""
+        try:
+            model_files.repair_case(ROOT, model_files.load_catalog(ROOT),
+                                    lambda line: say("studio", "yellow", line))
+        except Exception as e:  # noqa: BLE001 - a missing catalog, say
+            say("studio", "yellow", f"model file names not checked: {e}")
+
+    @staticmethod
     def _extra_paths_args() -> list[str]:
         """--extra-model-paths-config for the paths.extra_model_dirs roots
         (regenerated per launch; nothing passed when none are configured —
@@ -523,6 +592,20 @@ class Launcher:
             if name not in self.not_installed:
                 self.not_installed.append(name)
             return
+        if python is not None and (Path(python).parent.parent / INSTALL_MARKER).exists():
+            say(name, "yellow",
+                f"!! {Path(python).parent.parent} was not finished by the installer — "
+                "component not started (run INSTALL.bat again)")
+            if name not in self.not_installed:
+                self.not_installed.append(name)
+            return
+        port = COMPONENT_PORTS.get(name)
+        why = gpu_support.port_problem(port) if port else ""
+        if why:
+            # it would crash on start, three times, with a CUDA error
+            say(name, "yellow", f"!! not started: {why}")
+            self.unsupported[name] = why
+            return
         self.spawn(name, args, logfile, env, cwd=cwd, python=python)
 
     def _health(self) -> None:
@@ -530,6 +613,15 @@ class Launcher:
             if p.poll() is None:
                 continue
             self.procs.pop(name, None)
+            port = COMPONENT_PORTS.get(name)
+            if port and planned_restart(port):
+                # the GPU broker ended it to free the card (a /free that did
+                # not give the memory back): a fresh one, not a crash
+                say(name, "cyan", "the GPU broker restarted it to free the card's memory "
+                                  "(planned, not a crash) - starting it again")
+                self._fast_crashes[name] = 0
+                self.launch(name)
+                continue
             born = self._born.get(name, 0)
             fast = time.time() - born < RESTART_WINDOW_S
             if fast:
@@ -541,6 +633,10 @@ class Launcher:
                     self._gave_up.add(name)
                     say(name, "red",
                         f"!! crashed {RESTART_CAP}x in a row — NOT restarting.")
+                    spec = self._spec(name)
+                    hint = crash_hint(LOG_DIR / spec[1]) if spec else None
+                    if hint:
+                        say(name, "yellow", hint)
                 continue
             say(name, "red", f"!! DIED (exit {p.returncode}) — restarting "
                              f"(crash {self._fast_crashes.get(name, 0)}/{RESTART_CAP})")
@@ -624,11 +720,16 @@ class Launcher:
             lines.append(f"   {C['yellow']}Not installed, so not started: "
                          f"{', '.join(self.not_installed)}. INSTALL.bat installs "
                          f"them.{C['reset']}")
+        if self.unsupported:
+            lines.append(f"   {C['yellow']}Not started on this PC: {', '.join(self.unsupported)}: "
+                         f"{next(iter(self.unsupported.values()))}.{C['reset']}")
         model_dirs = [ROOT / "models", *map(Path, extra_model_dirs())]
         if not has_weights(model_dirs):
             lines.append(f"   {C['yellow']}No model weights yet: "
                          "install\\INSTALL-MAIN.bat, mode [3], downloads "
                          f"them.{C['reset']}")
+            lines.append(f"   {C['yellow']}Have some already (ComfyUI's, say)? It uses "
+                         f"those, as does Settings > Model files.{C['reset']}")
         lines += [rule, ""]
         print("\n".join(lines), flush=True)
         if self.open_browser:
@@ -655,6 +756,11 @@ class Launcher:
             self.open_browser = self._open_browser_setting()
 
         enable_vt()
+        unfinished = unfinished_install()
+        if unfinished:
+            for line in unfinished:
+                say("studio", "red", line)
+            return
         set_title(f"Kinoloom - starting - {url}")
         conflicts = [(p, n) for p, n in ((COMFY_PORT, "render farm"),
                                          (port, "control room"),
@@ -721,17 +827,22 @@ class Launcher:
                     "   These are NOT our processes — close whatever holds "
                     "the ports, then start again.")
                 return
+        card = gpu_support.card()
+        card_line = (f"{card['name']}, driver {card['driver']}" if card
+                     else "not checked (nvidia-smi did not answer)")
         print(f"""
  {C['cyan']}◈{C['reset']}  {C['bold']}KINOLOOM{C['reset']} — control room + render farm
  {C['dim']}──────────────────────────────────────────────────────────{C['reset']}
- {C['cyan']}[comfy-ui]{C['reset']}     render farm (RTX 3070)                          → http://127.0.0.1:{COMFY_PORT}
- {C['magenta']}[ltx-render]{C['reset']}  LTX-2.5 farm (RTX 3070, isolated runtime)        → http://127.0.0.1:{LTX_PORT}
- {C['yellow']}[h3-render]{C['reset']}   MiniMax H3 farm (RTX 3070, isolated runtime)     → http://127.0.0.1:{H3_PORT}
- {C['cyan']}[qwen-render]{C['reset']} Qwen-Image-2.1 farm (RTX 3070, isolated runtime) → http://127.0.0.1:{QWEN_PORT}
- {C['green']}[control-room]{C['reset']} web UI                                          → {url}
+ {C['cyan']}[comfy-ui]{C['reset']}     render farm                         → http://127.0.0.1:{COMFY_PORT}
+ {C['magenta']}[ltx-render]{C['reset']}  LTX-2.5 (own runtime)               → http://127.0.0.1:{LTX_PORT}
+ {C['yellow']}[h3-render]{C['reset']}   MiniMax H3 (own runtime)            → http://127.0.0.1:{H3_PORT}
+ {C['cyan']}[qwen-render]{C['reset']} Qwen-Image 2.1 (own runtime)        → http://127.0.0.1:{QWEN_PORT}
+ {C['green']}[control-room]{C['reset']} web UI                              → {url}
+ {C['dim']}Graphics card:{C['reset']} {card_line}
  {C['yellow']}Stop:{C['reset']} press {C['bold']}Ctrl+C{C['reset']} or close this window — everything shuts down.
  {C['dim']}──────────────────────────────────────────────────────────{C['reset']}""")
 
+        self._fix_model_names()
         # One source of truth for every component's launch spec: the health
         # loop restarts from the same table, so a crashed H3/Qwen instance is
         # respawned correctly instead of falling through to the UI branch.

@@ -42,9 +42,16 @@ except ImportError:
         sys.path.insert(0, str(_venv_site))
     import psutil
 
-from core import log_setup
+from core import ROOT, log_setup
 
 log = log_setup("gpu_broker")
+
+
+def planned_restart_file(port: int) -> Path:
+    """Left before the broker ends an instance on purpose; the launcher, which
+    starts it again, then says so instead of reporting a crash
+    (launcher.planned_restart reads the same name)."""
+    return ROOT / "logs" / f".planned-restart-{int(port)}"
 
 _DECISIONS_MAX = 200
 _EMPTY_FALLBACK_MB = 5500      # an 8 GB card idles at ~7.1 GB free
@@ -621,7 +628,10 @@ class _Broker:
         self._decide("evict", port=port, model=inst.model, mode=mode_used)
         try:
             if use_restart:
-                self._restart_instance(inst)
+                # nothing runs there (a part not installed, or not started
+                # yet): nothing to unload, and no restart would come back
+                if _listening(port) or _port_pids(port):
+                    self._restart_instance(inst)
             elif _listening(port):
                 if _queue_empty(port) is False:
                     try:
@@ -675,6 +685,10 @@ class _Broker:
         port = inst.port
         pids = _port_pids(port)
         self._decide("instance-restart", port=port, pids=pids)
+        try:
+            planned_restart_file(port).write_text(str(time.time()), encoding="utf-8")
+        except OSError:
+            pass
         for pid in pids:
             try:
                 subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"],
