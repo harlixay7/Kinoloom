@@ -5,7 +5,7 @@
     "",
     "PC side: tool/scripts/publish_models_hf.py walks 'source' paths, fills",
     "bytes + sha256, and uploads to hf_repo (private dataset repo).",
-    "Worker side: colab/fetch_models.py (bootstrap) or the Workers page",
+    "Worker side: colab/fetch_models.py (bootstrap) or the Worker PCs page",
     "group-install pulls the union of the selected groups into models_dir",
     "with the SAME relative layout, so model filenames in workflows resolve",
     "byte-identically. Files already present with a matching size are",

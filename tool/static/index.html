@@ -5,76 +5,80 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Studio — Kinoloom</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="/static/slate.css?v=4">
-<link rel="stylesheet" href="/static/styles.css?v=17">
+<link rel="stylesheet" href="/static/slate.css?v=8">
+<link rel="stylesheet" href="/static/styles.css?v=35">
 </head>
 <body>
 <div class="app">
 
   <aside class="side">
-    <a class="brand" href="/project" title="Kinoloom">
-      <div class="brand-mark" data-icon="clapper-play"></div>
-      <div class="brand-name">Kinoloom</div>
+    <a class="brand" href="/project#overview" title="Kinoloom">
+      <span class="brand-mark" data-icon="reel"></span>
+      <span class="brand-name">Kinoloom</span>
     </a>
-    <nav id="nav"></nav>
-    <div class="side-foot" id="side-gpu"></div>
+    <div id="studio-switch"></div>
+    <div id="proj-slot"></div>
+    <nav id="nav" aria-label="Pages"></nav>
+    <div class="dock" id="dock"></div>
   </aside>
 
   <main class="content">
 
-    <!-- ============================== TRAINING ============================= -->
-    <div id="page-training" class="page">
-      <div class="page-head">
-        <h1>Training</h1>
-        <span class="head-meta">datasets → curated images → LoRAs</span>
-      </div>
+    <!-- ============================== CASTING ============================== -->
+    <div id="page-casting" class="page">
+      <header class="page-intro">
+        <div class="pi-text"><h1>Casting</h1>
+          <p>Generate looks for your characters, places, powers and weapons, keep the best of each batch, then
+            pick one per character in Cast &amp; World. The video models open every shot on those looks.</p></div>
+      </header>
       <div class="ds-tabs" id="train-tabs">
-        <button class="ds-tab active" data-pane="datasets">Datasets</button>
-        <button class="ds-tab" data-pane="generate">Generate</button>
-        <button class="ds-tab" data-pane="curate">Curate</button>
-        <button class="ds-tab" data-pane="train">Train</button>
-        <button class="ds-tab" data-pane="models">Models</button>
+        <button class="ds-tab active" data-pane="generate"><span class="ds-n">1</span>Generate looks</button>
+        <button class="ds-tab" data-pane="curate"><span class="ds-n">2</span>Pick the best</button>
+        <button class="ds-tab" data-pane="datasets">All batches</button>
+        <button class="ds-tab legacy-tab" data-pane="train">Wan 2.2 LoRA training</button>
+        <button class="ds-tab legacy-tab" data-pane="models">Wan 2.2 LoRAs</button>
       </div>
 
-      <!-- ============ DATASETS ============ -->
-      <div class="ds-pane active" id="pane-datasets">
+      <!-- ============ BATCHES ============ -->
+      <div class="ds-pane" id="pane-datasets">
         <div class="ds-toolbar">
-          <button class="ds-btn primary" id="ds-new-dataset">+ New dataset</button>
-          <select id="ds-filter-type">
-            <option value="">All types</option>
-            <option value="face">face</option>
-            <option value="power">power</option>
-            <option value="environment">environment</option>
-            <option value="anatomy">anatomy</option>
-            <option value="quality">quality</option>
+          <button class="ds-btn primary" id="ds-new-dataset" type="button">New batch</button>
+          <select id="ds-filter-type" aria-label="Kind">
+            <option value="">Every kind</option>
+            <option value="face">Characters</option>
+            <option value="environment">Places</option>
+            <option value="power">Powers</option>
+            <option value="weapon">Weapons</option>
+            <option value="anatomy">Anatomy LoRA (legacy)</option>
+            <option value="quality">Quality LoRA (legacy)</option>
           </select>
-          <button class="ds-btn" id="ds-import-urls">Import URLs…</button>
+          <button class="ds-btn" id="ds-import-urls" type="button">Import from links…</button>
           <span class="ds-meta-txt" id="ds-total"></span>
         </div>
         <div id="ds-grid" class="ds-grid"></div>
 
         <div class="ds-player-modal hidden" id="ds-import-modal">
           <div class="ds-card" style="width:min(560px,94vw);padding:18px">
-            <h3 style="margin-bottom:10px">Import images into a dataset</h3>
-            <select id="ds-imp-type" style="width:100%;margin-bottom:8px">
-              <option value="face">face</option><option value="power">power</option>
-              <option value="environment">environment</option>
-              <option value="anatomy">anatomy</option><option value="quality">quality</option>
+            <h3 style="margin-bottom:10px">Import pictures into a batch</h3>
+            <select id="ds-imp-type" style="width:100%;margin-bottom:8px" aria-label="Kind">
+              <option value="face">Character</option><option value="environment">Place</option>
+              <option value="power">Power</option><option value="weapon">Weapon</option>
+              <option value="anatomy">Anatomy LoRA (legacy)</option><option value="quality">Quality LoRA (legacy)</option>
             </select>
-            <input id="ds-imp-name" placeholder="dataset name (created if missing)" style="width:100%;margin-bottom:8px">
+            <input id="ds-imp-name" placeholder="Batch name (a new one is made if it does not exist)" style="width:100%;margin-bottom:8px">
             <textarea id="ds-imp-urls" class="mono" rows="3" spellcheck="false"
-              placeholder="Image URLs, comma separated — Pexels/Mixkit/any direct link" style="width:100%;margin-bottom:10px"></textarea>
+              placeholder="Links to pictures, separated by commas" style="width:100%;margin-bottom:10px"></textarea>
             <div class="ds-actions">
-              <button class="ds-btn primary" id="ds-imp-go">Import</button>
-              <button class="ds-btn" id="ds-imp-close">Cancel</button>
+              <button class="ds-btn primary" id="ds-imp-go" type="button">Import</button>
+              <button class="ds-btn" id="ds-imp-close" type="button">Cancel</button>
             </div>
           </div>
         </div>
 
         <div class="ds-player-modal hidden" id="ds-cast-modal">
           <div class="ds-card" style="width:min(640px,94vw);padding:18px">
-            <h3 style="margin-bottom:4px" id="dsc-title">Send to cast</h3>
-            <p class="small muted" style="margin-bottom:10px">Creates or updates the Bible entry for this dataset — identity text, framing plates, loadouts, weapons, places, power levels. Idempotent: re-importing replaces by tag / level, never duplicates.</p>
+            <h3 style="margin-bottom:4px" id="dsc-title">Send to Cast &amp; World</h3>
+            <p class="small muted" style="margin-bottom:10px">Adds this batch to the movie&apos;s Cast &amp; World: a character&apos;s description, looks, outfits and weapons, a place&apos;s pictures or a power&apos;s levels. Sending it again replaces what it sent before; nothing is doubled.</p>
             <label class="studio-field">Project
               <select id="dsc-proj" style="width:100%"></select></label>
             <div class="studio-row" style="margin-top:8px">
@@ -95,7 +99,7 @@
                   <option value="recurring">recurring</option>
                 </select></label>
             </div>
-            <label class="toggle" style="margin-top:8px" data-tip="Replace the existing body/outfit text with this batch's identity"><input type="checkbox" id="dsc-overwrite"> Overwrite existing body/outfit text</label>
+            <label class="toggle" style="margin-top:8px" data-tip="Replace the existing body/outfit text with this batch's identity"><input type="checkbox" id="dsc-overwrite"><span></span><em>Replace the body and outfit text already there</em></label>
             <input type="hidden" id="dsc-type"><input type="hidden" id="dsc-name">
             <div id="dsc-summary" class="small" style="margin-top:10px;min-height:18px"></div>
             <div class="ds-actions" style="margin-top:12px">
@@ -108,17 +112,17 @@
       </div>
 
       <!-- ============ GENERATE (wizard) ============ -->
-      <div class="ds-pane" id="pane-generate">
-        <div class="ds-tabs" id="wiz-steps-tabs">
-          <button class="ds-tab active" data-step="1">1 · Dataset</button>
-          <button class="ds-tab" data-step="2">2 · Subject</button>
-          <button class="ds-tab" data-step="3">3 · Variation</button>
-          <button class="ds-tab" data-step="4">4 · Model Mix</button>
-          <button class="ds-tab" data-step="5">5 · Prompt</button>
+      <div class="ds-pane active" id="pane-generate">
+        <div class="wiz-steps" id="wiz-steps-tabs">
+          <button class="ds-tab active" data-step="1"><span class="ds-n">1</span>What</button>
+          <button class="ds-tab" data-step="2"><span class="ds-n">2</span>Who</button>
+          <button class="ds-tab" data-step="3"><span class="ds-n">3</span>Variations</button>
+          <button class="ds-tab" data-step="4"><span class="ds-n">4</span>Image models</button>
+          <button class="ds-tab" data-step="5"><span class="ds-n">5</span>Prompt</button>
         </div>
 
         <div class="ds-group" id="wiz-step1">
-          <h4>1 · Dataset</h4>
+          <h4>What to generate</h4>
           <div class="ds-group-row">
             <label>Type</label>
             <div class="ds-seg" id="wiz-type-seg">
@@ -130,7 +134,7 @@
             </div>
           </div>
           <div class="ds-group-row">
-            <label>Dataset name</label>
+            <label>Batch name</label>
             <input id="wiz-name" placeholder="e.g. kael / lightning" style="flex:1">
             <span class="ds-meta-txt" id="wiz-existing"></span>
           </div>
@@ -138,11 +142,11 @@
             <label></label>
             <span class="ds-meta-txt" id="wiz-mode-note"></span>
           </div>
-          <div class="ds-actions"><button class="ds-btn primary" id="wiz-next1">Next: Subject →</button></div>
+          <div class="ds-actions"><button class="ds-btn primary" id="wiz-next1">Next: who it is</button></div>
         </div>
 
         <div class="ds-group hidden" id="wiz-step2">
-          <h4>2 · Subject</h4>
+          <h4>Who or what it is</h4>
           <div class="ds-group-row" style="margin-bottom:10px">
             <label>Presets</label>
             <div class="ds-chip-row" id="wiz-preset-cards"></div>
@@ -155,13 +159,13 @@
           </div>
           <div id="wiz-subject"></div>
           <div class="ds-group-row" style="margin-top:12px">
-            <label>Reference images<br><span class="ds-meta-txt">identity anchor — 1-5 (face + full body)</span></label>
+            <label>Reference photos<br><span class="ds-meta-txt">1 to 5: a face and a full body keep the identity</span></label>
             <div style="flex:1">
               <div id="wiz-refs" class="ds-chip-row"></div>
               <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
-                <button class="ds-btn tiny" id="wiz-ref-add">+ Upload references</button>
+                <button class="ds-btn tiny" id="wiz-ref-add">Upload photos</button>
                 <input type="file" id="wiz-ref-file" accept="image/*" multiple hidden>
-                <label class="toggle"><input type="checkbox" id="wiz-ref-anchor"><span>Anchor mode (keep ref #1 pose/composition)</span></label>
+                <label class="toggle"><input type="checkbox" id="wiz-ref-anchor"><span></span><em>Keep the first photo&apos;s pose and framing</em></label>
                 <span class="ds-meta-txt">identity strength</span>
                 <input type="range" id="wiz-ref-str" min="0.1" max="1.5" step="0.05" value="0.8" style="width:110px">
                 <span class="ds-meta-txt" id="wiz-ref-str-val">0.80</span>
@@ -169,33 +173,33 @@
             </div>
           </div>
           <div class="ds-actions">
-            <button class="ds-btn" id="wiz-back1">&larr; Back</button>
-            <button class="ds-btn primary" id="wiz-next2">Next: Variation →</button>
+            <button class="ds-btn" id="wiz-back1">Back</button>
+            <button class="ds-btn primary" id="wiz-next2">Next: variations</button>
           </div>
         </div>
 
         <div class="ds-group hidden" id="wiz-step3">
-          <h4>3 · Variation <span class="ds-meta-txt">(multiply × / cycle — lock to fix)</span></h4>
+          <h4>Variations <span class="ds-meta-txt">multiply or cycle each axis; lock one to keep it fixed</span></h4>
           <div id="wiz-variation"></div>
           <div class="ds-actions">
             <button class="ds-btn tiny" id="wiz-randomize-axes"><span data-icon="refresh"></span> Randomize axes</button>
-            <button class="ds-btn" id="wiz-back2">&larr; Back</button>
-            <button class="ds-btn primary" id="wiz-next3">Next: Model Mix →</button>
+            <button class="ds-btn" id="wiz-back2">Back</button>
+            <button class="ds-btn primary" id="wiz-next3">Next: image models</button>
           </div>
         </div>
 
         <div class="ds-group hidden" id="wiz-step4">
-          <h4>4 · Model Mix <span class="ds-meta-txt" id="wiz-mix-total"></span></h4>
+          <h4>Image models <span class="ds-meta-txt" id="wiz-mix-total"></span></h4>
           <div id="wiz-models"></div>
           <div class="ds-actions">
-            <button class="ds-btn" id="wiz-add-model">+ Add model</button>
-            <button class="ds-btn" id="wiz-back3">&larr; Back</button>
-            <button class="ds-btn primary" id="wiz-next4">Next: Prompt →</button>
+            <button class="ds-btn" id="wiz-add-model">Add a model</button>
+            <button class="ds-btn" id="wiz-back3">Back</button>
+            <button class="ds-btn primary" id="wiz-next4">Next: prompt</button>
           </div>
         </div>
 
         <div class="ds-group hidden" id="wiz-step5">
-          <h4>5 · Prompt</h4>
+          <h4>Prompt</h4>
           <div class="ds-group-row"><label>Intent</label>
             <div class="ds-seg" id="wiz-intent-seg">
               <button data-intent="cinematic" class="on">Cinematic</button>
@@ -209,13 +213,13 @@
               <button data-pm="override">Full override</button>
             </div>
           </div>
-          <div class="ds-group-row"><label>Instructions / override</label><textarea id="wiz-custom-prompt" class="mono" rows="2" placeholder="structured: appends to the auto prompt · override: replaces it entirely"></textarea></div>
-          <div class="ds-group-row"><label>Negative override</label><input id="wiz-custom-negative" placeholder="optional — auto per model + LoRA otherwise" style="flex:1"></div>
+          <div class="ds-group-row"><label>Instructions / override</label><textarea id="wiz-custom-prompt" class="mono" rows="2" placeholder="Structured adds this to the automatic prompt; Full override replaces it"></textarea></div>
+          <div class="ds-group-row"><label>Negative override</label><input id="wiz-custom-negative" placeholder="Optional: otherwise chosen per model" style="flex:1"></div>
           <div class="ds-group-row"><label>Seed</label>
             <div style="display:flex;gap:8px;align-items:center">
               <input id="wiz-seed" type="number" placeholder="blank = random" style="width:170px">
               <button class="ds-btn tiny" id="wiz-seed-dice" title="randomize"><span data-icon="refresh"></span></button>
-              <span class="ds-meta-txt">same seed = same face structure across the batch</span>
+              <span class="ds-meta-txt">the same seed keeps the same face across the batch</span>
             </div>
           </div>
           <div class="ds-group-row"><label>Preview model</label>
@@ -224,7 +228,7 @@
           <div class="ds-group-row"><label>Final prompt</label><pre id="wiz-prompt-preview" class="mono" style="flex:1;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:11px;max-height:180px;overflow:auto;white-space:pre-wrap"></pre></div>
           <div class="ds-group-row"><label>Negative</label><pre id="wiz-neg-preview" class="mono" style="flex:1;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:11px;max-height:120px;overflow:auto;white-space:pre-wrap"></pre></div>
           <div class="ds-actions">
-            <button class="ds-btn" id="wiz-back4">&larr; Back</button>
+            <button class="ds-btn" id="wiz-back4">Back</button>
           </div>
         </div>
 
@@ -235,7 +239,7 @@
             <span class="ds-meta-txt" id="wiz-progress-txt">idle</span>
           </div>
           <button class="ds-btn danger" id="wiz-stop">Stop</button>
-          <button class="ds-btn" id="wiz-sendcast" style="display:none" data-tip="Create/update the Bible entry for this dataset: identity text + framing plates + loadouts + weapons (character), place-tagged refs (environment), level-tagged refs (power), design refs (weapon). Same as the dataset card action.">Send to cast</button>
+          <button class="ds-btn" id="wiz-sendcast" style="display:none" data-tip="Add this batch to a movie&apos;s Cast &amp; World: a character&apos;s description, looks, outfits and weapons, a place&apos;s pictures, a power&apos;s levels.">Send to Cast &amp; World</button>
           <button class="ds-btn primary big" id="wiz-generate">Generate</button>
         </div>
       </div>
@@ -244,55 +248,66 @@
       <div class="ds-pane" id="pane-curate">
         <div class="ds-group">
           <div class="ds-group-row">
-            <label>Dataset</label>
-            <select id="cur-type">
+            <label for="cur-pick">Batch</label>
+            <select id="cur-pick" style="min-width:280px"><option value="">Pick a batch</option></select>
+            <!-- the open batch (set by the picker and by a batch card's Pick the best) -->
+            <select id="cur-type" class="hidden" aria-hidden="true">
               <option value="face">face</option><option value="power">power</option>
-              <option value="environment">environment</option>
+              <option value="environment">environment</option><option value="weapon">weapon</option>
               <option value="anatomy">anatomy</option><option value="quality">quality</option>
             </select>
-            <input id="cur-name" placeholder="dataset name">
-            <button class="ds-btn" id="btn-cur-load">Open</button>
-            <button class="ds-btn" id="btn-cur-autofilter">Auto-filter</button>
-            <button class="ds-btn danger" id="btn-cur-clear">Clear dataset</button>
+            <input id="cur-name" class="hidden" aria-hidden="true">
+            <button class="ds-btn hidden" id="btn-cur-load" type="button">Open</button>
+            <button class="ds-btn" id="btn-cur-autofilter" type="button" data-tip="Scores every picture of the batch and keeps the best ones">Auto-pick</button>
+            <span class="spacer"></span>
+            <button class="ds-btn danger" id="btn-cur-clear" type="button">Clear batch</button>
           </div>
           <div class="ds-group-row">
-            <label>Filters</label>
+            <label>Show</label>
             <div class="ds-seg" id="cur-filter-seg">
               <button class="on" data-f="all">All</button>
               <button data-f="kept">Kept</button>
               <button data-f="rejected">Rejected</button>
               <button data-f="pending">Undecided</button>
             </div>
-            <select id="cur-model-filter"><option value="">All models</option></select>
-            <select id="cur-cat-filter" data-tip="Group by category: one entry per wardrobe / weapon / identity plate — the matrix looks stay together"><option value="">All categories</option></select>
-            <select id="cur-source-filter">
-              <option value="">All sources</option>
-              <option value="generated">Generated</option>
+            <select id="cur-model-filter" aria-label="Model"><option value="">All models</option></select>
+            <select id="cur-cat-filter" aria-label="Look" data-tip="One entry per outfit, weapon or framing, so the looks of one set stay together"><option value="">All looks</option></select>
+            <select id="cur-source-filter" aria-label="Source">
+              <option value="">Made and imported</option>
+              <option value="generated">Made here</option>
               <option value="imported">Imported</option>
             </select>
           </div>
-          <div class="ds-group-row">
-            <label>Caption</label>
-            <input id="cur-caption" placeholder="dataset caption (blank = auto from Bible)" style="flex:1">
-          </div>
-          <div class="ds-group-row">
-            <label>License</label>
-            <input id="cur-license" placeholder="license note" style="flex:1">
-          </div>
           <div class="ds-actions">
-            <button class="ds-btn primary" id="btn-cur-save">Save curation</button>
-            <button class="ds-btn" id="btn-cur-keep-sel">Keep selected</button>
-            <button class="ds-btn" id="btn-cur-reject-sel">Reject selected</button>
-            <button class="ds-btn" id="btn-cur-regen-sel">Regenerate selected</button>
-            <button class="ds-btn danger" id="btn-del-selected">Delete selected</button>
+            <button class="ds-btn" id="btn-cur-keep-sel" type="button">Keep selected</button>
+            <button class="ds-btn" id="btn-cur-reject-sel" type="button">Reject selected</button>
+            <button class="ds-btn" id="btn-cur-regen-sel" type="button">Make again</button>
+            <button class="ds-btn danger" id="btn-del-selected" type="button">Delete selected</button>
             <span class="ds-meta-txt" id="cur-sel-count"></span>
-            <button class="ds-btn primary" id="btn-train-cta">Train with this dataset →</button>
           </div>
+          <details class="fold legacy" id="cur-legacy">
+            <summary><span class="fold-t">Wan 2.2 LoRA training</span><span class="fold-d">Caption, licence note, train</span></summary>
+            <div class="fold-body">
+              <p class="sec-sub">Only the legacy Wan 2.2 model uses a LoRA. LTX-2.5 and H3 work from the looks you keep, with nothing to train.</p>
+              <div class="ds-group-row">
+                <label for="cur-caption">Caption</label>
+                <input id="cur-caption" placeholder="Left empty, it is written from the cast" style="flex:1">
+              </div>
+              <div class="ds-group-row">
+                <label for="cur-license">Licence note</label>
+                <input id="cur-license" placeholder="Where the pictures come from and how they may be used" style="flex:1">
+              </div>
+              <div class="ds-actions">
+                <button class="ds-btn" id="btn-cur-save" type="button">Save caption and licence</button>
+                <button class="ds-btn" id="btn-train-cta" type="button" data-tip="Train a Wan 2.2 LoRA on the kept pictures">Train a Wan 2.2 LoRA</button>
+              </div>
+            </div>
+          </details>
         </div>
         <div id="curation-grid" class="ds-grid"></div>
         <div class="ds-player-modal hidden" id="cur-meta-modal">
           <div class="ds-card" style="width:min(640px,94vw);padding:18px">
-            <h3 style="margin-bottom:10px">Image metadata</h3>
+            <h3 style="margin-bottom:10px">How it was made</h3>
             <pre id="cur-meta-body" class="mono" style="font-size:11px;max-height:50vh;overflow:auto;white-space:pre-wrap"></pre>
             <div class="ds-actions"><button class="ds-btn" id="cur-meta-close">Close</button></div>
           </div>
@@ -313,7 +328,7 @@
 
       <!-- ============ TRAIN ============ -->
       <div class="ds-pane" id="pane-train">
-        <div class="ds-meta-txt" style="margin-bottom:10px">LoRA training targets the legacy Wan 2.2 model only, which is not as good as LTX-2.5 or MiniMax H3. Those two use the cast reference images instead, so you don't need a LoRA for them.</div>
+        <div class="legacy-note"><b>For the legacy Wan 2.2 model only.</b> A LoRA is a small add-on that teaches Wan 2.2 a face or an effect. LTX-2.5 and MiniMax H3 do not use LoRAs: they open each shot on the looks you pick in Cast &amp; World, so a movie does not need this.</div>
         <div class="ds-grid" style="grid-template-columns:minmax(300px,420px) 1fr">
           <div class="ds-group">
             <h4>New training run</h4>
@@ -374,9 +389,14 @@
       <!-- ============ MODELS ============ -->
       <div class="ds-pane" id="pane-models">
         <div class="ds-toolbar">
-          <span class="ds-meta-txt">Finished LoRAs. They apply to legacy Wan 2.2 renders only.</span>
+          <span class="ds-meta-txt">Trained LoRAs. Only shots rendered on the legacy Wan 2.2 model use them.</span>
         </div>
         <div id="models-grid" class="ds-grid"></div>
+      </div>
+      <div class="legacy-foot" id="casting-legacy">
+        <span>Training LoRAs for the legacy Wan 2.2 model?</span>
+        <button class="linkish" type="button" data-legacy="train">Wan 2.2 LoRA training</button>
+        <button class="linkish" type="button" data-legacy="models">Trained LoRAs</button>
       </div>
     </div>
 
@@ -384,7 +404,7 @@
     <div id="page-videos" class="page">
       <div class="page-head">
         <h1>Library</h1>
-        <span class="head-meta">every video on disk</span>
+        <span class="head-meta">Every video on this PC: films, scenes, clips and chains.</span>
         <div class="head-acts">
           <input id="vid-search" type="search" placeholder="Search videos" style="width:220px">
           <select id="vid-sort">
@@ -395,16 +415,15 @@
           </select>
         </div>
       </div>
-      <div class="ds-stats" id="vid-stats"></div>
       <div class="ds-tabs" id="vid-tabs">
         <button class="ds-tab active" data-cat="all">All</button>
         <button class="ds-tab" data-cat="films">Films</button>
         <button class="ds-tab" data-cat="scenes">Scenes</button>
+        <button class="ds-tab" data-cat="videostudio">Video Studio</button>
         <button class="ds-tab" data-cat="drafts">Drafts</button>
         <button class="ds-tab" data-cat="raw">Raw renders</button>
-        <button class="ds-tab" data-cat="videostudio">Video Studio</button>
       </div>
-      <div id="vid-content"></div>
+      <div id="vid-content"><div class="ds-empty slim">Loading videos…</div></div>
 
       <div class="ds-player-modal hidden" id="vid-player">
         <button class="ds-player-close" id="vid-player-close"><span data-icon="x"></span></button>
@@ -416,119 +435,133 @@
     <div id="page-images" class="page">
       <div class="page-head">
         <h1>Image Studio</h1>
-        <span class="head-meta">stills, keyframes and references</span>
+        <span class="head-meta">Single pictures: stills, start pictures and references.</span>
       </div>
       <div class="ims-wrap">
 
         <!-- ================= composer ================= -->
         <div class="ims-composer">
           <div class="ims-panel">
-            <div class="ims-section">
-              <div class="ims-label">1 · Choose your model</div>
+            <section class="ims-section">
+              <h2 class="ims-label"><span class="ims-n">1</span>Pick a model</h2>
               <div id="ims-models" class="ims-models"></div>
-            </div>
+            </section>
 
-            <div class="ims-section">
-              <div class="ims-label">2 · Describe the image</div>
+            <section class="ims-section">
+              <h2 class="ims-label"><span class="ims-n">2</span>Describe the picture</h2>
               <div class="ims-prompt-wrap">
                 <textarea id="ims-prompt" rows="4" spellcheck="false"
-                  placeholder="a photorealistic portrait of a woman in golden light, cinematic, 85mm lens, ultra detailed skin…"></textarea>
+                  placeholder="A woman in a wool coat on a rainy platform at dusk, warm station lights behind her, shot on an 85mm lens"></textarea>
                 <div class="ims-prompt-foot">
                   <span id="ims-prompt-count" class="ims-muted">0 words</span>
-                  <button class="ims-btn ghost tiny" id="ims-clear-prompt">clear</button>
+                  <span class="ims-spacer"></span>
+                  <button class="btn small ghost" id="ims-preset-toggle" type="button" aria-expanded="false">Starter prompts</button>
+                  <button class="btn small ghost" id="ims-clear-prompt" type="button">Clear</button>
                 </div>
               </div>
-              <div id="ims-hint" class="ims-hint hidden"></div>
-              <div class="ims-preset-label">or pick a starter <span id="ims-preset-toggle" class="ims-link">show</span></div>
               <div id="ims-presets" class="ims-presets hidden"></div>
-            </div>
+            </section>
 
-            <div class="ims-section">
-              <div class="ims-label">3 · Fine-tune</div>
+            <section class="ims-section">
+              <h2 class="ims-label"><span class="ims-n">3</span>Shape and count</h2>
               <div class="ims-tune">
                 <div class="ims-tune-item full">
-                  <div class="ims-tune-title">Aspect ratio</div>
-                  <div id="ims-ratios" class="ims-seg"></div>
+                  <div id="ims-ratios" class="ims-seg" role="group" aria-label="Shape"></div>
                 </div>
                 <div class="ims-tune-item">
-                  <div class="ims-tune-title">How many <span class="ims-muted">(1-8)</span></div>
+                  <div class="ims-tune-title">How many</div>
                   <div class="ims-count">
-                    <button class="ims-btn square" id="ims-count-minus">−</button>
+                    <button class="ims-btn square" id="ims-count-minus" type="button" aria-label="Fewer">−</button>
                     <span id="ims-count-val">1</span>
-                    <button class="ims-btn square" id="ims-count-plus">+</button>
+                    <button class="ims-btn square" id="ims-count-plus" type="button" aria-label="More">+</button>
                   </div>
                 </div>
                 <div class="ims-tune-item">
-                  <div class="ims-slider-head"><span class="ims-tune-title">Steps</span><output id="ims-steps-val"></output></div>
-                  <input type="range" id="ims-steps" min="1" max="60" step="1">
-                </div>
-                <div class="ims-tune-item">
-                  <div class="ims-slider-head"><span class="ims-tune-title">CFG</span><output id="ims-cfg-val"></output></div>
-                  <input type="range" id="ims-cfg" min="0" max="20" step="0.5">
-                </div>
-                <div class="ims-tune-item">
-                  <div class="ims-tune-title">Seed <span class="ims-muted">(blank = random)</span></div>
-                  <div class="ims-seed-row">
-                    <input id="ims-seed" type="number" placeholder="random">
-                    <button class="ims-btn square" id="ims-seed-dice" title="randomize"><span data-icon="refresh"></span></button>
-                  </div>
-                </div>
-                <div class="ims-tune-item full">
-                  <div class="ims-tune-title">Save to album</div>
+                  <div class="ims-tune-title">Save to</div>
                   <select id="ims-album-target"></select>
                 </div>
-                <div class="ims-tune-item full">
-                  <div class="ims-tune-title">Negative prompt <span class="ims-muted">(leave empty = auto)</span></div>
-                  <input id="ims-negative" type="text" placeholder="auto per model — or write your own">
+              </div>
+            </section>
+
+            <div class="ims-folds">
+              <details class="fold" id="ims-more">
+                <summary><span class="fold-t">More settings</span><span class="fold-d">Steps, guidance, seed, negative prompt</span></summary>
+                <div class="fold-body">
+                  <div id="ims-hint" class="ims-hint hidden"></div>
+                  <div class="ims-tune">
+                    <div class="ims-tune-item">
+                      <div class="ims-slider-head"><span class="ims-tune-title">Steps</span><output id="ims-steps-val"></output></div>
+                      <input type="range" id="ims-steps" min="1" max="60" step="1">
+                    </div>
+                    <div class="ims-tune-item">
+                      <div class="ims-slider-head"><span class="ims-tune-title" data-tip="How closely the model follows the prompt (CFG)">Guidance</span><output id="ims-cfg-val"></output></div>
+                      <input type="range" id="ims-cfg" min="0" max="20" step="0.5">
+                    </div>
+                    <div class="ims-tune-item">
+                      <div class="ims-tune-title">Seed</div>
+                      <div class="ims-seed-row">
+                        <input id="ims-seed" type="number" placeholder="Random">
+                        <button class="ims-btn square" id="ims-seed-dice" type="button" title="Pick a random seed"><span data-icon="refresh"></span></button>
+                      </div>
+                    </div>
+                    <div class="ims-tune-item">
+                      <div class="ims-tune-title">Run on</div>
+                      <select id="ims-worker" data-worker-select title="Which PC renders this batch"><option value="local">This PC</option></select>
+                    </div>
+                    <div class="ims-tune-item full">
+                      <div class="ims-tune-title">Negative prompt</div>
+                      <input id="ims-negative" type="text" placeholder="The model's own">
+                    </div>
+                    <div class="ims-tune-item full">
+                      <label class="toggle"><input type="checkbox" id="ims-hires"><span></span><em>Sharpen and upscale <span class="ims-muted">(about a minute more)</span></em></label>
+                    </div>
+                    <div class="ims-tune-item full">
+                      <label class="toggle"><input type="checkbox" id="ims-hold"><span></span><em>Hold in the queue <span class="ims-muted">(start it later from Queue)</span></em></label>
+                    </div>
+                  </div>
                 </div>
-                <div class="ims-tune-item full">
-                  <label class="toggle"><input type="checkbox" id="ims-hires"><span>Hires fix — upscale + AI sharpen <span class="ims-muted">(adds ~1 min)</span></span></label>
+              </details>
+
+              <details class="fold" id="ims-lora-fold">
+                <summary><span class="fold-t">LoRAs</span><span class="fold-d">Style and detail add-ons</span></summary>
+                <div class="fold-body">
+                  <div id="ims-lora-manual">
+                    <div id="ims-lora-list" class="ims-lora-list"></div>
+                    <button class="btn small ghost" id="ims-lora-add" type="button"><span data-icon="plus"></span>Add a LoRA</button>
+                    <div class="ims-note">Watermark words go into the negative prompt while a LoRA is on.</div>
+                  </div>
+                  <div id="ims-lora-none" class="ims-note hidden">This model takes no LoRAs. RealVisXL and CyberRealistic XL do.</div>
                 </div>
-              </div>
+              </details>
+
+              <details class="fold" id="ims-ref-section">
+                <summary><span class="fold-t">Reference pictures</span><span class="fold-d">Match a face, outfit, style or pose</span></summary>
+                <div class="fold-body">
+                  <div id="ims-ref-list" class="ims-ref-list">
+                    <div class="ims-note">No reference pictures. Add up to 5.</div>
+                  </div>
+                  <input type="file" id="ims-ref-file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+                  <button class="btn small ghost" id="ims-ref-add" type="button"><span data-icon="plus"></span>Add a picture</button>
+                  <div class="ims-ref-ctl">
+                    <label class="ims-ref-strength">Strength
+                      <input type="range" id="ims-ref-strength" min="0.1" max="1.5" step="0.05" value="0.8">
+                      <span id="ims-ref-strength-val" class="ims-muted tiny">0.80</span>
+                    </label>
+                    <label class="toggle"><input type="checkbox" id="ims-ref-anchor"><span></span><em>Keep the first picture's framing</em></label>
+                  </div>
+                  <div class="ims-note" id="ims-ref-note"></div>
+                </div>
+              </details>
             </div>
 
-            <div class="ims-section">
-              <div class="ims-label">4 · LoRAs <span class="ims-muted">(optional)</span></div>
-              <div id="ims-lora-manual">
-                <div id="ims-lora-list" class="ims-lora-list"></div>
-                <button class="ims-btn ghost tiny" id="ims-lora-add">+ Add LoRA</button>
-                <div class="ims-muted tiny">watermark terms auto-added to negative when a LoRA is active</div>
-              </div>
-              <div id="ims-lora-none" class="ims-muted tiny hidden">This model takes no LoRAs. They work with the SDXL models (RealVisXL, CyberRealistic XL).</div>
-            </div>
-
-            <div class="ims-section" id="ims-ref-section">
-              <div class="ims-label">Reference images <span class="ims-muted">(IP-Adapter — SDXL models only)</span></div>
-              <div id="ims-ref-list" class="ims-ref-list">
-                <div class="ims-muted tiny">no references — upload up to 5</div>
-              </div>
-              <input type="file" id="ims-ref-file" accept="image/png,image/jpeg,image/webp" multiple hidden>
-              <button class="ims-btn ghost tiny" id="ims-ref-add" type="button">+ Add reference image</button>
-              <div class="ims-ref-ctl">
-                <label class="ims-ref-strength">Strength
-                  <input type="range" id="ims-ref-strength" min="0.1" max="1.5" step="0.05" value="0.8">
-                  <span id="ims-ref-strength-val" class="ims-muted tiny">0.80</span>
-                </label>
-                <label class="toggle"><input type="checkbox" id="ims-ref-anchor"><span>Anchor — start from ref #1 (keeps its composition)</span></label>
-              </div>
-              <div class="ims-muted tiny" id="ims-ref-note"></div>
-            </div>
-
-            <div class="ims-tune-title" style="margin-top:10px">Run on</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-              <select id="ims-worker" data-worker-select class="ims-btn" style="flex:1"
-                      title="Which PC renders this batch"><option value="local">This PC (local)</option></select>
-              <label class="toggle"><input type="checkbox" id="ims-hold"><span style="font-size:12px">Hold in queue</span></label>
-            </div>
-
-            <button class="ims-generate" id="ims-generate">
+            <button class="ims-generate" id="ims-generate" type="button">
               <span class="ims-gen-label" id="ims-gen-label">Generate</span>
               <span class="ims-gen-sub" id="ims-gen-sub">ready</span>
             </button>
             <div class="ims-progress hidden" id="ims-progress-wrap">
               <div class="ims-progress-bar"><div id="ims-progress-fill"></div></div>
               <span id="ims-progress-txt" class="ims-muted tiny"></span>
-              <button class="ims-btn ghost tiny" id="ims-stop">stop</button>
+              <button class="btn small ghost" id="ims-stop" type="button">Stop</button>
             </div>
           </div>
         </div>
@@ -539,7 +572,7 @@
             <button class="ims-album-tab" data-album="__all__">All</button>
             <button class="ims-album-tab" data-album="__unsorted__">Unsorted</button>
             <div id="ims-album-tabs" class="ims-album-tabs"></div>
-            <button class="ims-btn ghost tiny" id="ims-album-new">+ New album</button>
+            <button class="btn small ghost" id="ims-album-new" type="button"><span data-icon="plus"></span>New album</button>
           </div>
           <div class="ims-album-head" id="ims-album-head"></div>
           <div id="ims-grid" class="ims-grid"></div>
@@ -571,7 +604,7 @@
     <div id="page-videostudio" class="page">
       <div class="page-head">
         <h1>Video Studio</h1>
-        <span class="head-meta">its own models and outputs · the movie is untouched</span>
+        <span class="head-meta">Single clips and long chains, made on their own. Nothing here changes a movie.</span>
       </div>
 
       <div class="vs-layout">
@@ -582,19 +615,31 @@
               <label for="vs-model">Model</label>
               <select id="vs-model"></select>
             </div>
-            <div class="vs-field" id="vs-mode-wrap">
-              <label for="vs-mode">Mode</label>
-              <select id="vs-mode"></select>
-            </div>
           </div>
           <div class="vs-model-meta" id="vs-model-meta"></div>
+          <div class="vs-note warn" id="vs-model-caution"></div>
 
-          <div class="vs-field" id="vs-startimg-wrap" style="display:none">
-            <label for="vs-startimg">Start image</label>
-            <div class="vs-inline">
-              <input id="vs-startimg" type="text" placeholder="file in ComfyUI input/">
-              <button class="btn" type="button" id="vs-startimg-browse"><span data-icon="upload"></span>Browse</button>
-              <input id="vs-startimg-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+          <!-- how the video starts: from a picture (the default) or from the prompt alone -->
+          <div class="vs-block" id="vs-start-block">
+            <div class="vs-block-head" id="vs-mode-wrap">
+              <span class="vs-label" id="vs-mode-label">Start from</span>
+              <div class="seg" id="vs-mode-seg" role="radiogroup" aria-labelledby="vs-mode-label">
+                <button type="button" role="radio" data-mode="i2v">Image</button>
+                <button type="button" role="radio" data-mode="t2v">Text only</button>
+              </div>
+              <input type="hidden" id="vs-mode" value="i2v">
+            </div>
+            <div class="vs-start" id="vs-startimg-wrap">
+              <button type="button" class="vs-start-thumb" id="vs-startimg-thumb" data-tip="Pick a start image"><span data-icon="image"></span></button>
+              <div class="vs-start-body">
+                <div class="vs-inline">
+                  <input id="vs-startimg" type="text" placeholder="Browse, or drop a picture here" aria-label="Start image" spellcheck="false">
+                  <button class="btn" type="button" id="vs-startimg-browse"><span data-icon="upload"></span>Browse</button>
+                  <button class="btn ghost icon" type="button" id="vs-startimg-clear" data-tip="Remove the start image"><span data-icon="x"></span></button>
+                  <input id="vs-startimg-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+                </div>
+                <div class="vs-note" id="vs-startimg-note"></div>
+              </div>
             </div>
           </div>
 
@@ -602,12 +647,23 @@
             <div class="vs-block-head">
               <label class="vs-label" for="vs-prompt" id="vs-prompt-label">Prompt</label>
               <span class="spacer"></span>
-              <span class="vs-engine" id="vs-chain-engine"></span>
+              <span class="vs-label" id="vs-length-label">Length</span>
+              <div class="vs-stepper" role="group" aria-labelledby="vs-length-label">
+                <button type="button" class="vs-step" id="vs-length-less" aria-label="One segment less" data-tip="One segment less"><span data-icon="minus"></span></button>
+                <output class="vs-step-val" id="vs-length-val" aria-live="polite"></output>
+                <button type="button" class="vs-step more" id="vs-chain-add" aria-label="One segment more"><span data-icon="plus"></span></button>
+              </div>
             </div>
-            <textarea id="vs-prompt" rows="4" placeholder="cinematic medium shot, a woman walking through a rain-slick street at dusk, neon reflections, slow push in"></textarea>
+            <div class="vs-length-note" id="vs-length-note">
+              <span class="vs-engine" id="vs-chain-engine"></span>
+              <span id="vs-length-text"></span>
+            </div>
+            <div class="vs-seg vs-seg-first">
+              <span class="vs-seg-n" id="vs-prompt-n"></span>
+              <textarea id="vs-prompt" rows="4" placeholder="Describe the shot: who is in it, where, what happens, how the camera moves"></textarea>
+            </div>
             <div id="vs-chain-segments"></div>
             <div class="vs-inline vs-prompt-tools">
-              <button class="btn small ghost" type="button" id="vs-chain-add" data-tip="Add a segment: the segments render in order as one video"><span data-icon="plus"></span>Segment</button>
               <button class="btn small ghost" type="button" id="vs-check-btn" data-tip="Check the prompts against this model and its references (Generate does this too: red items stop it)"><span data-icon="shield-check"></span>Check</button>
               <button class="btn small ghost" type="button" id="vs-paste-reply" data-tip="Paste the prompt writer's reply: each &quot;Segment N:&quot; block fills one segment"><span data-icon="import"></span>Paste reply</button>
               <span class="spacer"></span>
@@ -651,7 +707,7 @@
               <div class="vs-grid3">
                 <div class="vs-field"><label for="vs-width">Width</label><input id="vs-width" type="number" value="832" step="16"></div>
                 <div class="vs-field"><label for="vs-height">Height</label><input id="vs-height" type="number" value="480" step="16"></div>
-                <div class="vs-field"><label for="vs-frames">Frames</label><input id="vs-frames" type="number" value="25" step="4"></div>
+                <div class="vs-field"><label for="vs-frames">Frames</label><input id="vs-frames" type="number" value="121" step="8"></div>
                 <div class="vs-field"><label for="vs-steps">Steps</label><input id="vs-steps" type="number" value="8"></div>
                 <div class="vs-field"><label for="vs-cfg">CFG</label><input id="vs-cfg" type="number" value="1" step="0.1"></div>
                 <div class="vs-field"><label for="vs-seed" data-tip="-1 = random">Seed</label><input id="vs-seed" type="number" value="-1"></div>
@@ -723,29 +779,32 @@
       <div class="page-head">
         <h1>Settings</h1>
         <div class="seg" id="set-tabs">
-          <button class="on" type="button" data-pane="config">Configuration</button>
-          <button type="button" data-pane="models">Model files</button>
-          <button type="button" data-pane="bible">Bible files</button>
+          <button class="on" type="button" data-pane="models">Model files</button>
+          <button type="button" data-pane="bible">Global bible</button>
           <button type="button" data-pane="access">Access</button>
+          <button type="button" data-pane="config">Advanced</button>
         </div>
       </div>
 
-      <div class="set-pane" data-pane="config">
+      <div class="set-pane hidden" data-pane="config">
         <div class="card">
           <div class="card-head">
-            <h2>settings.yaml</h2>
+            <h2>The settings file</h2>
             <span class="spacer"></span>
-            <button class="btn small" id="btn-settings-format" type="button">Format</button>
+            <button class="btn small" id="btn-settings-format" type="button">Tidy</button>
             <button class="btn small primary" id="btn-settings-save" type="button">Save</button>
           </div>
+          <p class="sec-sub">Every setting in one file (tool/settings.yaml, shown as JSON). Most have their own page;
+            change one here only when you know what it does, since a wrong value can stop renders.
+            Secrets show as ******** and keep their value when left as they are.</p>
           <textarea id="settings-yaml" class="mono code-area" rows="30" spellcheck="false"></textarea>
         </div>
       </div>
 
-      <div class="set-pane hidden" data-pane="models">
+      <div class="set-pane" data-pane="models">
         <div class="card" style="max-width:980px">
           <div class="card-head"><h2>Use model files you already have</h2></div>
-          <p class="muted small" style="margin:-4px 0 12px">If ComfyUI or another program already has some of Kinoloom's model files, under any name and in any folder, Kinoloom uses them instead of downloading them. Paste the folder they are in (from Explorer's address bar; its subfolders are searched too) and press Find. Your files stay where they are, under their own names: Kinoloom links each one, which gives the same file a second name with no extra space (on another drive, the links go in a Kinoloom-models folder at the top of that drive). Only a file that can't be linked (on an exFAT USB drive, say) needs a copy, and Kinoloom asks first.</p>
+          <p class="muted small" style="margin:-4px 0 12px">If ComfyUI or another program already has some of Kinoloom's model files, under any name, Kinoloom uses them instead of downloading them again. Paste the folder they are in (its subfolders are searched too) and press Find. Your files stay where they are: Kinoloom links each one, a second name for the same file that takes no extra space (on another drive the links go in a Kinoloom-models folder at the top of that drive). Only a file that can't be linked, on an exFAT USB drive for example, needs a copy, and Kinoloom asks first.</p>
           <div class="ctl-row">
             <input id="mf-find-input" type="text" placeholder="e.g. C:\ComfyUI\models" style="flex:1;min-width:260px" spellcheck="false" autocomplete="off">
             <button class="btn primary" id="btn-mf-find" type="button">Find my files</button>
@@ -792,10 +851,11 @@
               <option value="location">Location</option>
               <option value="scene">Scene</option>
             </select>
-            <input id="bible-id" class="hidden" placeholder="id" style="width:160px">
+            <input id="bible-id" class="hidden" placeholder="Its id, e.g. Sara" style="width:170px">
             <button class="btn small" id="btn-bible-load" type="button">Load</button>
-            <button class="btn small primary" id="btn-bible-save" type="button">Save + commit</button>
+            <button class="btn small primary" id="btn-bible-save" type="button" data-tip="Saves it and adds the change to History below">Save</button>
           </div>
+          <p class="sec-sub">What every new movie starts from: it copies this when it is created. The universe (genre, tone, look), the crowd types, and any shared characters, places and scenes. A change here reaches new movies only; a movie&apos;s own cast is on its Cast &amp; World page.</p>
           <textarea id="bible-yaml" class="mono code-area" rows="18" spellcheck="false" placeholder="Load an entry to edit it as JSON"></textarea>
         </div>
         <div class="card">
@@ -822,14 +882,15 @@
     <div id="page-logs" class="page">
       <div class="page-head">
         <h1>Logs</h1>
+        <span class="head-meta">What the studio did, newest line last. Useful when something fails.</span>
         <div class="head-acts">
-          <select id="log-name">
-            <option value="studio">studio</option>
-            <option value="orchestrator">orchestrator</option>
-            <option value="pipeline">pipeline</option>
-            <option value="post">post</option>
-            <option value="renderer">renderer</option>
-            <option value="face_qa">face_qa</option>
+          <select id="log-name" aria-label="Log">
+            <option value="studio">Studio</option>
+            <option value="orchestrator">Movie renders</option>
+            <option value="pipeline">Pipeline</option>
+            <option value="post">Finishing</option>
+            <option value="renderer">Renderer</option>
+            <option value="face_qa">Face check</option>
           </select>
           <button class="btn" id="btn-refresh-logs" type="button"><span data-icon="refresh"></span>Refresh</button>
         </div>
@@ -840,26 +901,25 @@
     <!-- ============================== WORKERS ============================= -->
     <div id="page-workers" class="page">
       <div class="page-head">
-        <h1>Workers</h1>
+        <h1>Worker PCs</h1>
         <span class="head-meta" id="workers-count"></span>
         <div class="head-acts">
-          <button class="btn" id="btn-workers-refresh"><span data-icon="refresh"></span>Refresh</button>
+          <button class="btn" id="btn-workers-refresh" type="button"><span data-icon="refresh"></span>Refresh</button>
         </div>
       </div>
-      <div class="card">
-        <div class="card-head"><h2>Fleet</h2></div>
-        <div id="workers-grid" class="ds-grid"><div class="ds-empty">no workers yet — install one on the second PC</div></div>
-      </div>
-      <div class="card">
+      <div id="workers-grid" class="ds-grid wk-grid"><div class="ds-empty slim">Loading worker PCs…</div></div>
+      <div class="card wk-add">
         <div class="card-head"><h2>Add a worker PC</h2></div>
-        <p class="muted small" style="margin:0 0 12px">
-          Run <b>INSTALL-WORKER.bat</b> on the other PC: it installs ComfyUI, the model packages
-          you pick and a small agent, then connects to this studio. The worker appears above
-          with live GPU telemetry, and every Run on picker can send work to it.</p>
+        <ol class="wk-steps">
+          <li><b>Download the installer</b><span>It carries this studio's address and install token.</span></li>
+          <li><b>Run it on the other PC</b><span>It installs ComfyUI, the model packages you pick and a small agent.</span></li>
+          <li><b>It shows up here</b><span>With its GPU, and in every Run on list.</span></li>
+        </ol>
         <div class="ctl-row">
-          <button class="btn" id="btn-workers-installer"><span data-icon="download"></span>Download INSTALL-WORKER.bat</button>
-          <button class="btn ghost" id="btn-workers-token" data-tip="Regenerate the shared install token (workers must use it to register)">New token</button>
-          <span class="muted small">token <span id="workers-token-state" class="mono">…</span></span>
+          <button class="btn primary" id="btn-workers-installer" type="button"><span data-icon="download"></span>Download INSTALL-WORKER.bat</button>
+          <span class="spacer"></span>
+          <span class="muted small" id="workers-token-state">…</span>
+          <button class="btn small ghost" id="btn-workers-token" type="button" data-tip="Make a new shared install token. Worker PCs must have it to connect.">New token</button>
         </div>
       </div>
     </div>
@@ -867,8 +927,8 @@
     <!-- ============================== QUEUE =============================== -->
     <div id="page-queue" class="page">
       <div class="page-head">
-        <h1>Queue</h1>
-        <span class="head-meta">every generation, on every machine</span>
+        <h1>Render queue</h1>
+        <span class="head-meta">Everything waiting or rendering, on this PC and the worker PCs.</span>
         <div class="head-acts">
           <button class="btn" id="btn-queue-hold" data-tip="Hold or release everything waiting in the queue"><span data-icon="pause"></span><span id="queue-hold-label">Hold all</span></button>
           <button class="btn" id="btn-queue-refresh"><span data-icon="refresh"></span>Refresh</button>
@@ -876,50 +936,51 @@
       </div>
       <div class="card">
         <div class="card-head">
-          <h2>Generations</h2>
+          <h2>Renders</h2>
           <span class="spacer"></span>
-          <select id="queue-filter-status">
-            <option value="@active">active + queued</option>
-            <option value="draft">drafts</option>
-            <option value="queued">queued</option>
-            <option value="running">running</option>
-            <option value="held">held</option>
-            <option value="done">done</option>
-            <option value="failed">failed</option>
-            <option value="canceled">canceled</option>
-            <option value="all">all</option>
+          <select id="queue-filter-status" aria-label="Show">
+            <option value="@active">Waiting and rendering</option>
+            <option value="draft">Drafts</option>
+            <option value="queued">Waiting</option>
+            <option value="running">Rendering</option>
+            <option value="held">On hold</option>
+            <option value="done">Done</option>
+            <option value="failed">Failed</option>
+            <option value="canceled">Canceled</option>
+            <option value="all">Everything</option>
           </select>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap" id="queue-table-wrap">
           <table class="table" id="queue-table">
             <thead><tr>
-              <th>kind</th><th>label</th><th>worker</th><th>status</th>
-              <th>progress</th><th>attempts</th><th>created</th><th>actions</th>
+              <th>Kind</th><th>What</th><th>Runs on</th><th>Status</th>
+              <th>Progress</th><th>Tries</th><th>Added</th><th></th>
             </tr></thead>
             <tbody id="queue-rows"></tbody>
           </table>
         </div>
-        <div id="queue-empty" class="ds-empty hidden">queue is empty</div>
+        <div id="queue-empty" class="ds-empty slim">Loading the queue…</div>
       </div>
       <div class="card">
         <div class="card-head"><h2>Where each movie renders</h2></div>
         <p class="muted small" style="margin:0 0 12px">
-          Shots still render in order, each from the previous shot's last frame; this picks the PC.
-          The start image travels to the worker and the result comes back here.</p>
+          Pick the PC a movie's shots render on. They still render in order: each start picture
+          travels to that PC and the clip comes back here.</p>
         <div class="ctl-row">
-          <select id="shotassign-project" style="min-width:240px" data-tip="Project"></select>
-          <select id="shotassign-worker" data-tip="Machine"></select>
-          <button class="btn small" id="btn-shotassign-save">Save project default</button>
+          <select id="shotassign-project" style="min-width:240px" aria-label="Movie"></select>
+          <select id="shotassign-worker" aria-label="PC"></select>
+          <button class="btn small" id="btn-shotassign-save" type="button">Save for this movie</button>
         </div>
         <div id="shotassign-list" class="small muted"></div>
       </div>
     </div>
+    <div id="step-next" class="hidden"></div>
   </main>
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="/static/js/api.js?v=3"></script>
-<script src="/static/js/icons.js?v=2"></script>
+<script src="/static/js/icons.js?v=5"></script>
 <script src="/static/js/dialogs.js?v=2"></script>
 <script>
 /* materialize static [data-icon] placeholders */
@@ -927,10 +988,10 @@ document.querySelectorAll("[data-icon]").forEach(function (el) {
   el.innerHTML = Icon.get(el.dataset.icon);
 });
 </script>
-<script src="/static/js/shell.js?v=2"></script>
-<script src="/static/js/model-catalog.js?v=4"></script>
-<script src="/static/app.js?v=20261026e"></script>
-<script src="/static/js/workers-page.js?v=9"></script>
-<script src="/static/js/queue-page.js?v=9"></script>
+<script src="/static/js/shell.js?v=3"></script>
+<script src="/static/js/model-catalog.js?v=5"></script>
+<script src="/static/app.js?v=20261027n"></script>
+<script src="/static/js/workers-page.js?v=13"></script>
+<script src="/static/js/queue-page.js?v=10"></script>
 </body>
 </html>

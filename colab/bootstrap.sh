@@ -10,7 +10,7 @@
 # Required Colab Secrets / env:
 #   HF_TOKEN          read token for the private HF model repo
 #   TAILSCALE_AUTHKEY auth key (tag ephemeral, reusable)
-#   WORKER_TOKEN      the studio's workers.shared_token (Workers page/token API)
+#   WORKER_TOKEN      the studio's workers.shared_token (Worker PCs page/token API)
 #   MAIN_URL          the PC control room over the tailnet, e.g.
 #                     http://100.x.y.z:8080  (PC: `tailscale ip -4`)
 # Optional env:
@@ -46,7 +46,7 @@ log "0/7 sanity"
 nvidia-smi -L >/dev/null 2>&1 || fail "no GPU visible — select a GPU runtime (Runtime > Change runtime type > T4)"
 [ -n "${HF_TOKEN:-}" ]        || fail "HF_TOKEN secret not set"
 if [ "$SMOKE" != "1" ]; then
-  [ -n "${WORKER_TOKEN:-}" ]  || fail "WORKER_TOKEN secret not set (Workers page -> token)"
+  [ -n "${WORKER_TOKEN:-}" ]  || fail "WORKER_TOKEN secret not set (Worker PCs page -> New token)"
   [ -n "${MAIN_URL:-}" ]      || fail "MAIN_URL not set — the PC control room over the tailnet, e.g. http://100.x.y.z:8080"
   case "$MAIN_URL" in
     http://127.*|http://localhost*) fail "MAIN_URL must be the PC's TAILNET address, not localhost (on the PC: tailscale ip -4)" ;;
@@ -258,6 +258,6 @@ sleep 2
 echo "----- agent log (registration) -----"
 tail -5 "$AS_ROOT/colab/agent.out" || true
 echo "------------------------------------"
-log "DONE — worker '$WORKER_NAME' should appear ONLINE on the PC Workers page"
+log "DONE — worker '$WORKER_NAME' should appear ONLINE on the PC Worker PCs page"
 log "advertised: ${PUBLIC_BASE_URL:-LAN IP (unreachable on Colab!)}  main: ${MAIN_URL}"
 log "job flow: PC UI -> assign worker '${WORKER_NAME}' -> renders land in output/ as usual"

@@ -1,6 +1,6 @@
-/* icons.js — the Gold Slate inline icon set.
-   Hand-drawn on a 24x24 grid, 1.6 stroke, square terminals to match the
-   2px structural radius of the UI. No external icon font or CDN.
+/* icons.js — the Screening Room inline icon set.
+   Hand-drawn on a 24x24 grid, 1.7 stroke, round terminals (slate.css .ic).
+   No external icon font or CDN.
    Usage: Icon.get("play")  /  Icon.get("play", "extra-class")
    Replaces the old Unicode/emoji glyphs everywhere in both shells. */
 (function () {
@@ -26,6 +26,7 @@
     "sliders": '<path d="M4 7h3.2M11 7h9M4 12h9M16.8 12H20M4 17h2.2M10 17h10"/><circle cx="9.1" cy="7" r="1.9"/><circle cx="14.9" cy="12" r="1.9"/><circle cx="7.9" cy="17" r="1.9"/>',
     "trash": '<path d="M4.5 6.5h15"/><path d="M9.2 6.5V4.5h5.6v2"/><path d="M6.4 6.5l.9 13.5h9.4l.9-13.5"/><path d="M10 10.2v6M14 10.2v6"/>',
     "plus": '<path d="M12 5.5v13M5.5 12h13"/>',
+    "minus": '<path d="M5.5 12h13"/>',
     "x": '<path d="M6 6l12 12M18 6L6 18"/>',
     "chevron-down": '<path d="M6.5 9.5l5.5 5.5 5.5-5.5"/>',
     "chevron-right": '<path d="M9.5 6.5l5.5 5.5-5.5 5.5"/>',
@@ -52,11 +53,20 @@
     "search": '<circle cx="10.8" cy="10.8" r="6.3"/><path d="M15.5 15.5L21 21"/>',
     "server": '<rect x="4" y="4.5" width="16" height="6"/><rect x="4" y="13.5" width="16" height="6"/><circle cx="7.6" cy="7.5" r="1" fill="currentColor" stroke="none"/><circle cx="7.6" cy="16.5" r="1" fill="currentColor" stroke="none"/><path d="M11.5 7.5h5M11.5 16.5h5"/>',
     "link": '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    // the brand: a reel paying out its thread (kino + loom)
+    "reel": '<circle cx="10" cy="10.5" r="7.5"/><circle cx="10" cy="10.5" r="1.1"/><circle cx="10" cy="6.4" r="1.6"/><circle cx="13.55" cy="12.55" r="1.6"/><circle cx="6.45" cy="12.55" r="1.6"/><path d="M10 18h11.5"/>',
+    // a lens iris: casting looks
+    "aperture": '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5l3.2 7.7M20.1 9.4l-8.3 1.2M17.6 18.6l-5.1-6.6M8.3 19.7l3.1-7.8M3.6 13.4l5-6.7M7.6 4.7l4.4 7.1"/>',
+    "board": '<rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M3.5 9h17M9.5 9v10.5"/>',
+    "spark": '<path d="M12 3.5l1.9 5.6 5.6 1.9-5.6 1.9L12 18.5l-1.9-5.6L4.5 11l5.6-1.9L12 3.5z"/>',
+    "chevron-up": '<path d="M6.5 14.5L12 9l5.5 5.5"/>',
+    "info": '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".9" fill="currentColor" stroke="none"/>',
+    "music": '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.8" cy="17.5" r="2.2"/><circle cx="16.8" cy="15.5" r="2.2"/>',
   };
 
   var ALIAS = {
     "edit": "pen", "settings": "sliders", "close": "x", "generate": "wand",
-    "ai": "wand", "training": "cpu", "gpu": "cpu", "roster": "box",
+    "ai": "spark", "training": "cpu", "casting": "aperture", "render": "play", "gpu": "cpu", "roster": "box",
     "assembly": "layers", "bible": "book", "logs": "list", "images": "image",
     "videos": "video", "story": "pen", "overview": "gauge", "review": "shield-check",
     "film": "clapper-play", "shots": "film", "cast": "users",

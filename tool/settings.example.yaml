@@ -50,7 +50,7 @@ tiers:
     volume: 20
   # The legacy Wan 2.2 unet, read only by the warm-up script's video warm-up
   # (tool/scripts/warm_studio.py, off by default). It is NOT the movie model:
-  # projects pick theirs in the Generate tab, and a project without one renders
+  # projects pick theirs on the Render page, and a project without one renders
   # on the studio default, LTX-2.5 s6 CQ (video_models.DEFAULT_MODEL).
   model: Wan2.2-TI2V-5B-Q4_K_M.gguf
   upscale:
@@ -114,7 +114,7 @@ training:
   datasets_dir: roster/datasets
 render_mode:
   enabled: true
-  # process names (without .exe) that the Generate tab's "free VRAM" button
+  # process names (without .exe) that the Render page's "Close GPU apps" button
   # force-closes, e.g. [Discord]; empty = close nothing
   kill_gpu_apps: []
 automation:
@@ -184,7 +184,7 @@ keyframes:
 workers:
   enabled: true
   # fleet secret shared by every worker agent; the placeholder is replaced
-  # with a generated token on first start (Workers page: rotate / installer)
+  # with a generated token on first start (Worker PCs page: rotate / installer)
   shared_token: __WORKER_SHARED_TOKEN__
   # largest render a worker may upload back (MB); bigger uploads get 413
   max_result_mb: 8192
@@ -238,7 +238,7 @@ video_studio:
   seamless_chains: true
 # Movie projects: on a seamless model, a run of CONTINUE shots renders as ONE
 # take and is cut back into its shots (tool/movie_takes.py); needs
-# seamless_chains above. Projects can opt out on their Generate tab. At most
+# seamless_chains above. Projects can opt out on their Render page. At most
 # take_max_shots shots per take (4 = 20 s; an H3 1080p take of 4 ~2 h 40 min).
 movie:
   seamless_takes: true

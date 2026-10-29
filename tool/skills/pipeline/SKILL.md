@@ -94,7 +94,7 @@ A manifest entry on the entity:
 | "Render this" | Confirm the shot has: cast ids present in the Bible, a power owned by an in-shot character, `level` within 1–10, `location_tag` that exists as a tagged place, and the reference budget. Then the render runs on the project's `video_family`. |
 | "The render looks wrong" | Checklist: (1) `applied_references` — were refs actually passed? (2) `reference_warnings`; (3) is the shot's loadout tagged with a composite still? (4) does the power level have a matching still? (5) is a weapon showing that shouldn't (use the plain loadout); (6) model choice — H3 pins frame 0 to the first reference. |
 | "Make the stills/batches" | Dataset batch specs: **characters** = outfit × weapon composites (+ optional weapon-only stills); **powers** = level ladder 1–10 (one still per level, wan/z-image); **environments** = one still per selected place (each has its own camera/framing). |
-| "It's stuck / failed" | Where to look: control-room logs, farm logs (`logs/`), the queue tab. Recovery: cancel the job (`/api/training/jobs/cancel`, `/api/videostudio/jobs`), retry, or restart the affected farm. Never touch a farm while it is rendering. |
+| "It's stuck / failed" | Where to look: control-room logs, farm logs (`logs/`), the Render queue (System menu). Recovery: cancel the job (`/api/training/jobs/cancel`, `/api/videostudio/jobs`), retry, or restart the affected farm. Never touch a farm while it is rendering. |
 | "Plan a movie of N minutes" | `duration ÷ 5` = shot count; scenes of 25–40 shots; hero ≤ 15 %, volume ≥ 30 %; power level curve ending at 10. |
 
 ---
@@ -116,7 +116,7 @@ A manifest entry on the entity:
 
 ## 6. Reference card
 
-- Control room: `http://127.0.0.1:8080` · Video Studio, Queue, Workers, Training (datasets), Cast & World (bible)
+- Control room: `http://127.0.0.1:8080`. Movie studio: Casting (datasets), Cast & World (bible), Story, Shots, Render, Review, Film. Studio: Video Studio, Image Studio, Library. System menu: Render queue, Worker PCs, Settings, Logs
 - Story: architect jobs (spine → scenes) — output is validated by the linter before anything renders
 - Datasets: `roster/datasets/<type>/<name>/stills/` + `meta.json`
 - Project refs: `bible/projects/<pid>/refs/{chars,locs,powers}/…`

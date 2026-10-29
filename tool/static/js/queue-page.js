@@ -19,8 +19,17 @@
 
   const x = () => Icon.get("x");
 
+  const STATUS = { draft: "Draft", held: "On hold", queued: "Waiting", running: "Rendering",
+                   done: "Done", failed: "Failed", canceled: "Canceled" };
   function statusPill(s) {
-    return `<span class="vs-st ${esc(s)}">${esc(s)}</span>`;
+    return `<span class="vs-st ${esc(s)}">${esc(STATUS[s] || s)}</span>`;
+  }
+  /* "local" is this PC, "any" the first free PC, anything else a worker */
+  function workerName(id) {
+    if (id === "local") return "This PC";
+    if (id === "any") return "Any PC";
+    const w = FLEET.find((x) => x.id === id);
+    return (w && w.name) || id;
   }
 
   const qurl = (id) => "/api/queue/" + encodeURIComponent(id);
@@ -31,7 +40,7 @@
     switch (it.status) {
       case "draft": return b("start", "Start", "primary") + b("edit", "Edit") + b("remove", x(), "danger");
       case "held": return b("start", "Release", "primary") + b("edit", "Edit") + b("remove", x(), "danger");
-      case "queued": return b("hold", "Hold") + b("raise", "↑") + b("lower", "↓") + b("cancel", x(), "danger");
+      case "queued": return b("hold", "Hold") + b("raise", Icon.get("chevron-up")) + b("lower", Icon.get("chevron-down")) + b("cancel", x(), "danger");
       case "running": return b("cancel", "Cancel", "danger");
       case "failed": case "canceled": return b("retry", "Retry", "primary") + b("remove", x(), "danger");
       case "done": return b("remove", x());
@@ -44,10 +53,10 @@
     const pct = it.progress_total ? Math.round(100 * it.progress_done / it.progress_total) : 0;
     const prog = it.progress_total
       ? esc(`${it.progress_done}/${it.progress_total} (${pct}%)`)
-      : (it.status === "running" ? "…" : "—");
+      : (it.status === "running" ? "…" : "");
     const warn = it.error ? ` <span class="ds-meta-txt">${Icon.get("warning")}</span>` : "";
     const wsel = it.status === "running"
-      ? `<span class="ds-meta-txt">${esc(it.lease || it.worker)}</span>`
+      ? `<span class="ds-meta-txt">${esc(workerName(it.lease || it.worker))}</span>`
       : `<select class="q-worker" data-id="${esc(it.id)}">${workerOptions(it.worker)}</select>`;
     const err = it.error ? ` title="${esc(it.error)}"` : "";
     return `<tr data-id="${esc(it.id)}"${err}>
@@ -65,7 +74,7 @@
   function workerOptions(cur) {
     const ids = ["local", "any"].concat(FLEET.map((w) => w.id));
     return ids.map((w) =>
-      `<option value="${esc(w)}" ${w === cur ? "selected" : ""}>${esc(w)}</option>`).join("");
+      `<option value="${esc(w)}" ${w === cur ? "selected" : ""}>${esc(workerName(w))}</option>`).join("");
   }
 
   async function refresh() {
@@ -85,20 +94,22 @@
       }
       const rowsEl = document.getElementById("queue-rows");
       if (rowsEl) rowsEl.innerHTML = rows.map(row).join("");
+      const wrap = document.getElementById("queue-table-wrap");
+      if (wrap) wrap.classList.toggle("hidden", !rows.length);
       const empty = document.getElementById("queue-empty");
       if (empty) {
-        // .hidden has no generic display:none rule in styles.css — the
-        // codebase hides empty-states by swapping content, so match that.
         empty.classList.toggle("hidden", rows.length > 0);
-        empty.style.display = rows.length ? "none" : "";
+        empty.classList.remove("slim");
         if (!rows.length) {
-          empty.innerHTML = Icon.get("video") + "<div>queue is empty</div>";
+          empty.innerHTML = `<span class="big">${Icon.get("clock")}</span>` + (FILTER === "@active"
+            ? "<b>Nothing waiting</b>Clips and pictures you start wait here until a PC picks them up."
+            : "<b>Nothing here</b>No renders with this status.");
         }
       }
       // .q-worker changes are handled by the delegated listener below (a
       // per-row onchange here as well sent every PATCH twice).
     } catch (e) {
-      toast("queue: " + (e.message || e), true);
+      toast("The queue did not load: " + (e.message || e), true);
     }
   }
 
@@ -106,7 +117,7 @@
   function openEditor(id) {
     api("/api/queue").then((q) => {
       const item = (q.items || []).find((x) => x.id === id);
-      if (!item) return toast("item vanished", true);
+      if (!item) return toast("That item is no longer in the queue", true);
       let veil = document.getElementById("q-edit-veil");
       if (!veil) {
         veil = document.createElement("div");
@@ -137,7 +148,7 @@
     let payload;
     try {
       payload = JSON.parse(veil.querySelector("#q-edit-payload").value);
-    } catch (e) { return toast("invalid JSON: " + e.message, true); }
+    } catch (e) { return toast("That is not valid JSON: " + e.message, true); }
     try {
       await api(qurl(window.__qEditId), {
         method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -145,7 +156,7 @@
       });
       closeEditor();
       refresh();
-      toast("draft updated");
+      toast("Draft saved");
     } catch (e) { toast(e.message, true); }
   }
 
@@ -158,14 +169,13 @@
   function loadAssignments() {
     const pid = (document.getElementById("shotassign-project") || {}).value;
     const list = document.getElementById("shotassign-list");
-    if (!pid) { list.textContent = "pick a project to see where it renders"; return; }
+    if (!pid) { list.textContent = "Pick a movie to see where it renders."; return; }
     api(`/api/queue/shot-assignments?project_id=${encodeURIComponent(pid)}`)
       .then((d) => {
         const a = (d && d.assignments) || [];
         list.innerHTML = a.length
-          ? a.map((x) => `${x.shot_id ? "shot " + esc(x.shot_id)
-            : "<b>project default</b>"} → <b>${esc(x.worker)}</b>`).join(" · ")
-          : "no overrides — pipeline renders on this PC (local)";
+          ? a.map((x) => `${x.shot_id ? "Shot " + esc(x.shot_id) : "The whole movie"} renders on <b>${esc(workerName(x.worker))}</b>`).join(". ") + "."
+          : "Renders on this PC.";
       })
       .catch((e) => { list.textContent = String(e.message || e); });
   }
@@ -179,13 +189,13 @@
         const ps = (d && d.projects) || [];
         proj.innerHTML = ps.length
           ? ps.map((p) => `<option value="${esc(p.id)}">${esc(p.title || p.id)}</option>`).join("")
-          : '<option value="">no projects</option>';
+          : '<option value="">No movies yet</option>';
         loadAssignments();
       }).catch(() => { /* the list stays empty */ });
     }
     const fill = () => {
       sel.innerHTML = ["local", "any"].concat(FLEET.map((w) => w.id))
-        .map((w) => `<option value="${esc(w)}">${esc(w)}</option>`).join("");
+        .map((w) => `<option value="${esc(w)}">${esc(workerName(w))}</option>`).join("");
     };
     fill();
     const t = setInterval(() => {
@@ -219,12 +229,12 @@
     }
     if (e.target.closest("#btn-shotassign-save")) {
       const project_id = (document.getElementById("shotassign-project") || {}).value;
-      if (!project_id) return toast("pick a project first", true);
+      if (!project_id) return toast("Pick a movie first", true);
       api("/api/queue/shot-assignments", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_id, shot_id: "",
                                worker: document.getElementById("shotassign-worker").value }),
-      }).then(() => { toast("project default saved — the pipeline will render there"); loadAssignments(); })
+      }).then(() => { toast("Saved. This movie renders there now."); loadAssignments(); })
         .catch((err) => toast(err.message, true));
       return;
     }
@@ -238,7 +248,7 @@
       api(qurl(e.target.dataset.id), {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ worker: e.target.value }),
-      }).then(() => toast("worker assigned")).catch((err) => toast(err.message, true));
+      }).then(() => toast("Moved to " + workerName(e.target.value))).catch((err) => toast(err.message, true));
     } else if (e.target.id === "shotassign-project") {
       loadAssignments();
     }
@@ -253,9 +263,12 @@
     setInterval(() => {
       if (page.classList.contains("active")) {
         try { refresh(); }
-        catch (e) { toast("queue refresh: " + (e.message || e), true); }
+        catch (e) { toast("The queue did not load: " + (e.message || e), true); }
       }
     }, 3000);
+    // and at once when the page opens
+    window.addEventListener("tools:page", (e) => { if (e.detail === "queue") refresh(); });
+    if (page.classList.contains("active")) refresh();
   }
 
   if (document.readyState === "loading") {

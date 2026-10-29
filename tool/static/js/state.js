@@ -78,6 +78,8 @@
         + "|" + Object.keys((State.bible && State.bible.locations) || {}).sort().join(",");
       const bibleChanged = bibleSig !== (State._bibleSig || "");
       State._bibleSig = bibleSig;
+      Shell.feed({ pid: State.pid, project: State.project, bible: State.bible,
+        stats: State.stats, director: State.director });
       if (changed("project", State.project) || bibleChanged) {
         Bus.emit("project", State.project);
       }
@@ -101,7 +103,7 @@
       const r = await API.get("/api/projects/" + encodeURIComponent(State.pid) + "/shots", 20000, true);
       if (!r) return;
       State.shots = Array.isArray(r.shots) ? r.shots : [];
-      if (r.stats) State.stats = r.stats;
+      if (r.stats) { State.stats = r.stats; Shell.feed({ stats: r.stats }); }
       if (changed("shots", State.shots)) Bus.emit("shots", State.shots);
     },
 
@@ -129,6 +131,7 @@
     current: null,
     register: function (name, def) { Router.pages[name] = def; },
     go: function (name) {
+      name = Shell.canon(name);
       const def = Router.pages[name] || Router.pages.overview;
       if (Router.current && Router.current.name === name) return;
       if (Router.current) {
@@ -183,10 +186,6 @@
   };
 
   /* ------------------------------------------------------------- top shell */
-  function modeLabel(mode) {
-    return { autopilot: "AUTOPILOT", checkpoints: "CHECKPOINTS", manual: "MANUAL" }[mode] || String(mode || "—").toUpperCase();
-  }
-
   /* the director transport: one primary button whose verb follows the
      project (run / resume past a gate), and Stop only while it runs */
   function transport(p) {
@@ -196,37 +195,61 @@
     return {
       running: running,
       verb: gate ? "resume" : "run",
-      label: gate ? "Approve & continue" : stopped ? "Resume" : "Run",
-      tip: gate ? "Approve the " + (p.stage || "pending") + " gate and continue"
-        : stopped ? "Continue the director from where it stopped"
-        : "Run the director through the project's stages",
+      label: gate ? "Approve & continue" : stopped ? "Resume production" : "Start production",
+      tip: gate ? "Approve what waits for you (" + (STAGE_WORDS[p.stage] || p.stage || "this step") + ") and continue"
+        : stopped ? "Continue from where production stopped"
+        : "The director writes what is missing, renders every shot, checks it and cuts the film",
     };
+  }
+
+  const STAGE_WORDS = {
+    story: "the story", cast: "the cast", scenes: "the scenes", shots: "the shot list",
+    prompts: "the video prompts", keyframes: "the keyframes", render: "the render",
+    review: "the review", assemble: "the cut", film: "the film",
+  };
+  const DOING = {
+    story: "Writing the story", cast: "Reading the cast", scenes: "Planning the scenes",
+    shots: "Writing the shot list", prompts: "Writing the video prompts", keyframes: "Making keyframes",
+    render: "Rendering", review: "Checking the shots", assemble: "Cutting the film",
+  };
+
+  /* the project's state in plain words, and its tone (the dot's colour) */
+  function statusWords(p, running) {
+    if (!p) return { text: "", tone: "" };
+    const st = p.status || "draft";
+    const stage = p.stage || "";
+    if (running) return { text: DOING[stage] || "Working", tone: "live" };
+    if (st === "gate_pending") {
+      return { text: stage === "prompts" ? "Waiting for video prompts"
+        : "Waiting for your approval: " + (STAGE_WORDS[stage] || stage), tone: "need" };
+    }
+    if (st === "error") return { text: "Stopped with an error", tone: "bad" };
+    if (st === "stopped") return { text: "Stopped", tone: "" };
+    if (st === "done") return { text: "Finished", tone: "ok" };
+    if (st === "story_ready") return { text: "Story written", tone: "" };
+    if (st === "rendered") return { text: "Rendered, ready for review", tone: "" };
+    if (st === "draft") return { text: "Not started", tone: "" };
+    if (st === "running" || st === "rendering") return { text: "Not running", tone: "" };
+    return { text: st.replace(/_/g, " "), tone: "" };
   }
 
   function renderTop() {
     const p = State.project;
     const titleEl = document.getElementById("tb-title");
-    const modeEl = document.getElementById("tb-mode");
     const statusEl = document.getElementById("tb-status");
     const etaEl = document.getElementById("tb-eta");
     if (!titleEl) return;
     titleEl.textContent = p ? p.title : "No project";
-    if (modeEl) {
-      modeEl.textContent = p ? modeLabel(p.mode) : "—";
-      modeEl.className = "badge mode-" + (p ? String(p.mode) : "none");
-      modeEl.classList.toggle("hidden", !p);
-    }
     const t = transport(p);
     if (statusEl) {
-      const st = p ? (p.status || "—") : "none";
-      const stage = p && p.stage ? p.stage : "";
-      statusEl.textContent = st.replace(/_/g, " ") + (stage && stage !== st ? " · " + stage : "");
-      statusEl.className = "pill " + (t.running ? "run" : window.statusClass(st));
-      statusEl.classList.toggle("hidden", !p);
+      const w = statusWords(p, t.running);
+      statusEl.innerHTML = p ? '<span class="tb-dot ' + w.tone + '"></span>' + esc(w.text) : "";
+      if (p && p.error && (p.status === "error" || p.status === "gate_pending")) statusEl.dataset.tip = p.error;
+      else delete statusEl.dataset.tip;
     }
     if (etaEl) {
       const e = State.eta;
-      etaEl.textContent = e && e.remaining ? fmt.min(e.eta_min) + " left · " + e.remaining + " shots" : "";
+      etaEl.textContent = e && e.remaining ? "about " + fmt.min(e.eta_min) + " of rendering left" : "";
     }
     const run = document.getElementById("btn-run");
     if (run) {
@@ -248,14 +271,19 @@
           return '<option value="' + esc(p.id) + '"' + (p.id === State.pid ? " selected" : "") +
             ">" + esc(p.title) + "</option>";
         }).join("")
-      : '<option value="">no projects</option>';
+      : '<option value="">No projects yet</option>';
+  }
+
+  function openNewProject() {
+    const m = document.getElementById("np-modal");
+    if (m) { m.classList.remove("hidden"); document.getElementById("np-title").focus(); }
   }
 
   function bindShell() {
     /* hash routing: the shared sidebar (js/shell.js) links to #page */
     Shell.mount("project");
     window.addEventListener("hashchange", function () {
-      const page = location.hash.replace(/^#/, "") || "overview";
+      const page = Shell.canon(location.hash.replace(/^#/, "") || "overview");
       if (Shell.shellOf(page) === "tools") { location.href = Shell.HOME.tools + "#" + page; return; }
       Router.go(page);
     });
@@ -266,19 +294,23 @@
       if (sel.value) State.setProject(sel.value);
     };
     const btnNew = document.getElementById("btn-new-project");
-    if (btnNew) btnNew.onclick = function () {
-      const m = document.getElementById("np-modal");
-      if (m) { m.classList.remove("hidden"); document.getElementById("np-title").focus(); }
-    };
+    if (btnNew) btnNew.onclick = openNewProject;
+    window.addEventListener("kino:new-project", openNewProject);
+    document.querySelectorAll("#np-mode-cards .choice").forEach(function (c) {
+      c.onclick = function () {
+        document.querySelectorAll("#np-mode-cards .choice").forEach(function (x) { x.classList.toggle("on", x === c); });
+        document.getElementById("np-mode").value = c.dataset.mode;
+      };
+    });
     const btnDel = document.getElementById("btn-del-project");
     if (btnDel) btnDel.onclick = function () {
-      if (!State.pid) { toast("no project selected", true); return; }
+      if (!State.pid) { toast("Open a movie first", true); return; }
       const v = openModal(
-        '<p>Delete project <b>' + esc((State.project && State.project.title) || State.pid) +
-        "</b>? Its shots are removed from the queue; rendered clips and files stay on disk.</p>" +
-        '<div class="ctl-row"><button class="btn" type="button" id="npd-cancel">Cancel</button>' +
-        '<button class="btn warn" type="button" id="npd-go">Delete project</button></div>',
-        { title: "Delete project" });
+        '<p>Delete the movie <b>' + esc((State.project && State.project.title) || State.pid) +
+        "</b>? Its shots leave the queue; the rendered clips and files stay on disk.</p>" +
+        '<div class="ctl-row" style="margin-top:16px;justify-content:flex-end"><button class="btn" type="button" id="npd-cancel">Cancel</button>' +
+        '<button class="btn danger" type="button" id="npd-go">Delete movie</button></div>',
+        { title: "Delete this movie?" });
       if (!v) return;
       v.querySelector("#npd-cancel").onclick = function () { closeModal(v); };
       v.querySelector("#npd-go").onclick = async function () {
@@ -286,7 +318,7 @@
         const r = await API.post("/api/projects/" +
           encodeURIComponent(State.pid) + "/delete", {}, 60000);
         if (r && r.ok) {
-          toast("project deleted");
+          toast("Movie deleted");
           State.pid = null;
           State.project = null;
           try { localStorage.removeItem("ws.lastProject"); } catch (e) { /* ignore */ }
@@ -295,7 +327,7 @@
           renderSwitcher();
           Router.go("overview");
         } else {
-          toast("delete failed: " + ((r && r.error) || "?"), true);
+          toast("Could not delete it: " + ((r && r.error) || "unknown error"), true);
         }
       };
     };
@@ -307,10 +339,13 @@
     if (npModal) npModal.addEventListener("click", function (e) {
       if (e.target === npModal) npModal.classList.add("hidden");
     });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && npModal && !npModal.classList.contains("hidden")) npModal.classList.add("hidden");
+    });
     const npCreate = document.getElementById("np-create");
     if (npCreate) npCreate.onclick = async function () {
       const title = document.getElementById("np-title").value.trim();
-      if (!title) { toast("title required", true); return; }
+      if (!title) { toast("Give the movie a title first", true); document.getElementById("np-title").focus(); return; }
       const r = await post("/api/projects", {
         title: title,
         idea: document.getElementById("np-idea").value,
@@ -324,7 +359,8 @@
       State.projects.unshift(r.project);
       renderSwitcher();
       await State.setProject(r.project.id);
-      toast("project created — " + r.project.title);
+      toast("Created " + r.project.title + ". The Overview shows the next step.");
+      location.hash = "#overview";
     };
 
     /* director transport (renderTop sets the run button's verb) */
@@ -333,7 +369,7 @@
       const b = document.getElementById(id);
       if (!b) return;
       b.onclick = async function () {
-        if (!State.pid) { toast("no project selected", true); return; }
+        if (!State.pid) { toast("Open a movie first", true); return; }
         const verb = id === "btn-stop" ? "stop" : (b.dataset.verb || "run");
         b.disabled = true;
         const r = await post("/api/projects/" + encodeURIComponent(State.pid) + "/" + verb, {}, 30000);
@@ -369,6 +405,10 @@
       if (pid) await State.setProject(pid);
       Router.go(first);
       Poll.recalc();
+      // "New project" pressed in the Studio shell
+      let fresh = null;
+      try { fresh = localStorage.getItem("kino.newProject"); localStorage.removeItem("kino.newProject"); } catch (e) { /* ignore */ }
+      if (fresh || !State.projects.length) openNewProject();
     });
   }
 

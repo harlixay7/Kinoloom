@@ -17,33 +17,42 @@
     const ids = Object.keys(scenes).sort();
     const defaultTitle = ((State.project && State.project.title) || "movie")
       .replace(/[^\w\-]+/g, "_") || "movie";
+    const ready = ids.filter(function (s) { return scenes[s].passed; }).length;
     el.innerHTML =
-      '<section class="card">' +
-        '<div class="card-head"><h2>Assemble</h2></div>' +
-        '<div class="ctl-row">' +
-          '<input id="film-title" placeholder="movie title" value="' + esc(defaultTitle) + '">' +
-          '<button class="btn primary" type="button" id="film-assemble">' + Icon.get("layers") + "Assemble draft + master</button>" +
+      '<header class="page-intro">' +
+        '<div class="pi-text"><h1>Film</h1>' +
+          "<p>Cut the passed shots together, in story order. Shots of one seamless take join frame for frame. " +
+          "You get a quick draft and the full master.</p></div>" +
+      "</header>" +
+      '<section class="card cut-card">' +
+        '<div class="card-head"><h2>The cut</h2>' +
+          '<span class="muted small">' + (ids.length ? ready + " of " + ids.length + " scenes have passed shots" : "") + "</span></div>" +
+        (ids.length
+          ? '<div class="cut-list">' + ids.map(function (s) {
+              const sc = scenes[s];
+              const pct = sc.total ? Math.round((sc.passed / sc.total) * 100) : 0;
+              return '<label class="cut-row' + (sc.passed ? "" : " dim") + '">' +
+                '<input type="checkbox" class="film-scene" value="' + esc(s) + '"' + (sc.passed ? " checked" : "") + ">" +
+                '<span class="cut-id">' + esc(s) + "</span>" +
+                '<span class="cut-bar"><i style="width:' + pct + '%"></i></span>' +
+                '<span class="cut-n">' + sc.passed + " of " + sc.total + " passed" +
+                  (sc.review ? ', <span class="st-amber">' + sc.review + " to review</span>" : "") + "</span>" +
+              "</label>";
+            }).join("") + "</div>"
+          : '<p class="muted">No shots yet. Scenes show up here once their shots render and pass.</p>') +
+        '<div class="cut-go">' +
+          '<label class="gen-field"><span>File name</span>' +
+            '<input id="film-title" placeholder="movie" value="' + esc(defaultTitle) + '"></label>' +
+          '<button class="btn primary" type="button" id="film-assemble"' + (ready ? "" : " disabled") + ">" +
+            Icon.get("layers") + "Assemble the film</button>" +
+          '<div id="film-result" class="muted small"></div>' +
         "</div>" +
-        '<div id="film-result" class="muted small" style="margin-top:8px"></div>' +
-        '<div class="table-wrap" style="margin-top:12px"><table class="table"><thead><tr>' +
-          "<th>include</th><th>scene</th><th>passed</th><th>total</th><th>in review</th></tr></thead><tbody>" +
-          (ids.length ? ids.map(function (s) {
-            const sc = scenes[s];
-            return "<tr><td><input type=\"checkbox\" class=\"film-scene\" value=\"" + esc(s) + '"' +
-              (sc.passed ? " checked" : "") + "></td>" +
-              "<td>" + esc(s) + "</td>" +
-              '<td class="st-green">' + sc.passed + "</td>" +
-              "<td>" + sc.total + "</td>" +
-              '<td class="' + (sc.review ? "st-red" : "") + '">' + sc.review + "</td></tr>";
-          }).join("")
-            : '<tr><td colspan="5" class="muted small">no shots — assemble after renders pass</td></tr>') +
-        "</tbody></table></div>" +
       "</section>" +
       '<section class="card">' +
-        '<div class="card-head"><h2>Outputs</h2>' +
+        '<div class="card-head"><h2>Films and renders</h2>' +
           '<span class="spacer"></span>' +
-          '<button class="btn small" type="button" id="film-refresh">' + Icon.get("refresh") + "Refresh</button></div>" +
-        '<div id="film-outputs" class="muted small">loading…</div>' +
+          '<button class="btn small ghost icon" type="button" id="film-refresh" data-tip="Refresh">' + Icon.get("refresh") + "</button></div>" +
+        '<div id="film-outputs" class="muted small">Loading…</div>' +
       "</section>";
     bind(el);
     loadOutputs(el);
@@ -56,10 +65,10 @@
       el.querySelectorAll(".film-scene").forEach(function (c) {
         if (c.checked) scenes.push(c.value);
       });
-      if (!scenes.length) { toast("pick at least one scene", true); return; }
+      if (!scenes.length) { toast("Tick at least one scene", true); return; }
       const title = (el.querySelector("#film-title").value || "movie").trim();
       btn.disabled = true;
-      toast("assembling " + scenes.length + " scene(s) — this can take a while…");
+      toast("Assembling " + scenes.length + (scenes.length === 1 ? " scene" : " scenes") + ". This can take a while…");
       // this project's passed shots in story order (seamless takes rejoin
       // frame for frame), never another project's drafts
       const r = await post("/api/assembly/run",
@@ -68,11 +77,11 @@
       const out = el.querySelector("#film-result");
       if (r) {
         if (r.ok) {
-          out.textContent = "done — master: " + (r.master || "");
-          toast("assembly complete");
+          out.textContent = "Assembled. The master is " + (r.master || "below") + ".";
+          toast("Film assembled");
         } else {
-          out.textContent = "failed: " + (r.error || "?");
-          toast("assembly failed: " + (r.error || "?"), true);
+          out.textContent = "Could not assemble it: " + (r.error || "unknown error");
+          toast("Could not assemble the film: " + (r.error || "unknown error"), true);
         }
       }
       loadOutputs(el);
@@ -85,31 +94,32 @@
     const box = el.querySelector("#film-outputs");
     if (!box) return;
     const r = await get("/api/outputs", 30000);
-    if (!r) { box.textContent = "outputs unavailable"; return; }
+    if (!r) { box.textContent = "Could not list the files."; return; }
     const cats = [
       ["films", "Films"], ["drafts", "Drafts"], ["scenes", "Scenes"], ["raw", "Raw renders"],
     ];
-    box.innerHTML = cats.map(function (c) {
+    const shown = cats.filter(function (c) { return (r[c[0]] || []).length; });
+    if (!shown.length) {
+      box.innerHTML = '<p class="muted">Nothing yet. Assembled films and the renders behind them show up here.</p>';
+      return;
+    }
+    box.innerHTML = shown.map(function (c) {
       const items = r[c[0]] || [];
       return '<div class="out-cat">' +
-        '<div class="out-cat-head">' + esc(c[1]) + " · " + items.length + "</div>" +
-        (items.length
-          ? '<div class="out-grid">' + items.map(function (f) {
-              const url = URLS.video(c[0], f.name);
-              return '<div class="out-card">' +
-                '<video src="' + esc(url) + '" preload="metadata" muted playsinline title="click to play"></video>' +
-                '<div class="out-meta"><div class="out-name" title="' + esc(f.name) + '">' +
-                  esc(f.name) + "</div>" +
-                  '<div class="muted small">' + esc(f.size_mb != null ? f.size_mb + " MB" : "") +
-                    (f.duration ? " · " + esc(f.duration) : "") +
-                    (f.date ? " · " + esc(f.date) : "") + "</div></div>" +
-                '<div class="out-acts">' +
-                  '<button class="btn small" type="button" data-play="' + esc(url) + '" ' +
-                    'data-title="' + esc(f.name) + '">' + Icon.get("play") + "Play</button>" +
-                  '<a class="btn small" href="' + esc(url) + '" download>' + Icon.get("download") + "Download</a>" +
-                "</div></div>";
-            }).join("") + "</div>"
-          : '<div class="muted small" style="margin:4px 0 14px">none</div>') +
+        '<div class="out-cat-head">' + esc(c[1]) + '<span class="sec-count">' + items.length + "</span></div>" +
+        '<div class="out-grid">' + items.map(function (f) {
+          const url = URLS.video(c[0], f.name);
+          return '<div class="out-card">' +
+            '<button class="out-frame" type="button" data-play="' + esc(url) + '" data-title="' + esc(f.name) + '" aria-label="Play ' + esc(f.name) + '">' +
+              '<video src="' + esc(url) + '" preload="metadata" muted playsinline></video>' +
+              '<span class="out-play">' + Icon.get("play") + "</span></button>" +
+            '<div class="out-meta"><div class="out-name" title="' + esc(f.name) + '">' +
+              esc(f.name) + "</div>" +
+              '<div class="muted small">' + esc([f.size_mb != null ? f.size_mb + " MB" : "", f.duration || "", f.date || ""]
+                .filter(Boolean).join(", ")) + "</div></div>" +
+            '<a class="btn small ghost icon" href="' + esc(url) + '" download data-tip="Download">' + Icon.get("download") + "</a>" +
+          "</div>";
+        }).join("") + "</div>" +
       "</div>";
     }).join("");
     box.querySelectorAll("[data-play]").forEach(function (b) {

@@ -1,8 +1,12 @@
-/* cast.js — Cast & World: the control room for the project bible — editable
-   characters (body/outfit/emotions/powers/LoRA), locations, the movie seed
-   reference image, and cast-driven story regeneration. */
+/* cast.js — Cast & World: the project bible's characters and places. Each is
+   a card with its portrait (the first picked look) that opens into the
+   editor: looks, body, outfit, emotions, and folds for powers, weapons,
+   outfits per scene and the legacy Wan 2.2 LoRA. Also the keyframe seed
+   picture and cast-driven story regeneration. */
 (function () {
   "use strict";
+  const openCards = {};   // which cards are open, kept across re-renders
+  const openFolds = {};   // and which folds inside them
 
   const TIERS = ["main", "supporting", "recurring", "crowd"];
   const POWER_TYPES = ["lightning", "fire", "ice", "water", "wind", "earth",
@@ -38,52 +42,95 @@
     const bible = State.bible || {};
     const chars = asList(bible.characters);
     const locs = asList(bible.locations);
+    const story = p.story || {};
+    const hasStory = !!(story.beats && Object.keys(story.beats).length);
+    const inMovie = chars.filter(function (c) { return c.enabled !== false; });
+    const withLook = inMovie.filter(function (c) { return (c.reference_images || []).length; }).length;
+    const castingLink = '<a class="btn small" href="' + Shell.href("casting") + '" data-page="casting" data-shell="tools">' +
+      Icon.get("aperture") + "Open Casting</a>";
+    const status = !chars.length
+      ? '<div class="cast-status need"><span class="cs-mark">' + Icon.get("users") + "</span>" +
+          "<div><b>No cast yet.</b> Add characters here, or write the story first: it invents a cast you can then edit.</div></div>"
+      : withLook < inMovie.length
+        ? '<div class="cast-status need"><span class="cs-mark">' + Icon.get("aperture") + "</span>" +
+            "<div><b>" + withLook + " of " + inMovie.length + " characters have a look.</b> " +
+            "Generate looks on Casting and pick one per character. Shots of a character without one render from the words alone.</div>" +
+            castingLink + "</div>"
+        : '<div class="cast-status ok"><span class="cs-mark">' + Icon.get("check") + "</span>" +
+            "<div><b>Every character has a look.</b> Their shots open on it.</div></div>";
     el.innerHTML =
-      '<div class="page-slate">' +
-        "<h1>Cast &amp; World</h1>" +
-        '<span class="slate-meta">' + chars.length + " characters · " + locs.length + " locations</span>" +
-        '<span class="spacer"></span>' +
-        '<div class="slate-acts">' +
-          '<button class="btn primary" type="button" id="cast-regen" ' +
-            'data-tip="Rebuilds beats/scenes/shots from the cast below — versioned, rollback in Story">' +
-            Icon.get("refresh") + "Regenerate story from cast</button>" +
+      '<header class="page-intro">' +
+        '<div class="pi-text"><h1>Cast &amp; World</h1>' +
+          "<p>Who is in the movie and where it happens. The story writer uses this cast, and the video models open each " +
+          "character&apos;s shots on their picked look.</p></div>" +
+        '<div class="pi-acts">' +
+          (hasStory ? '<button class="btn ghost" type="button" id="cast-regen" ' +
+            'data-tip="Write the beats, scenes and shots again around this cast. The old versions stay in the Story history.">' +
+            Icon.get("refresh") + "Rewrite the story around this cast</button>" : "") +
         "</div>" +
-      "</div>" +
-      '<section class="card">' +
-        '<div class="card-head"><h2>Characters in this movie</h2>' +
-          '<span class="muted small">' + chars.length + " characters</span>" +
+      "</header>" +
+      status +
+      '<section class="cast-sec">' +
+        '<div class="sec-head"><h2 class="sec-title">Characters</h2>' +
+          '<span class="sec-count">' + chars.length + "</span>" +
           '<span class="spacer"></span>' +
-          '<button class="btn small" type="button" id="cast-new-char" ' +
-            'data-tip="Add a new character to the bible">' + Icon.get("plus") + "New character</button>" +
+          '<button class="btn small" type="button" id="cast-new-char">' + Icon.get("plus") + "New character</button>" +
         "</div>" +
         (chars.length
           ? '<div class="cast-grid">' + chars.map(function (c) { return charCard(c); }).join("") + "</div>"
-          : empty("No characters in the project bible yet",
-              "Generate the story first, or add a character here.")) +
+          : empty("No characters yet", "Add one, or write the story and it brings its own.")) +
       "</section>" +
-      '<section class="card">' +
-        '<div class="card-head"><h2>Locations / environments</h2>' +
+      '<section class="cast-sec">' +
+        '<div class="sec-head"><h2 class="sec-title">Places</h2>' +
+          '<span class="sec-count">' + locs.length + "</span>" +
           '<span class="spacer"></span>' +
-          '<button class="btn small" type="button" id="cast-new-loc" ' +
-            'data-tip="Add a new location to the bible">' + Icon.get("plus") + "New location</button>" +
+          '<button class="btn small" type="button" id="cast-new-loc">' + Icon.get("plus") + "New place</button>" +
         "</div>" +
         (locs.length
           ? '<div class="cast-grid">' + locs.map(function (l) { return locCard(l); }).join("") + "</div>"
-          : '<div class="muted small">No locations yet.</div>') +
+          : empty("No places yet", "Add one, or let the story bring them.")) +
       "</section>" +
-      '<section class="card">' +
-        '<div class="card-head"><h2 data-tip="The active reference seeds every keyframe — clips generate from it (I2V)">Reference image (movie seed)</h2>' +
-          '<span class="spacer"></span>' +
-          '<input type="file" id="cast-ref-file" accept="image/png,image/jpeg,image/webp" multiple class="hidden">' +
-          '<button class="btn small" type="button" id="cast-ref-upload" ' +
-            'data-tip="Upload one or more seed images">' + Icon.get("upload") + "Upload</button>" +
+      '<details class="fold legacy" data-fold="seed"' + (openFolds.seed ? " open" : "") + ">" +
+        '<summary><span class="fold-t">Keyframe seed picture</span>' +
+          '<span class="fold-d">Only the keyframe step uses it. LTX-2.5 and MiniMax H3 shots use the looks above.</span></summary>' +
+        '<div class="fold-body">' +
+          '<div class="ctl-row">' +
+            '<span class="muted small">The active picture seeds the keyframe pictures.</span><span class="spacer"></span>' +
+            '<input type="file" id="cast-ref-file" accept="image/png,image/jpeg,image/webp" multiple class="hidden">' +
+            '<button class="btn small" type="button" id="cast-ref-upload">' + Icon.get("upload") + "Upload</button>" +
+          "</div>" +
+          '<div class="ref-strip" id="cast-ref-strip"><span class="muted small">Loading…</span></div>' +
         "</div>" +
-        '<div class="ref-strip" id="cast-ref-strip">' +
-          '<span class="muted small">loading…</span>' +
-        "</div>" +
-      "</section>";
+      "</details>";
     bind(el);
     loadRefs(el);
+  }
+
+  /* open or close a card in place (no re-render: unsaved edits stay) */
+  function toggleCard(card, key) {
+    const open = !card.classList.contains("open");
+    openCards[key] = open;
+    card.classList.toggle("open", open);
+    card.querySelectorAll(".cast-edit-btn").forEach(function (b) {
+      b.classList.toggle("ghost", !open);
+      b.innerHTML = open ? Icon.get("chevron-up") + "Close" : Icon.get("pen") + "Edit";
+    });
+    if (open) {
+      const first = card.querySelector(".cast-edit textarea, .cast-edit input");
+      card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      if (first && !first.value) first.focus({ preventScroll: true });
+    }
+  }
+
+  /* the card's portrait: its first picture */
+  function setPortrait(card, url) {
+    const pr = card.querySelector(".cast-portrait");
+    if (!pr) return;
+    const img = pr.querySelector("img");
+    if (!url) { if (img) img.remove(); pr.classList.add("none"); return; }
+    pr.classList.remove("none");
+    if (img) { img.src = url; return; }
+    pr.insertAdjacentHTML("afterbegin", '<img alt="" loading="lazy" src="' + esc(url) + '">');
   }
 
   /* ---------------------------------------------------------- character UI */
@@ -123,6 +170,29 @@
     }).join("");
   }
 
+  /* a fold inside a card; its open state survives the page re-renders */
+  function cardFold(key, title, meta, body, cls) {
+    return '<details class="cf' + (cls ? " " + cls : "") + '" data-fold="' + esc(key) + '"' +
+      (openFolds[key] ? " open" : "") + ">" +
+      '<summary><span class="cf-t">' + title + '</span><span class="cf-m">' + meta + "</span></summary>" +
+      '<div class="cf-body">' + body + "</div></details>";
+  }
+
+  function count(n, one, many) { return n ? n + " " + (n === 1 ? one : many) : "none yet"; }
+
+  function editButton(open) {
+    return '<button class="btn small cast-edit-btn ' + (open ? "" : "ghost") + '" type="button" data-act="toggle">' +
+      (open ? Icon.get("chevron-up") + "Close" : Icon.get("pen") + "Edit") + "</button>";
+  }
+
+  function inMovie(enabled, what) {
+    return '<label class="toggle cast-toggle" data-tip="Whether this ' + what + ' is in the movie">' +
+      '<input type="checkbox" data-f="enabled"' + (enabled ? " checked" : "") + "><span></span><em>In the movie</em></label>";
+  }
+
+  /* The card: a portrait (the first picked look) and who it is, closed; the
+     whole editor when open. Every field stays in the DOM either way, so the
+     save and collect code reads the same elements. */
   function charCard(ch) {
     const cid = ch.id || "";
     const emo = (ch.emotion_palette || []).join(", ");
@@ -130,112 +200,124 @@
     const curLora = ch.lora && ch.lora.file ? ch.lora.file : "";
     const str = Number(ch.lora && ch.lora.strength != null ? ch.lora.strength : 0.8) || 0.8;
     const powers = ch.powers || {};
-    return '<div class="cast-card" data-cid="' + esc(cid) + '">' +
+    const weapons = ch.weapons || {};
+    const loadouts = ch.loadouts || {};
+    const looks = (ch.reference_images || []).length;
+    const open = !!openCards["c:" + cid];
+    return '<article class="cast-card char' + (open ? " open" : "") + (enabled ? "" : " benched") + '" data-cid="' + esc(cid) + '">' +
       '<div class="cast-head">' +
-        '<input type="text" class="cast-name" data-f="name" value="' + esc(ch.name || "") +
-          '" placeholder="character name" spellcheck="false">' +
-        '<select class="cast-tier" data-f="tier" data-tip="Role weight in the movie">' +
-          TIERS.map(function (t) {
-            return '<option value="' + t + '"' + ((ch.tier || "supporting") === t ? " selected" : "") +
-              ">" + t + "</option>";
-          }).join("") +
-        "</select>" +
-        '<span class="spacer"></span>' +
-        '<label class="toggle cast-toggle" data-tip="Whether this character appears in the movie">In movie' +
-          '<input type="checkbox" data-f="enabled"' + (enabled ? " checked" : "") + ">" +
-          "<span></span></label>" +
-      "</div>" +
-      '<div class="cast-field"><label data-tip="Stable identity traits (build, hair, marks) as TEXT. The reference images are never converted to text: this is what the story LLM reads and what every video prompt states verbatim. Refs reinforce it — fill it in briefly and concretely.">Body</label>' +
-        '<textarea data-f="body" rows="2" spellcheck="false">' + esc(ch.body || "") + "</textarea>" +
-        '<div class="locref-ctl"><button class="btn small" type="button" data-act="autofill" ' +
-          'data-tip="Fill Body + Outfit from a batch still&apos;s recorded provenance (identity axes + the outfit/weapon that still was generated with). Review and Save after.">Auto-fill from batch still…</button></div></div>' +
-      '<div class="cast-field"><label data-tip="The character&apos;s DEFAULT look, as text. Used whenever no loadout is active for a shot. Loadouts override it per shot (and carry their own composite reference image). The story LLM reads this too.">Outfit</label>' +
-        '<textarea data-f="outfit" rows="2" spellcheck="false">' + esc(ch.outfit || "") + "</textarea></div>" +
-      '<div class="cast-field"><label>Emotion palette (comma separated)</label>' +
-        '<input type="text" data-f="emotion" value="' + esc(emo) +
-          '" placeholder="calm, focused, tense" spellcheck="false"></div>' +
-      '<div class="cast-field"><label>Powers</label>' +
-        '<div class="pw-list">' +
-          (Object.keys(powers).length
-            ? Object.keys(powers).map(function (pn) { return powerRow(pn); }).join("")
-            : '<div class="muted small">no powers yet</div>') +
-        "</div>" +
-        '<div class="pw-add">' +
-          '<select class="pw-type-sel">' +
-            POWER_TYPES.map(function (t) {
-              return '<option value="' + t + '">' + t + "</option>";
-            }).join("") +
-          "</select>" +
-          '<button class="btn small" type="button" data-act="add-power" ' +
-            'data-tip="Add a power of the selected type">+ add power</button>' +
+        '<button class="cast-portrait' + (looks ? "" : " none") + '" type="button" data-act="toggle" ' +
+          'data-tip="' + (looks ? "Open the card" : "No look picked yet: generate one on Casting, or upload a photo") + '">' +
+          '<span class="cp-ph">' + Icon.get("aperture") + "</span></button>" +
+        '<div class="cast-id">' +
+          '<div class="cast-top">' +
+            '<input type="text" class="cast-name" data-f="name" value="' + esc(ch.name || "") +
+              '" placeholder="Name" spellcheck="false" aria-label="Name">' +
+            editButton(open) +
+          "</div>" +
+          '<div class="cast-meta">' +
+            '<select class="cast-tier" data-f="tier" data-tip="How big the part is: main characters get the most close-ups">' +
+              TIERS.map(function (t) {
+                return '<option value="' + t + '"' + ((ch.tier || "supporting") === t ? " selected" : "") +
+                  ">" + t.charAt(0).toUpperCase() + t.slice(1) + "</option>";
+              }).join("") +
+            "</select>" +
+            '<span class="look-state ' + (looks ? "ok" : "need") + '">' + (looks ? count(looks, "look", "looks") : "No look yet") + "</span>" +
+            inMovie(enabled, "character") +
+          "</div>" +
+          (ch.body ? '<p class="cast-sum">' + esc(ch.body) + "</p>" : '<p class="cast-sum dim">No description yet.</p>') +
         "</div>" +
       "</div>" +
-      '<div class="cast-field"><label data-tip="Weapon CONFIG (design text + handling + sfx). This is what the story LLM uses to write scenes, and what the prompt states. A weapon only APPEARS in renders through a loadout that carries it (with its composite reference image) — configure it here, then bind it in a loadout.">Weapons</label>' +
-        '<div class="wp-list">' +
-          (Object.keys(ch.weapons || {}).length
-            ? Object.keys(ch.weapons || {}).map(function (wn) { return weaponRow(wn); }).join("")
-            : '<div class="muted small">no weapons yet</div>') +
+      '<div class="cast-edit">' +
+        '<div class="cast-field heroref-field"><label data-tip="The pictures the video models open this character&apos;s shots on. Picked looks come first.">Looks</label>' +
+          '<div class="heroref-strip"><span class="muted small">Loading…</span></div>' +
+          '<div class="heroref-ctl">' +
+            '<input type="file" class="heroref-file" accept="image/png,image/jpeg,image/webp" multiple hidden>' +
+            '<button class="btn small" type="button" data-act="heroref-pick" ' +
+              'data-tip="Pick a picture from a Casting batch as this character&apos;s look">' + Icon.get("aperture") + "Pick from Casting</button>" +
+            '<button class="btn small ghost" type="button" data-act="heroref-upload" ' +
+              'data-tip="Upload your own photos of this character">' + Icon.get("upload") + "Upload</button>" +
+          "</div>" +
         "</div>" +
-        '<div class="pw-add">' +
-          '<select class="wp-type-sel">' +
-            WEAPON_TYPES.map(function (t) {
-              return '<option value="' + esc(t) + '">' + esc(t) + "</option>";
-            }).join("") +
-          "</select>" +
-          '<button class="btn small" type="button" data-act="add-weapon" ' +
-            'data-tip="Add a weapon of the selected type — configure it, then pick design stills from a weapon batch">+ add weapon</button>' +
+        '<div class="cast-cols">' +
+          '<div class="cast-field"><label data-tip="What never changes: build, face, hair, marks, in words. The story writer reads it, and every video prompt states it. Keep it short and concrete.">Body</label>' +
+            '<textarea data-f="body" rows="3" spellcheck="false" placeholder="Tall, lean, close-cropped grey hair, a scar through the left eyebrow">' + esc(ch.body || "") + "</textarea>" +
+            '<div class="locref-ctl"><button class="linkish" type="button" data-act="autofill" ' +
+              'data-tip="Fill Body and Outfit from what a Casting picture was made with. Read them, then Save.">Fill in from a Casting picture</button></div></div>' +
+          '<div class="cast-field"><label data-tip="What they wear unless an outfit below says otherwise. The story writer reads it too.">Outfit</label>' +
+            '<textarea data-f="outfit" rows="3" spellcheck="false" placeholder="Worn leather coat over a dark wool sweater">' + esc(ch.outfit || "") + "</textarea></div>" +
+        "</div>" +
+        '<div class="cast-field"><label>Emotions they show, separated by commas</label>' +
+          '<input type="text" data-f="emotion" value="' + esc(emo) +
+            '" placeholder="calm, focused, tense" spellcheck="false"></div>' +
+        cardFold("c:" + cid + ":powers", "Powers", count(Object.keys(powers).length, "power", "powers"),
+          '<div class="pw-list">' +
+            (Object.keys(powers).length
+              ? Object.keys(powers).map(function (pn) { return powerRow(pn); }).join("")
+              : '<div class="muted small">No powers. Most characters need none.</div>') +
+          "</div>" +
+          '<div class="pw-add">' +
+            '<select class="pw-type-sel">' +
+              POWER_TYPES.map(function (t) {
+                return '<option value="' + t + '">' + t + "</option>";
+              }).join("") +
+            "</select>" +
+            '<button class="btn small" type="button" data-act="add-power" ' +
+              'data-tip="Add a power of the selected type">' + Icon.get("plus") + "Add power</button>" +
+          "</div>") +
+        cardFold("c:" + cid + ":weapons", "Weapons", count(Object.keys(weapons).length, "weapon", "weapons"),
+          '<p class="cf-note">What the story writer and the prompts know about the weapon. It shows up in a render through an outfit below that carries it.</p>' +
+          '<div class="wp-list">' +
+            (Object.keys(weapons).length
+              ? Object.keys(weapons).map(function (wn) { return weaponRow(wn); }).join("")
+              : '<div class="muted small">No weapons.</div>') +
+          "</div>" +
+          '<div class="pw-add">' +
+            '<select class="wp-type-sel">' +
+              WEAPON_TYPES.map(function (t) {
+                return '<option value="' + esc(t) + '">' + esc(t) + "</option>";
+              }).join("") +
+            "</select>" +
+            '<button class="btn small" type="button" data-act="add-weapon" ' +
+              'data-tip="Add a weapon of the selected type, then pick its design pictures from a weapon batch">' + Icon.get("plus") + "Add weapon</button>" +
+          "</div>") +
+        cardFold("c:" + cid + ":loadouts", "Outfits for scenes", count(Object.keys(loadouts).length, "outfit", "outfits"),
+          '<p class="cf-note">A named outfit, maybe with a weapon, and one picture of the character wearing it. ' +
+            "Each scene can use a different one; the base outfit is used otherwise.</p>" +
+          '<div class="ld-list">' +
+            (Object.keys(loadouts).length
+              ? Object.keys(loadouts).map(function (ln) {
+                  return loadoutRow(ln, loadouts[ln]);
+                }).join("")
+              : '<div class="muted small">No extra outfits: the base outfit is used.</div>') +
+          "</div>" +
+          '<div class="pw-add">' +
+            '<button class="btn small" type="button" data-act="add-loadout" ' +
+              'data-tip="Add a named outfit (for example JulietArmored)">' + Icon.get("plus") + "Add outfit</button>" +
+          "</div>" +
+          '<div class="ld-scene-map-wrap">' +
+            '<label data-tip="Which outfit this character wears in each scene. A shot can still override it.">Outfit per scene</label>' +
+            '<div class="ld-scene-map"><span class="muted small">Save the character first.</span></div>' +
+          "</div>") +
+        cardFold("c:" + cid + ":lora", "Wan 2.2 LoRA", "Legacy: only the old Wan 2.2 model uses it",
+          '<div class="cast-field lora-row">' +
+            '<div class="lora-ctl">' +
+              '<select class="cast-lora" data-tip="A character LoRA. Only shots rendered on the legacy Wan 2.2 model use it; LTX-2.5 and MiniMax H3 use the looks above.">' +
+                '<option value="">None</option>' +
+                loraOptions(characterLoras(), curLora, curLora) +
+              "</select>" +
+              '<input type="number" class="cast-lora-str" min="0.1" max="1.5" step="0.05" value="' +
+                str.toFixed(2) + '"' + (curLora ? "" : " disabled") + ' data-tip="LoRA strength, 0.1 to 1.5">' +
+            "</div>" +
+          "</div>", "legacy") +
+        '<div class="cast-actions">' +
+          '<button class="btn small danger quiet" type="button" data-act="delete" ' +
+            'data-tip="Remove this character from the movie&apos;s cast">' + Icon.get("trash") + "Remove</button>" +
+          '<span class="spacer"></span>' +
+          '<button class="btn small primary" type="button" data-act="save">Save character</button>' +
         "</div>" +
       "</div>" +
-      '<div class="cast-field"><label data-tip="Named variants: an outfit text + a weapon + ONE composite reference image (character wearing the outfit, holding the weapon). The story and the scene map pick a loadout per shot; the resolver passes exactly one picture per character.">Loadouts' +
-        '<span class="muted small" style="margin-left:6px">outfit + weapon + composite ref</span></label>' +
-        '<div class="ld-list">' +
-          (Object.keys(ch.loadouts || {}).length
-            ? Object.keys(ch.loadouts || {}).map(function (ln) {
-                return loadoutRow(ln, (ch.loadouts || {})[ln]);
-              }).join("")
-            : '<div class="muted small">no loadouts yet — the base outfit is used</div>') +
-        "</div>" +
-        '<div class="pw-add">' +
-          '<button class="btn small" type="button" data-act="add-loadout" ' +
-            'data-tip="Add a named loadout (e.g. JulietWithWeapon)">+ add loadout</button>' +
-        "</div>" +
-        '<div class="ld-scene-map-wrap">' +
-          '<label data-tip="Which loadout this character wears per scene — the shot override beats this map, the beat text beats the default.">Scene &rarr; loadout</label>' +
-          '<div class="ld-scene-map"><span class="muted small">save the character first</span></div>' +
-        "</div>" +
-      "</div>" +
-      '<div class="cast-field lora-row"><label>LoRA</label>' +
-        '<div class="lora-ctl">' +
-          '<select class="cast-lora" data-tip="Character LoRA, applied only when the shot renders on the legacy Wan 2.2 model (LTX-2.5 and H3 use the reference images)">' +
-            '<option value="">none</option>' +
-            loraOptions(characterLoras(), curLora, curLora) +
-          "</select>" +
-          '<input type="number" class="cast-lora-str" min="0.1" max="1.5" step="0.05" value="' +
-            str.toFixed(2) + '"' + (curLora ? "" : " disabled") + ' data-tip="LoRA strength 0.1–1.5">' +
-        "</div>" +
-        (curLora
-          ? '<div class="muted small">trained LoRA: ' + esc(curLora) + "</div>"
-          : '<div class="muted small">no LoRA attached</div>') +
-      "</div>" +
-      '<div class="cast-field heroref-field"><label data-tip="Identity lock for generated reference images (IP-Adapter)">Hero reference (identity)</label>' +
-        '<div class="heroref-strip">' +
-          '<span class="muted small">loading…</span>' +
-        "</div>" +
-        '<div class="heroref-ctl">' +
-          '<input type="file" class="heroref-file" accept="image/png,image/jpeg,image/webp" multiple hidden>' +
-          '<button class="btn small" type="button" data-act="heroref-upload" ' +
-            'data-tip="Upload identity reference images for this character">' + Icon.get("upload") + "Upload</button>" +
-          '<button class="btn small" type="button" data-act="heroref-pick" ' +
-            'data-tip="Choose any photo from a training batch as this character&apos;s identity reference">Pick from batch</button>' +
-        "</div>" +
-      "</div>" +
-      '<div class="cast-actions">' +
-        '<button class="btn small primary" type="button" data-act="save" ' +
-          'data-tip="Save all fields for this character">Save character</button>' +
-        '<button class="btn small danger" type="button" data-act="delete" ' +
-          'data-tip="Remove this character from the bible">Delete</button>' +
-      "</div>" +
-    "</div>";
+    "</article>";
   }
 
   function weaponRow(wid) {
@@ -251,17 +333,17 @@
             ">" + esc(t) + "</option>";
         }).join("") +
       "</select>" +
-      '<textarea class="wp-desc" rows="1" placeholder="descriptor (materials, color, glow)" spellcheck="false"></textarea>' +
+      '<textarea class="wp-desc" rows="1" placeholder="What it looks like: material, colour, glow" spellcheck="false"></textarea>' +
       '<input type="text" class="wp-handling" placeholder="handling (raised overhead, planted…)" spellcheck="false">' +
       '<input type="text" class="wp-sfx" placeholder="sfx (steel ring, energy hum)" spellcheck="false">' +
       '<button class="btn small" type="button" data-act="rm-weapon" ' +
         'data-tip="Remove this weapon">' + Icon.get("x") + "</button>" +
       '<div class="cast-field wp-ref-field">' +
-        '<label data-tip="Weapon design stills (weapon-only or in-hand). They ride along as EXTRA pictures on models with spare reference capacity (H3); the loadout composite already carries the weapon in one image.">Weapon refs</label>' +
+        '<label data-tip="Design pictures of the weapon, alone or in hand. MiniMax H3 can take them as extra pictures; an outfit picture already shows the weapon.">Weapon pictures</label>' +
         '<div class="wp-ref-strip"><span class="muted small">loading…</span></div>' +
         '<div class="locref-ctl">' +
           '<button class="btn small" type="button" data-act="weaponref-pick" ' +
-            'data-tip="Pick an image from a WEAPON training batch">Pick from weapon batch</button>' +
+            'data-tip="Pick a picture from a weapon batch on Casting">Pick from Casting</button>' +
         "</div>" +
       "</div>" +
     "</div>";
@@ -275,13 +357,13 @@
       '<input type="text" class="ld-outfit" value="' + esc(ld.outfit || "") +
         '" placeholder="outfit text (crimson battle dress, leather + chainmail)" spellcheck="false">' +
       '<select class="ld-weapon" data-tip="Weapon this loadout carries">' +
-        '<option value="">no weapon</option>' +
+        '<option value="">No weapon</option>' +
       "</select>" +
       '<button class="btn small" type="button" data-act="loadoutref-pick" ' +
-        'data-tip="Pick this loadout&apos;s composite reference (character in this outfit, holding this weapon) from the character batch — ONE image carries identity + outfit + weapon">Pick composite ref</button>' +
+        'data-tip="Pick one picture of the character in this outfit, holding this weapon, from a Casting batch">Pick its picture</button>' +
       '<button class="btn small" type="button" data-act="rm-loadout" ' +
         'data-tip="Remove this loadout">' + Icon.get("x") + "</button>" +
-      '<div class="ld-ref-strip"><span class="muted small">no composite ref</span></div>' +
+      '<div class="ld-ref-strip"><span class="muted small">No picture yet</span></div>' +
     "</div>";
   }
 
@@ -317,12 +399,12 @@
           'data-tip="Power LoRA strength 0.1–1.5">' +
       "</div>" +
       '<div class="cast-field powref-field">' +
-        '<label data-tip="Power VFX references, one per intensity level. The scene&apos;s power level picks the image whose level is the highest at or below it (floor rule).">Power refs' +
-          '<span class="muted small" style="margin-left:6px">level &rarr; image</span></label>' +
+        '<label data-tip="Effect pictures, one per strength level. A scene uses the picture of the highest level at or below its own.">Power pictures' +
+          '<span class="muted small" style="margin-left:6px">one per level</span></label>' +
         '<div class="powref-strip"><span class="muted small">loading…</span></div>' +
         '<div class="locref-ctl">' +
           '<button class="btn small" type="button" data-act="powref-pick" ' +
-            'data-tip="Pick an image from a POWER training batch; it is added at the next intensity level (edit the number on a thumbnail to change it)">Pick from power batch</button>' +
+            'data-tip="Pick a picture from a power batch on Casting. It goes in at the next level; change the number on it to move it.">Pick from Casting</button>' +
         "</div>" +
       "</div>" +
     "</div>";
@@ -362,7 +444,7 @@
       const ld = loadouts[rw.dataset.ld] || {};
       const ws = rw.querySelector(".ld-weapon");
       if (ws) {
-        ws.innerHTML = '<option value="">no weapon</option>' +
+        ws.innerHTML = '<option value="">No weapon</option>' +
           weaponOptions(card, ld.weapon || "");
       }
       loadLoadoutRefs(card, cid, rw.dataset.ld);
@@ -432,59 +514,72 @@
 
   /* ----------------------------------------------------------- location UI */
   function locCard(l) {
+    const lid = l.id || "";
     const enabled = l.enabled !== false;
     const curLora = l.lora && l.lora.file ? l.lora.file : "";
     const str = Number(l.lora && l.lora.strength != null ? l.lora.strength : 0.6) || 0.6;
-    return '<div class="cast-card" data-lid="' + esc(l.id || "") + '">' +
+    const pics = (l.reference_images || []).length;
+    const open = !!openCards["l:" + lid];
+    return '<article class="cast-card place' + (open ? " open" : "") + (enabled ? "" : " benched") + '" data-lid="' + esc(lid) + '">' +
       '<div class="cast-head">' +
-        '<input type="text" class="cast-name mono" data-f="lid" value="' + esc(l.id || "") +
-          '" placeholder="location id (arena, palace)" spellcheck="false" ' +
-          'data-tip="The location ID is the vocabulary the story LLM and the prompts use. Rename it to a real name (e.g. arena, palace) — references and shots follow.">' +
-        '<button class="btn small" type="button" data-act="loc-rename" ' +
-          'data-tip="Rename this location id (moves its references and updates shots)">Rename id</button>' +
-        '<span class="spacer"></span>' +
-        '<label class="toggle cast-toggle" data-tip="Whether this location is used in the movie">In movie' +
-          '<input type="checkbox" data-f="enabled"' + (enabled ? " checked" : "") + ">" +
-          "<span></span></label>" +
-      "</div>" +
-      '<div class="cast-field"><label>Descriptor</label>' +
-        '<textarea data-f="descriptor" rows="3" spellcheck="false">' + esc(l.descriptor || "") + "</textarea></div>" +
-      '<div class="cast-field"><label>Lighting</label>' +
-        '<input type="text" data-f="lighting" value="' + esc(l.lighting || "") +
-          '" placeholder="e.g. cold moonlight, harsh fluorescents" spellcheck="false"></div>' +
-      '<div class="cast-field lora-row"><label>Environment LoRA</label>' +
-        '<div class="lora-ctl">' +
-          '<select class="loc-lora" data-tip="Environment LoRA, applied only when a shot here renders on the legacy Wan 2.2 model (LTX-2.5 and H3 use the reference images)">' +
-            '<option value="">none</option>' +
-            loraOptions(envLoras(), curLora, curLora) +
-          "</select>" +
-          '<input type="number" class="loc-lora-str" min="0.1" max="1.5" step="0.05" value="' +
-            str.toFixed(2) + '"' + (curLora ? "" : " disabled") + ' data-tip="LoRA strength 0.1–1.5">' +
-        "</div>" +
-        (curLora
-          ? '<div class="muted small">environment LoRA: ' + esc(curLora) + "</div>"
-          : '<div class="muted small">no environment LoRA attached</div>') +
-      "</div>" +
-      '<div class="cast-field locref-field"><label data-tip="Guides generated images for this location (IP-Adapter style guidance)">Reference image</label>' +
-        '<div class="locref-strip">' +
-          '<span class="muted small">loading…</span>' +
-        "</div>" +
-        '<div class="locref-ctl">' +
-          '<button class="btn small" type="button" data-act="locref-pick" ' +
-            'data-tip="Choose an environment photo from a training batch as this location&apos;s reference">Pick from environment batch</button>' +
-          '<input type="file" class="locref-file" accept="image/png,image/jpeg,image/webp" multiple hidden>' +
-          '<button class="btn small" type="button" data-act="locref-upload" ' +
-            'data-tip="Upload reference images for this location">' + Icon.get("upload") + "Upload</button>" +
+        '<button class="cast-portrait wide' + (pics ? "" : " none") + '" type="button" data-act="toggle" ' +
+          'data-tip="' + (pics ? "Open the card" : "No picture yet: pick one from a Casting batch, or upload one") + '">' +
+          '<span class="cp-ph">' + Icon.get("image") + "</span></button>" +
+        '<div class="cast-id">' +
+          '<div class="cast-top loc-id-row">' +
+            '<input type="text" class="cast-name" data-f="lid" value="' + esc(lid) +
+              '" placeholder="Short name (arena, palace)" spellcheck="false" aria-label="Place name" ' +
+              'data-tip="The name the story writer and the prompts use for this place. Rename it, and its pictures and shots follow.">' +
+            '<button class="btn small" type="button" data-act="loc-rename" ' +
+              'data-tip="Rename this place: its pictures and shots follow">Rename</button>' +
+            editButton(open) +
+          "</div>" +
+          '<div class="cast-meta"><span class="look-state ' + (pics ? "ok" : "need") + '">' +
+            (pics ? pics + (pics === 1 ? " picture" : " pictures") : "No picture yet") + "</span>" +
+            inMovie(enabled, "place") + "</div>" +
+          (l.descriptor ? '<p class="cast-sum">' + esc(l.descriptor) + "</p>" : '<p class="cast-sum dim">No description yet.</p>') +
         "</div>" +
       "</div>" +
-      '<div class="cast-field locscene-field"><label data-tip="Bind each scene to one of this location&apos;s named variants. Auto = the primary image (or the first tagged one). Shots can also override this individually.">Scene → variant</label>' +
-        '<div class="locscene-map"><span class="muted small">loading…</span></div>' +
+      '<div class="cast-edit">' +
+        '<div class="cast-field locref-field"><label data-tip="Pictures of this place. Shots here use them to keep the place the same.">Pictures</label>' +
+          '<div class="locref-strip"><span class="muted small">Loading…</span></div>' +
+          '<div class="locref-ctl">' +
+            '<button class="btn small" type="button" data-act="locref-pick" ' +
+              'data-tip="Pick a picture of this place from a Casting batch">' + Icon.get("aperture") + "Pick from Casting</button>" +
+            '<input type="file" class="locref-file" accept="image/png,image/jpeg,image/webp" multiple hidden>' +
+            '<button class="btn small ghost" type="button" data-act="locref-upload" ' +
+              'data-tip="Upload your own pictures of this place">' + Icon.get("upload") + "Upload</button>" +
+          "</div>" +
+        "</div>" +
+        '<div class="cast-cols">' +
+          '<div class="cast-field"><label>What it looks like</label>' +
+            '<textarea data-f="descriptor" rows="3" spellcheck="false" placeholder="A flooded subway platform, tiles cracked, water up to the ankles">' + esc(l.descriptor || "") + "</textarea></div>" +
+          '<div class="cast-field"><label>Light</label>' +
+            '<input type="text" data-f="lighting" value="' + esc(l.lighting || "") +
+              '" placeholder="cold moonlight, harsh fluorescents" spellcheck="false"></div>' +
+        "</div>" +
+        cardFold("l:" + lid + ":scenes", "Picture per scene", "Which of its pictures each scene uses",
+          '<div class="cast-field locscene-field">' +
+            '<div class="locscene-map"><span class="muted small">Loading…</span></div>' +
+          "</div>") +
+        cardFold("l:" + lid + ":lora", "Wan 2.2 LoRA", "Legacy: only the old Wan 2.2 model uses it",
+          '<div class="cast-field lora-row">' +
+            '<div class="lora-ctl">' +
+              '<select class="loc-lora" data-tip="An environment LoRA. Only shots rendered on the legacy Wan 2.2 model use it; LTX-2.5 and MiniMax H3 use the pictures above.">' +
+                '<option value="">None</option>' +
+                loraOptions(envLoras(), curLora, curLora) +
+              "</select>" +
+              '<input type="number" class="loc-lora-str" min="0.1" max="1.5" step="0.05" value="' +
+                str.toFixed(2) + '"' + (curLora ? "" : " disabled") + ' data-tip="LoRA strength, 0.1 to 1.5">' +
+            "</div>" +
+          "</div>", "legacy") +
+        '<div class="cast-actions">' +
+          '<button class="btn small danger quiet" type="button" data-act="delete">' + Icon.get("trash") + "Remove</button>" +
+          '<span class="spacer"></span>' +
+          '<button class="btn small primary" type="button" data-act="save">Save place</button>' +
+        "</div>" +
       "</div>" +
-      '<div class="cast-actions">' +
-        '<button class="btn small primary" type="button" data-act="save">Save</button>' +
-        '<button class="btn small danger" type="button" data-act="delete">Delete</button>' +
-      "</div>" +
-    "</div>";
+    "</article>";
   }
 
   /* ------------------------------------------------------------- data utils */
@@ -574,7 +669,7 @@
   /* ---------------------------------------------------------------- actions */
   async function saveCharacter(card, ch) {
     const name = (card.querySelector('[data-f="name"]').value || "").trim();
-    if (!name) { toast("character needs a name", true); return; }
+    if (!name) { toast("Give the character a name first", true); return; }
     const body = {
       name: name,
       tier: card.querySelector('[data-f="tier"]').value,
@@ -597,7 +692,7 @@
     const r = await post(url, body, 60000);
     if (!r) return null;
     if (r.ok) {
-      toast("saved " + (r.character && r.character.name ? r.character.name : name));
+      toast("Saved " + (r.character && r.character.name ? r.character.name : name));
       await State.refreshProject();
       return r.character || null;    // callers need the id for new characters
     } else {
@@ -629,13 +724,13 @@
       enabled: true,
     }, 30000);
     if (!r) return;
-    if (r.ok) { toast("character added"); await State.refreshProject(); }
+    if (r.ok) { toast("Character added"); await State.refreshProject(); }
     else toast(r.error || "failed", true);
   }
 
   async function saveLocation(card, l) {
     const lid = l.id || "";
-    if (!lid) { toast("location id missing", true); return; }
+    if (!lid) { toast("Give the place a name first", true); return; }
     const body = {
       id: lid,
       descriptor: card.querySelector('[data-f="descriptor"]').value,
@@ -662,12 +757,12 @@
   async function renameLocation(card, l) {
     const inp = card.querySelector('[data-f="lid"]');
     const want = ((inp && inp.value) || "").trim();
-    if (!want || want === (l.id || "")) { toast("type the new id first", true); return; }
+    if (!want || want === (l.id || "")) { toast("Type the new name first", true); return; }
     const r = await post("/api/projects/" + encodeURIComponent(pid()) +
       "/cast/locations/" + encodeURIComponent(l.id || "") + "/rename",
       { new_id: want }, 60000);
     if (r && r.ok) {
-      toast("location renamed → " + r.id
+      toast("Renamed to " + r.id
         + (r.shots_updated ? " (" + r.shots_updated + " shots updated)" : ""));
       await State.refreshProject();
       await State.refreshShots();
@@ -695,7 +790,7 @@
       enabled: true,
     }, 30000);
     if (!r) return;
-    if (r.ok) { toast("location added"); await State.refreshProject(); }
+    if (r.ok) { toast("Place added"); await State.refreshProject(); }
     else toast(r.error || "failed", true);
   }
 
@@ -756,7 +851,7 @@
     inp.value = "";
     if (!r) return;
     if (r.ok) {
-      toast("reference uploaded" + (r.refs && r.refs.length ? " — " + r.refs.length + " image(s)" : ""));
+      toast("Uploaded" + (r.refs && r.refs.length ? " " + r.refs.length + (r.refs.length === 1 ? " picture" : " pictures") : ""));
       loadRefs(el);
     } else {
       toast(r.error || "upload failed", true);
@@ -775,64 +870,55 @@
     const r = await window.API.get("/api/projects/" + encodeURIComponent(pid()) +
       "/cast/characters/" + encodeURIComponent(cid) + "/herorefs", 20000, true);
     if (!r) {
-      strip.innerHTML = '<span class="muted small">unavailable</span>';
+      strip.innerHTML = '<span class="muted small">Could not load the looks.</span>';
       return;
     }
     const refs = Array.isArray(r.refs) ? r.refs : [];
     const auto = Array.isArray(r.auto) ? r.auto : [];
     const manifest = Array.isArray(r.references) ? r.references : [];
+    const uploaded = refs.filter(function (f) {
+      return !manifest.some(function (m) { return (m.copied || m.file) === f; });
+    });
+    // the portrait: the first picture the models would use
+    setPortrait(card, manifest.length ? heroRefUrl(cid, manifest[0].copied || manifest[0].file)
+      : uploaded.length ? heroRefUrl(cid, uploaded[0]) : auto.length ? (auto[0].url || "") : "");
     if (!refs.length && !auto.length && !manifest.length) {
-      strip.innerHTML = '<span class="muted small">no identity references yet</span>';
+      strip.innerHTML = '<span class="muted small">No looks yet. Pick one from a Casting batch, or upload a photo.</span>';
       return;
     }
+    const group = function (label, html) {
+      return html ? '<div class="look-group"><span class="look-h">' + label + '</span><div class="look-row">' + html + "</div></div>" : "";
+    };
     strip.innerHTML =
-      (manifest.length
-        ? '<div class="muted small" style="flex-basis:100%">picked — used first</div>'
-        : "") +
-      manifest.map(function (m) {
+      group("Picked, used first", manifest.map(function (m) {
         const role = m.role || "primary";
-        const tip = "LTX reference — " + (m.type || "face") + "/" + (m.name || "") +
-          " · " + role + (m.tag ? " · loadout: " + m.tag : "") +
-          " (click × to remove)";
+        const tip = (m.type || "face") + ": " + (m.name || "") + ", " + role +
+          (m.tag ? ", for the outfit " + m.tag : "") + ". × removes it.";
         return '<div class="heroref-thumb' + (role === "secondary" ? " auto" : "") + '" ' +
           'data-tip="' + esc(tip) + '">' +
-          '<img loading="lazy" src="' + esc(heroRefUrl(cid, m.copied || m.file)) + '" alt="batch reference">' +
-          '<span class="heroref-tag">' + esc(m.tag ? "loadout" : role) + "</span>" +
+          '<img loading="lazy" src="' + esc(heroRefUrl(cid, m.copied || m.file)) + '" alt="picked look">' +
+          '<span class="heroref-tag">' + esc(m.tag ? "outfit" : role === "primary" ? "main" : "extra") + "</span>" +
           '<button class="ref-x" type="button" data-ref-rm="' + esc(m.file) + '" ' +
-            'data-tip="remove this reference">×</button>' +
+            'data-tip="Remove this look">×</button>' +
         "</div>";
-      }).join("") +
-      (refs.filter(function (f) {
-        return !manifest.some(function (m) { return (m.copied || m.file) === f; });
-      }).length
-        ? '<div class="muted small" style="flex-basis:100%">uploaded — used if nothing is picked</div>'
-        : "") +
-      refs.filter(function (f) {
-        return !manifest.some(function (m) { return (m.copied || m.file) === f; });
-      }).map(function (f) {
-        return '<div class="heroref-thumb" ' +
-          'data-tip="Uploaded identity reference">' +
-          '<img loading="lazy" src="' + esc(heroRefUrl(cid, f)) + '" alt="hero reference">' +
-          '<span class="heroref-tag">REF</span>' +
+      }).join("")) +
+      group("Uploaded, used when nothing is picked", uploaded.map(function (f) {
+        return '<div class="heroref-thumb" data-tip="An uploaded photo">' +
+          '<img loading="lazy" src="' + esc(heroRefUrl(cid, f)) + '" alt="uploaded look">' +
         "</div>";
-      }).join("") +
-      (auto.length
-        ? '<div class="muted small" style="flex-basis:100%">auto fallback — used ONLY when no reference is picked</div>'
-        : "") +
-      auto.map(function (a) {
-        return '<div class="heroref-thumb auto" ' +
-          'data-tip="Auto-detected batch master (fallback when no pick is made)">' +
-          '<img loading="lazy" src="' + esc(a.url || "") + '" alt="batch master">' +
-          '<span class="heroref-tag">fallback</span>' +
+      }).join("")) +
+      group("Found in a Casting batch, used only when nothing else is there", auto.map(function (a) {
+        return '<div class="heroref-thumb auto" data-tip="The batch&apos;s main picture, found by name">' +
+          '<img loading="lazy" src="' + esc(a.url || "") + '" alt="batch picture">' +
         "</div>";
-      }).join("");
+      }).join(""));
     strip.querySelectorAll("[data-ref-rm]").forEach(function (b) {
       b.onclick = async function (e) {
         e.stopPropagation();
         const r2 = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(cid) + "/herorefs/remove",
           { file: b.dataset.refRm }, 30000);
-        if (r2 && r2.ok) { toast("reference removed"); loadHeroRefs(card, cid); }
+        if (r2 && r2.ok) { toast("Look removed"); loadHeroRefs(card, cid); }
         else toast((r2 && r2.error) || "remove failed", true);
       };
     });
@@ -848,7 +934,7 @@
     inp.value = "";
     if (!r) return;
     if (r.ok) {
-      toast("hero reference uploaded");
+      toast("Photo uploaded");
       loadHeroRefs(card, cid);
     } else {
       toast(r.error || "upload failed", true);
@@ -909,7 +995,7 @@
         const r2 = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(cid) + "/powers/" +
           encodeURIComponent(pw) + "/refs/remove", { file: b.dataset.refRm }, 30000);
-        if (r2 && r2.ok) { toast("power reference removed"); loadPowerRefs(card, cid, pw); }
+        if (r2 && r2.ok) { toast("Power picture removed"); loadPowerRefs(card, cid, pw); }
         else toast((r2 && r2.error) || "remove failed", true);
       };
     });
@@ -920,7 +1006,7 @@
           "/cast/characters/" + encodeURIComponent(cid) + "/powers/" +
           encodeURIComponent(pw) + "/refs/update",
           { file: inp.dataset.ref, level: isNaN(v) ? 1 : v }, 30000);
-        if (r2 && r2.ok) toast("power level updated");
+        if (r2 && r2.ok) toast("Power level changed");
         else toast((r2 && r2.error) || "level update failed", true);
         loadPowerRefs(card, cid, pw);
       };
@@ -937,7 +1023,7 @@
           encodeURIComponent(pw) + "/refs/select",
           { type: "power", name: name, file: file, append: true }, 30000);
         if (!r) return false;
-        if (r.ok) { toast("power reference added"); return true; }
+        if (r.ok) { toast("Power picture added"); return true; }
         toast(r.error || "select failed", true);
         return false;
       },
@@ -1070,7 +1156,7 @@
           if (!ok) return;
           if (appendBox && appendBox.checked) {
             // multi-add: keep the picker open so a second image can follow
-            toast("reference added");
+            toast("Picture added");
             return;
           }
           close();
@@ -1110,7 +1196,7 @@
   function openAutofillPick(card, ch) {
     openBatchPicker({
       type: "face",
-      title: "Auto-fill Body + Outfit from a batch still",
+      title: "Fill in Body and Outfit from a Casting picture",
       onSelect: async function (name, file) {
         const r = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(ch.id || "") + "/autofill",
@@ -1121,8 +1207,8 @@
         const o = card.querySelector('[data-f="outfit"]');
         if (b && r.body) b.value = r.body;
         if (o && r.outfit) o.value = r.outfit;
-        toast("filled from " + file + (r.weapon ? " (weapon: " + r.weapon + ")" : "")
-          + " — review and Save");
+        toast("Filled in from " + file + (r.weapon ? " (weapon: " + r.weapon + ")" : "")
+          + ". Read it, then Save.");
         return true;
       },
       onDone: function () { /* values are in the fields; Save persists them */ },
@@ -1132,15 +1218,15 @@
   function openHeroPick(card, cid) {
     openBatchPicker({
       type: "face",
-      title: "Pick identity reference from batch",
-      roles: [{ value: "primary", label: "primary" },
-              { value: "secondary", label: "secondary" }],
+      title: "Pick a look from a Casting batch",
+      roles: [{ value: "primary", label: "Main look" },
+              { value: "secondary", label: "Extra look" }],
       onSelect: async function (name, file, role, append) {
         const r = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(cid) + "/herorefs/select",
           { type: "face", name: name, file: file, role: role, append: append }, 30000);
         if (!r) return false;
-        if (r.ok) { toast(role === "secondary" ? "secondary ref added" : "identity ref set"); return true; }
+        if (r.ok) { toast(role === "secondary" ? "Extra look added" : "Look picked"); return true; }
         toast(r.error || "select failed", true);
         return false;
       },
@@ -1160,31 +1246,33 @@
     const r = await window.API.get("/api/projects/" + encodeURIComponent(pid()) +
       "/cast/locations/" + encodeURIComponent(lid) + "/refs", 20000, true);
     if (!r || !Array.isArray(r.refs)) {
-      strip.innerHTML = '<span class="muted small">unavailable</span>';
+      strip.innerHTML = '<span class="muted small">Could not load the pictures.</span>';
       return;
     }
     const manifest = Array.isArray(r.references) ? r.references : [];
+    const uploaded = r.refs.filter(function (f) {
+      return !manifest.some(function (m) { return (m.copied || m.file) === f; });
+    });
+    setPortrait(card, manifest.length ? locRefUrl(lid, manifest[0].copied || manifest[0].file)
+      : uploaded.length ? locRefUrl(lid, uploaded[0]) : "");
     if (!r.refs.length && !manifest.length) {
-      strip.innerHTML = '<span class="muted small">no reference images yet</span>';
+      strip.innerHTML = '<span class="muted small">No pictures yet. Pick one from a Casting batch, or upload one.</span>';
       return;
     }
     strip.innerHTML = manifest.map(function (m) {
       const tag = (m.tag || "").trim();
-      const tip = "Environment reference — " + (m.type || "environment") + "/" +
-        (m.name || "") + (tag ? " · variant: " + tag : "") + " (click × to remove)";
+      const tip = (m.type || "environment") + ": " + (m.name || "") +
+        (tag ? ", the variant " + tag : "") + ". × removes it.";
       return '<div class="locref-thumb" data-tip="' + esc(tip) + '">' +
-        '<img loading="lazy" src="' + esc(locRefUrl(lid, m.copied || m.file)) + '" alt="location reference">' +
-        '<span class="locref-tag">' + esc(tag || "ENV") + "</span>" +
+        '<img loading="lazy" src="' + esc(locRefUrl(lid, m.copied || m.file)) + '" alt="picture of the place">' +
+        (tag ? '<span class="locref-tag">' + esc(tag) + "</span>" : "") +
         '<button class="ref-x" type="button" data-ref-rm="' + esc(m.file) + '" ' +
-          'data-tip="remove this reference">×</button>' +
+          'data-tip="Remove this picture">×</button>' +
       "</div>";
     }).join("") +
-    r.refs.filter(function (f) {
-      return !manifest.some(function (m) { return (m.copied || m.file) === f; });
-    }).map(function (f) {
-      return '<div class="locref-thumb" data-tip="Environment reference">' +
-        '<img loading="lazy" src="' + esc(locRefUrl(lid, f)) + '" alt="location reference">' +
-        '<span class="locref-tag">ENV</span>' +
+    uploaded.map(function (f) {
+      return '<div class="locref-thumb" data-tip="An uploaded picture">' +
+        '<img loading="lazy" src="' + esc(locRefUrl(lid, f)) + '" alt="picture of the place">' +
       "</div>";
     }).join("");
     strip.querySelectorAll("[data-ref-rm]").forEach(function (b) {
@@ -1193,7 +1281,7 @@
         const r2 = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/locations/" + encodeURIComponent(lid) + "/refs/remove",
           { file: b.dataset.refRm }, 30000);
-        if (r2 && r2.ok) { toast("reference removed"); loadLocRefs(card, lid); }
+        if (r2 && r2.ok) { toast("Picture removed"); loadLocRefs(card, lid); }
         else toast((r2 && r2.error) || "remove failed", true);
       };
     });
@@ -1209,7 +1297,7 @@
     inp.value = "";
     if (!r) return;
     if (r.ok) {
-      toast("location reference uploaded");
+      toast("Picture uploaded");
       loadLocRefs(card, lid);
     } else {
       toast(r.error || "upload failed", true);
@@ -1322,7 +1410,7 @@
         const r2 = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(cid) + "/slotrefs/weapon/" +
           encodeURIComponent(wid) + "/remove", { file: b.dataset.wrefRm }, 30000);
-        if (r2 && r2.ok) { toast("weapon reference removed"); loadWeaponRefs(card, cid, wid); }
+        if (r2 && r2.ok) { toast("Weapon picture removed"); loadWeaponRefs(card, cid, wid); }
         else toast((r2 && r2.error) || "remove failed", true);
       };
     });
@@ -1339,7 +1427,7 @@
       return String(m.tag || "") === name;
     });
     if (!refs.length) {
-      strip.innerHTML = '<span class="muted small">no composite ref — identity still will be used</span>';
+      strip.innerHTML = '<span class="muted small">No picture yet: the main look is used</span>';
       return;
     }
     strip.innerHTML = refs.map(function (m) {
@@ -1356,7 +1444,7 @@
         const r2 = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(cid) + "/herorefs/remove",
           { file: b.dataset.ldrefRm }, 30000);
-        if (r2 && r2.ok) { toast("composite reference removed"); loadLoadoutRefs(card, cid, name); }
+        if (r2 && r2.ok) { toast("Outfit picture removed"); loadLoadoutRefs(card, cid, name); }
         else toast((r2 && r2.error) || "remove failed", true);
       };
     });
@@ -1418,7 +1506,7 @@
           encodeURIComponent(wid) + "/select",
           { type: "weapon", name: name, file: file, append: true }, 30000);
         if (!r) return false;
-        if (r.ok) { toast("weapon reference added"); return true; }
+        if (r.ok) { toast("Weapon picture added"); return true; }
         toast(r.error || "select failed", true);
         return false;
       },
@@ -1429,13 +1517,13 @@
   function openLoadoutPick(card, cid, name) {
     openBatchPicker({
       type: "face",
-      title: "Pick composite reference — " + name,
+      title: "Pick the picture for the outfit " + name,
       onSelect: async function (bname, file) {
         const r = await post("/api/projects/" + encodeURIComponent(pid()) +
           "/cast/characters/" + encodeURIComponent(cid) + "/herorefs/select",
           { type: "face", name: bname, file: file, tag: name, append: true }, 30000);
         if (!r) return false;
-        if (r.ok) { toast("composite reference added"); return true; }
+        if (r.ok) { toast("Outfit picture added"); return true; }
         toast(r.error || "select failed", true);
         return false;
       },
@@ -1466,7 +1554,8 @@
     card.querySelectorAll("[data-act]").forEach(function (b) {
       b.onclick = function () {
         const act = b.dataset.act;
-        if (act === "save") saveCharacter(card, ch);
+        if (act === "toggle") toggleCard(card, "c:" + (ch.id || ""));
+        else if (act === "save") saveCharacter(card, ch);
         else if (act === "delete") deleteCharacter(card, ch);
         else if (act === "add-power") addPowerRow(card, ch);
         else if (act === "heroref-upload") {
@@ -1488,7 +1577,7 @@
           const wid = row
             ? (((row.querySelector(".wp-name") || {}).value || "")
                || row.dataset.wid || "").trim() : "";
-          if (!wid) { toast("give the weapon an id first", true); return; }
+          if (!wid) { toast("Give the weapon a name first", true); return; }
           refPickGuard(card, ch,
             function (saved) { return !!(saved.weapons || {})[wid]; },
             function (card2, cid2) { openWeaponPick(card2, cid2, wid); });
@@ -1498,7 +1587,7 @@
           if (row && row.parentNode) row.parentNode.removeChild(row);
           const list = card.querySelector(".wp-list");
           if (list && !list.querySelector(".wp-row")) {
-            list.innerHTML = '<div class="muted small">no weapons yet</div>';
+            list.innerHTML = '<div class="muted small">No weapons.</div>';
           }
         }
         else if (act === "add-loadout") addLoadoutRow(card, ch);
@@ -1507,7 +1596,7 @@
           const name = row
             ? ((row.querySelector(".ld-name") || {}).value || "").trim() : "";
           if (!name) {
-            toast("name the loadout first (e.g. AnnaWithBlade)", true);
+            toast("Name the outfit first (for example AnnaWithBlade)", true);
             return;
           }
           refPickGuard(card, ch,
@@ -1519,7 +1608,7 @@
           if (row && row.parentNode) row.parentNode.removeChild(row);
           const list = card.querySelector(".ld-list");
           if (list && !list.querySelector(".ld-row")) {
-            list.innerHTML = '<div class="muted small">no loadouts yet — the base outfit is used</div>';
+            list.innerHTML = '<div class="muted small">No extra outfits — the base outfit is used</div>';
           }
         }
         else if (act === "rm-power") {
@@ -1527,7 +1616,7 @@
           if (row && row.parentNode) row.parentNode.removeChild(row);
           const list = card.querySelector(".pw-list");
           if (list && !list.querySelector(".pw-row")) {
-            list.innerHTML = '<div class="muted small">no powers yet</div>';
+            list.innerHTML = '<div class="muted small">No powers.</div>';
           }
         }
       };
@@ -1540,7 +1629,7 @@
   async function refPickGuard(card, ch, exists, run) {
     const saved = ((State.bible || {}).characters || {})[ch.id || ""];
     if (saved && exists(saved)) { run(card, ch.id || ""); return; }
-    toast("saving the character first — references attach to the saved entry");
+    toast("Saving the character first, so the picture has somewhere to go");
     const created = await saveCharacter(card, ch);
     const cid2 = (created && created.id) || ch.id || "";
     run(freshCard(cid2) || card, cid2);
@@ -1565,7 +1654,7 @@
       const ws = lr.querySelector(".ld-weapon");
       if (ws) {
         const cur = ws.value;
-        ws.innerHTML = '<option value="">no weapon</option>' + weaponOptions(card, cur);
+        ws.innerHTML = '<option value="">No weapon</option>' + weaponOptions(card, cur);
       }
     });
     bindTips(row);
@@ -1583,7 +1672,7 @@
     if (!row) return;
     row.dataset.ld = "";
     const ws = row.querySelector(".ld-weapon");
-    if (ws) ws.innerHTML = '<option value="">no weapon</option>' + weaponOptions(card, "");
+    if (ws) ws.innerHTML = '<option value="">No weapon</option>' + weaponOptions(card, "");
     list.appendChild(row);
     bindTips(row);
     bindCardActions(card, ch);   // the new row's buttons need handlers
@@ -1595,10 +1684,10 @@
     const chars = asList(bible.characters).filter(function (c) { return c.enabled !== false; });
     const locs = asList(bible.locations).filter(function (l) { return l.enabled !== false; });
     if (!chars.length && !locs.length) {
-      toast("the cast is empty — enable at least one character or location first", true);
+      toast("The cast is empty: put at least one character or place in the movie first", true);
       return;
     }
-    toast("regenerating story from this cast — this can take minutes…");
+    toast("Rewriting the story around this cast. This can take a few minutes…");
     const r = await post("/api/projects/" + encodeURIComponent(pid()) + "/story/generate", {
       stages: ["beats", "scenes", "shots"],
       cast_config: {
@@ -1632,11 +1721,11 @@
     }, 900000);
     if (!r) return;
     if (r.ok) {
-      toast(r.shots_ingested != null ? r.shots_ingested + " shots regenerated" : "story regenerated");
+      toast(r.shots_ingested != null ? "Story rewritten: " + r.shots_ingested + " shots" : "Story rewritten");
       await State.refreshProject();
       await State.refreshShots();
     } else {
-      toast("generation failed: " + (r.error || "?"), true);
+      toast("Could not rewrite the story: " + (r.error || "unknown error"), true);
     }
   }
 
@@ -1681,7 +1770,8 @@
       if (!l) return;
       card.querySelectorAll("[data-act]").forEach(function (b) {
         b.onclick = function () {
-          if (b.dataset.act === "save") saveLocation(card, l);
+          if (b.dataset.act === "toggle") toggleCard(card, "l:" + (l.id || ""));
+          else if (b.dataset.act === "save") saveLocation(card, l);
           else if (b.dataset.act === "delete") deleteLocation(card, l);
           else if (b.dataset.act === "loc-rename") renameLocation(card, l);
           else if (b.dataset.act === "locref-pick") openLocPick(card, l.id || "");
@@ -1702,6 +1792,9 @@
       loadLocSceneMap(card, l.id || "");
     });
 
+    el.querySelectorAll("details[data-fold]").forEach(function (d) {
+      d.addEventListener("toggle", function () { openFolds[d.dataset.fold] = d.open; });
+    });
     bindTips(el);
   }
 

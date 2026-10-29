@@ -101,15 +101,22 @@
   };
 
   /* ---------------------------------------------------------------- badges */
+  /* teal is live work, amber waits for you, green is done */
   const STATUS_COLOR = {
-    queued: "amber", rendering: "blue", post: "blue", qa: "blue", drafting: "blue",
-    passed: "green", review: "red", failed: "gray", pending: "amber", assembled: "green",
+    queued: "gray", rendering: "live", post: "live", qa: "live", drafting: "live",
+    passed: "green", review: "amber", failed: "red", pending: "gray", assembled: "green",
+  };
+  const STATUS_WORD = {
+    queued: "queued", rendering: "rendering", post: "finishing", qa: "checking", drafting: "drafting",
+    passed: "passed", review: "to review", failed: "failed", pending: "not started", assembled: "in the film",
   };
   function statusClass(status) { return "st-" + (STATUS_COLOR[status] || "gray"); }
+  function statusWord(status) { return STATUS_WORD[status] || status || "not started"; }
   function tierClass(tier) { return "tier-" + (tier || "unknown"); }
   function clsNum(x) {
+    if (x == null || x === "") return "dim";
     x = Number(x);
-    if (isNaN(x) || x == null) return "dim";
+    if (isNaN(x)) return "dim";
     return x >= 0.7 ? "good" : x >= 0.45 ? "mid" : "bad";
   }
 
@@ -159,7 +166,7 @@
       "</div>";
   }
   function noProject() {
-    return empty("No project selected", "Create one with “+ New” in the sidebar.");
+    return empty("No movie open", "Start one with New in the sidebar, or pick one above it.");
   }
 
   /* ============================================================= shot card */
@@ -189,32 +196,35 @@
     } catch (e) { /* no clock */ }
     const upPlaceholder = inPost
       ? '<div class="ph ph-up">' + Icon.get("refresh") + "<span>"
-        + (upscaling ? "upscaling" : (postOn ? "post-processing queued"
-                                              : "quality check"))
+        + (upscaling ? "Upscaling" : (postOn ? "Waiting for finishing"
+                                              : "Checking quality"))
         + (workerName ? " on " + esc(workerName) : " locally")
-        + (upscaling && elapsed ? " · " + elapsed : "") + "…</span></div>"
+        + (upscaling && elapsed ? ", " + elapsed : "") + "…</span></div>"
       : null;
     const chain = Array.isArray(j.selected_loras) ? j.selected_loras : [];
     const acts = j.primary_action || j.action || "";
     const loras = chain.map(function (c) {
       return '<span class="lora-chip' + (c.enabled === false ? " off" : "") + '">' +
-        esc(c.name || "") + (c.enabled === false ? " · off" : "") + "</span>";
+        esc(c.name || "") + (c.enabled === false ? " (off)" : "") + "</span>";
     }).join("");
+    // quality scores: only the ones the check measured
     const qa = (opts.review || row.status === "review" || row.status === "failed") ? [
-      ['clip', row.qa_clip], ['face', row.qa_face], ['motion', row.qa_motion],
-    ].map(function (q) {
-      return '<span class="qa-cell ' + clsNum(q[1]) + '" title="qa ' + q[0] + '">' +
-        esc(q[0]) + " " + (q[1] == null ? "—" : Number(q[1]).toFixed(2)) + "</span>";
-    }).join("") + (row.attempts ? '<span class="qa-cell dim" title="attempts">att ' +
+      ["match", row.qa_clip, "How well the clip matches its prompt"],
+      ["face", row.qa_face, "How close the faces are to the cast looks"],
+      ["motion", row.qa_motion, "How much the clip moves"],
+    ].filter(function (q) { return q[1] != null && q[1] !== ""; }).map(function (q) {
+      return '<span class="qa-cell ' + clsNum(q[1]) + '" title="' + q[2] + '">' +
+        esc(q[0]) + " " + Number(q[1]).toFixed(2) + "</span>";
+    }).join("") + (row.attempts ? '<span class="qa-cell dim" title="Tries">try ' +
       esc(row.attempts) + "</span>" : "") + (row.render_time_s
-      ? '<span class="qa-cell dim" title="render time">' + fmt.s(row.render_time_s) + "</span>" : "") : "";
+      ? '<span class="qa-cell dim" title="Render time">' + fmt.s(row.render_time_s) + "</span>" : "") : "";
     const err = row.error
       ? '<div class="sc-error">' + Icon.get("warning") + "<span>" + esc(row.error) + "</span></div>" : "";
     // reference provenance: a shot that rendered WITHOUT its cast refs must
     // say so here (the warning lives in the shot JSON, not the error column)
     const refWarn = (Array.isArray(j.reference_warnings) && j.reference_warnings.length)
-      ? '<div class="sc-error" style="color:#e0a35c">' + Icon.get("warning") +
-        "<span>refs: " + esc(j.reference_warnings.slice(0, 2).join("; ")) + "</span></div>"
+      ? '<div class="sc-error warn">' + Icon.get("warning") +
+        "<span>Rendered without its pictures: " + esc(j.reference_warnings.slice(0, 2).join("; ")) + "</span></div>"
       : "";
 
     const el = document.createElement("div");
@@ -231,30 +241,30 @@
             : "") +
           '<span class="spacer"></span>' +
           '<span class="badge ' + tierClass(row.tier) + '">' + esc(row.tier || "—") + '</span>' +
-          '<span class="badge ' + statusClass(row.status) + '">' + esc(row.status || "—") + '</span>' +
+          '<span class="badge ' + statusClass(row.status) + '">' + esc(statusWord(row.status)) + '</span>' +
         '</header>' +
         (qa ? '<div class="sc-qa">' + qa + "</div>" : "") +
         '<div class="sc-media">' +
           '<div class="sc-frame">' +
-            (kfUrl ? '<img loading="lazy" src="' + esc(kfUrl) + '" alt="">'
-                   : '<div class="ph ph-kf">' + Icon.get("wand") + "<span>no keyframe</span></div>") +
-            '<div class="sc-frame-tag">START</div>' +
+            (kfUrl ? '<img loading="lazy" src="' + esc(kfUrl) + '" alt="" onerror="this.style.display=\'none\'">'
+                   : '<div class="ph ph-kf">' + Icon.get("wand") + "<span>No start picture</span></div>") +
+            '<div class="sc-frame-tag">Start</div>' +
           "</div>" +
           '<div class="sc-frame sc-clip">' +
             (finalUrl ? '<video src="' + esc(finalUrl) + '" preload="metadata" muted playsinline></video>'
                       : (upPlaceholder ? upPlaceholder
                          : (clipUrl
                             ? '<video src="' + esc(clipUrl) + '" preload="metadata" muted playsinline></video>'
-                            : '<div class="ph ph-clip">' + Icon.get("play") + "<span>no clip</span></div>"))) +
-            '<div class="sc-frame-tag">' + (finalUrl ? "FINAL" : "CLIP") + "</div>" +
+                            : '<div class="ph ph-clip">' + Icon.get("play") + "<span>Not rendered yet</span></div>"))) +
+            '<div class="sc-frame-tag">' + (finalUrl ? "Final" : "Clip") + "</div>" +
             (finalUrl && clipUrl
-              ? '<button class="sc-raw" type="button" data-act="raw" data-tip="Play the raw render (before post)">raw</button>'
+              ? '<button class="sc-raw" type="button" data-act="raw" data-tip="Play the raw render, before finishing">Raw</button>'
               : "") +
           "</div>" +
           '<div class="sc-frame">' +
-            (tailUrl ? '<img loading="lazy" src="' + esc(tailUrl) + '" alt="">'
-                     : '<div class="ph">' + Icon.get("film") + "<span>no tail</span></div>") +
-            '<div class="sc-frame-tag">TAIL</div>' +
+            (tailUrl ? '<img loading="lazy" src="' + esc(tailUrl) + '" alt="" onerror="this.style.display=\'none\'">'
+                     : '<div class="ph">' + Icon.get("film") + "<span>No end frame</span></div>") +
+            '<div class="sc-frame-tag">End</div>' +
           "</div>" +
         "</div>" +
         (acts ? '<div class="sc-action">' + esc(acts) + "</div>" : "") +
@@ -266,16 +276,16 @@
         refWarn +
         '<footer class="sc-foot">' +
           '<button class="btn small ghost" type="button" data-act="' + (kfUrl ? "kf-regen" : "kf-gen") + '" data-tip="' +
-            (kfUrl ? "Clear the keyframe and requeue the shot" : "Generate keyframe candidates") + '">' +
+            (kfUrl ? "Clear the keyframe and queue the shot again" : "Make keyframe pictures for this shot") + '">' +
             (kfUrl ? Icon.get("refresh") : Icon.get("wand")) + "Keyframe</button>" +
-          '<button class="btn small ghost" type="button" data-act="rerender" data-tip="Requeue the clip">' +
-            Icon.get("refresh") + "Re-render</button>" +
+          '<button class="btn small ghost" type="button" data-act="rerender" data-tip="Render this shot again">' +
+            Icon.get("refresh") + "Render again</button>" +
           '<span class="spacer"></span>' +
           (opts.review
-            ? '<button class="btn small danger" type="button" data-act="requeue">Requeue</button>' +
+            ? '<button class="btn small danger" type="button" data-act="requeue">Render again</button>' +
               '<button class="btn small primary" type="button" data-act="approve">Approve</button>'
             : "") +
-          '<button class="btn small ghost icon" type="button" data-act="adv" data-tip="Advanced: prompt, LoRAs, profile">' +
+          '<button class="btn small ghost icon" type="button" data-act="adv" data-tip="More: the prompt, the profile">' +
             Icon.get("sliders") + "</button>" +
         "</footer>" +
         '<div class="adv" hidden></div>' +
@@ -576,6 +586,7 @@
   window.post = post;
   window.fmt = fmt;
   window.statusClass = statusClass;
+  window.statusWord = statusWord;
   window.tierClass = tierClass;
   window.clsNum = clsNum;
   window.URLS = URLS;

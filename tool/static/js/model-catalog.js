@@ -2,7 +2,8 @@
    Generate page) list the registry the same way: one optgroup per catalog
    group in display order, recommended configs first (★), short labels, and
    ⛓ on the models whose chains / CONTINUE runs render as one seamless take.
-   The full name, timing, note and availability go in the option tooltip.
+   The full name, timing, caution, note and availability go in the option
+   tooltip; the pages show the caution of the selected model as well.
    Data: GET /api/videostudio/models -> {groups: [{id, label}], models: [...]}
    (already sorted by video_models.catalog). */
 (function () {
@@ -28,6 +29,7 @@
     return [
       m.display_name || m.id,
       c.detail || "",
+      c.caution || "",
       m.seamless ? "Seamless takes: one continuous render, " +
                      (m.seamless === "h3" ? "exact" : "soft-pinned") + " latent carry between segments, seam QA"
                  : "Chains continue from the previous segment's tail frame",

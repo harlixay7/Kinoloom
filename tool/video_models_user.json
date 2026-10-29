@@ -135,10 +135,10 @@
   },
   "minimax_h3_768p": {
    "id": "minimax_h3_768p",
-   "display_name": "MiniMax H3 \u2014 Cinematic 768p (single-pass)",
+   "display_name": "MiniMax H3 \u2014 768p (single-pass)",
    "catalog": {
     "group": "h3_draft",
-    "label": "Cinematic 768p single-pass",
+    "label": "768p single-pass",
     "detail": "1344x768 \u00b7 ~17 min",
     "rank": 20
    },
@@ -897,7 +897,7 @@
    "catalog": {
     "group": "ltx25",
     "label": "Quality 5 s",
-    "detail": "S6a \u00b7 DFR \u00b7 MSR refs \u00b7 CQ \u00b7 1080p \u00b7 ~6 min",
+    "detail": "recommended \u00b7 1080p \u00b7 cast references \u00b7 ~6 min",
     "rank": 10,
     "recommended": true
    },
@@ -977,12 +977,14 @@
   },
   "ltx25_temporal_10s": {
    "id": "ltx25_temporal_10s",
-   "display_name": "LTX 2.5 \u2014 CINEMATIC 10s (temporal \u00d72 slow-mo) \u00b7 10.0s clip \u00b7 ~14 min",
+   "display_name": "LTX 2.5 \u2014 SLOW MOTION 10s (one 5 s clip stretched \u00d72, not recommended) \u00b7 ~14 min",
    "catalog": {
     "group": "ltx25",
-    "label": "Cinematic 10 s (temporal \u00d72 slow-mo)",
-    "detail": "1080p \u00b7 ~14 min",
-    "rank": 20
+    "label": "Slow motion 10 s (not recommended)",
+    "detail": "a 5 s clip stretched \u00d72 \u00b7 1080p \u00b7 ~14 min",
+    "rank": 90,
+    "caution": "Slow motion: this tier renders one 5 s clip and stretches it to 10 s, so the extra time adds no new action. For a 10 s video, use \u2605 Quality 5 s with Length at 10 s (two segments).",
+    "stretch": 2
    },
    "family": "ltx25",
    "version": "2.5",
@@ -1050,7 +1052,7 @@
    "vram_estimate_mb": 8000,
    "vram_note": "Measured 7.67 GiB peak - the 10s timeline never hits the 51k-token stage-2 thrash (that direct path measured 28.3 min).",
    "source": "BENCH_2026-09-23/25 temporal gate: 241f output @ native 1920x1088, interpolated mid-frames retain 94.4% anchor sharpness, peak VRAM 7.67 GiB, total 844 s incl. 241f CRF16 encode.",
-   "note": "10-SECOND config. Renders 121f with the full quality stack, then the official temporal upscaler doubles the timeline -> 241f = 10.04 s @24fps at NATIVE 1080p. Semantics (official): adds frames, not new action - plays as cinematic slow-motion (or 48fps for real-time). VIDEO ONLY (no audio track; use the post audio chain).",
+   "note": "SLOW-MOTION config, not recommended for normal shots. Renders 121f with the full quality stack, then the official temporal upscaler doubles the timeline -> 241f = 10.04 s @24fps at NATIVE 1080p. Semantics (official): adds frames, not new action - plays as slow motion (or as 5 s at 48 fps). Audio: the graph attaches the 5 s render's audio track unstretched, so it does not follow the slowed picture (read from the graph, not checked on a render; the older lab record of this path had no audio). For a longer video with new action, use Quality 5 s with more segments.",
    "comfy_root": "ComfyUI_LTX",
    "strict_frames": true,
    "strict_dims": true,

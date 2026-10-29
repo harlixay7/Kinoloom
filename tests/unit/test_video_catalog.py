@@ -26,7 +26,8 @@ def test_catalog_blocks_only_add_display_fields():
     for mid, entry in _user_registry().items():
         if entry.get("disabled"):
             continue
-        assert set(entry["catalog"]) <= {"group", "label", "detail", "rank", "recommended"}, mid
+        assert set(entry["catalog"]) <= {"group", "label", "detail", "rank", "recommended",
+                                         "caution", "stretch"}, mid
         assert vm.VIDEO_MODELS[mid]["display_name"] == entry["display_name"]
 
 
@@ -62,7 +63,22 @@ def test_an_entry_without_a_catalog_block_falls_back_to_its_family():
     assert vm.catalog_entry("x", {"family": "h3"})["group"] == "h3_draft"
     assert vm.catalog_entry("x", {"family": "wan22_ti2v_5b"})["group"] == "wan"
     c = vm.catalog_entry("x", {"family": "odd", "catalog": {"group": "nope"}})
-    assert c == {"group": "legacy", "label": "x", "detail": "", "rank": 99, "recommended": False}
+    assert c == {"group": "legacy", "label": "x", "detail": "", "rank": 99, "recommended": False,
+                 "caution": "", "stretch": 1}
+
+
+def test_the_slow_motion_tier_is_last_in_its_group_and_says_why():
+    # one 5 s clip stretched to 10 s adds no new action: it is never the
+    # obvious pick, and its caution points to Quality 5 s with more segments
+    ltx = [m["id"] for m in vm.catalog()["models"] if m["catalog"]["group"] == "ltx25"]
+    assert ltx[0] == "ltx25_s6_cq"
+    assert ltx[-1] == "ltx25_temporal_10s"
+    c = vm.catalog_entry("ltx25_temporal_10s", vm.VIDEO_MODELS["ltx25_temporal_10s"])
+    assert not any("cinematic" in vm.catalog_entry(mid, m)["label"].lower()
+                   for mid, m in vm.VIDEO_MODELS.items())
+    assert "not recommended" in c["label"] and "Quality 5 s" in c["caution"]
+    assert c["stretch"] == 2 and not c["recommended"]
+    assert vm.catalog_entry("ltx25_s6_cq", vm.VIDEO_MODELS["ltx25_s6_cq"])["stretch"] == 1
 
 
 def test_seamless_kind_gates_on_the_chain_capable_entries():

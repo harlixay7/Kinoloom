@@ -11,7 +11,7 @@
   function shotKey(s) { return s.scene + "::" + s.shot_id; }
 
   function openBatch() {
-    if (!State.pid) { toast("no project selected", true); return; }
+    if (!State.pid) { toast("Open a movie first", true); return; }
     if (cur) closeBatch();
     // options + the online fleet (for the "Run on" picker) in one go
     Promise.all([
@@ -21,7 +21,7 @@
     ]).then(function (res) {
       var r = res[0], fq = res[1];
       if (!r || !r.shots) {
-        toast("batch options unavailable", true);
+        toast("The picture settings did not load. Try again.", true);
         return;
       }
       r._workers = ((fq && fq.workers) || []).filter(function (w) {
@@ -77,22 +77,22 @@
     body.innerHTML =
       '<div class="batch-head">' +
         '<div class="batch-shotpick">' +
-          '<div class="adv-label">1 · Choose shots</div>' +
+          '<div class="adv-label">Shots</div>' +
           '<div class="batch-scenes">' +
             Object.keys(groups).map(function (scene) {
               var rows = groups[scene];
               return '<div class="batch-scene" data-scene="' + esc(scene) + '">' +
                 '<label class="toggle batch-toggle" data-tip="Select all shots in this scene">' +
-                  '<input type="checkbox" class="bs-all"> <b>' + esc(scene) +
-                  "</b> <span class=\"muted small\">(" + rows.length + " shots)</span></label>" +
+                  '<input type="checkbox" class="bs-all"><span></span><em><b>' + esc(scene) +
+                  "</b> <small class=\"muted\">" + rows.length + " shots</small></em></label>" +
                 '<div class="batch-shots">' +
                   rows.map(function (s) {
                     var k = shotKey(s);
                     return '<label class="bs-shot" data-tip="' +
                       esc((s.action || s.shot_id) || "") + '">' +
                       '<input type="checkbox" class="bs-one" data-k="' + esc(k) + '">' +
-                      "<span>" + esc(s.shot_id) + (s.ref_image ? " · ref" : "") +
-                      (s.status === "passed" ? " · done" : "") + "</span>" +
+                      "<span>" + esc(s.shot_id) + (s.ref_image ? " (has a picture)" : "") +
+                      (s.status === "passed" ? " (rendered)" : "") + "</span>" +
                     "</label>";
                   }).join("") +
                 "</div></div>";
@@ -100,7 +100,7 @@
           "</div>" +
         "</div>" +
         '<div class="batch-config">' +
-          '<div class="adv-label">2 · Generation settings</div>' +
+          '<div class="adv-label">Settings</div>' +
           '<label class="studio-field">Model' +
             '<select id="bf-model">' +
               (r.models || []).map(function (m) {
@@ -126,18 +126,18 @@
           '<div class="studio-section-head">LoRAs <span class="muted small">up to 6</span></div>' +
           '<div id="bf-loras">' + loraRow(null) + "</div>" +
           '<button class="btn small" type="button" id="bf-lora-add" ' +
-            'data-tip="Add another LoRA row (max 6)">+ add LoRA</button>' +
+            'data-tip="Add another LoRA (up to 6)">' + Icon.get("plus") + "Add a LoRA</button>" +
           '<div class="studio-section-head">Advanced</div>' +
           '<div class="studio-row">' +
             '<label class="studio-field">Steps<input id="bf-steps" type="number" min="1" max="60" placeholder="auto"></label>' +
             '<label class="studio-field">CFG<input id="bf-cfg" type="number" min="0" max="20" step="0.5" placeholder="auto"></label>' +
             '<label class="studio-field">Seed<input id="bf-seed" type="number" placeholder="random"></label>' +
           "</div>" +
-          '<label class="toggle batch-toggle" data-tip="Hires refine (SDXL models only)">' +
-            '<input type="checkbox" id="bf-hires"> Hires refine</label>' +
-          '<label class="toggle batch-toggle" data-tip="ON: no-reference shots start from the roster portrait · OFF: they render as T2V">' +
+          '<label class="toggle batch-toggle" data-tip="Upscale and sharpen each picture (SDXL models only)">' +
+            '<input type="checkbox" id="bf-hires"><span></span><em>Sharpen and upscale</em></label>' +
+          '<label class="toggle batch-toggle" data-tip="On: a shot with no start picture opens on its cast portrait. Off: it renders from the prompt alone.">' +
             '<input type="checkbox" id="bf-fallback"' +
-            (r.ref_fallback !== 0 ? " checked" : "") + "> Portrait fallback</label>" +
+            (r.ref_fallback !== 0 ? " checked" : "") + "><span></span><em>Fall back on the cast portrait</em></label>" +
           '<div class="batch-actions">' +
             '<button class="btn primary" type="button" id="bf-go">' + Icon.get("wand") + "Generate all</button>" +
             '<button class="btn danger" type="button" id="bf-stop" disabled>' + Icon.get("stop") + "Stop</button>" +
@@ -163,7 +163,7 @@
     body.querySelector("#bf-lora-add").onclick = function () {
       var box = body.querySelector("#bf-loras");
       if (box.querySelectorAll(".lr-row").length >= 6) {
-        toast("max 6 LoRAs", true); return;
+        toast("Up to 6 LoRAs", true); return;
       }
       var h = document.createElement("div");
       h.innerHTML = loraRow(null);
@@ -221,7 +221,7 @@
         var parts = o.dataset.k.split("::");
         selected.push(parts[1]);
       });
-      if (!selected.length) { toast("select at least one shot", true); return; }
+      if (!selected.length) { toast("Pick at least one shot", true); return; }
       var config = {
         model: body.querySelector("#bf-model").value,
         count: Number(body.querySelector("#bf-count").value) || 1,
@@ -249,7 +249,7 @@
         { shots: selected, config: config }, 30000).then(function (r) {
           if (!r) return;
           if (!r.ok) { toast(r.error || "start failed", true); return; }
-          toast("batch started — " + selected.length + " shots");
+          toast("Making start pictures for " + selected.length + " shots");
           body.querySelector("#bf-stop").disabled = false;
           body.querySelector("#bf-go").disabled = true;
           startPoll(body);
@@ -259,7 +259,7 @@
     body.querySelector("#bf-stop").onclick = function () {
       post("/api/projects/" + encodeURIComponent(State.pid) + "/refbatch/stop",
         {}, 30000).then(function () {
-          toast("stopping after the current image…");
+          toast("Stopping after the current picture");
         });
     };
 
@@ -297,7 +297,7 @@
                 (file ? '<img loading="lazy" src="' + esc(url) +
                         '" alt="' + esc(sid) + '">' : "") +
                 '<div class="gen-act"><span class="muted small">' +
-                esc(sid) + (v.assigned ? " · assigned" : "") + "</span></div>" +
+                esc(sid) + (v.assigned ? " (in use)" : "") + "</span></div>" +
               "</div>";
             }).join("") || '<span class="muted small">no results</span>';
             prog.textContent = a.message || "done";
@@ -316,7 +316,7 @@
   }
 
   function startBatch() {
-    if (cur && cur.running) { toast("a batch is running — stop it first", true); return; }
+    if (cur && cur.running) { toast("Pictures are still being made. Stop that first.", true); return; }
     openBatch();
   }
   /* any [data-batchrefs] button opens the batch (the Shots page header) */

@@ -195,8 +195,8 @@ def images_generate(body: ImagesBody) -> dict:
                 "error": (
                     f"{name} is missing {len(miss)} model file(s) for "
                     f"'{body.model}': {', '.join(miss[:4])}"
-                    f"{'…' if len(miss) > 4 else ''} — install them "
-                    f"from the Workers page (Install models)."
+                    f"{'…' if len(miss) > 4 else ''}. Add them "
+                    f"on the Worker PCs page (Add models)."
                 ),
             }
     return common.image_gen.start(

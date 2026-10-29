@@ -3,40 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Workspace — Kinoloom</title>
+<title>Movie — Kinoloom</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="/static/slate.css?v=4">
-<link rel="stylesheet" href="/static/project.css?v=8">
+<link rel="stylesheet" href="/static/slate.css?v=8">
+<link rel="stylesheet" href="/static/project.css?v=16">
 </head>
 <body>
 <div class="app">
 
   <aside class="side">
-    <a class="brand" href="/project" title="Kinoloom">
-      <div class="brand-mark" data-icon="clapper-play"></div>
-      <div class="brand-name">Kinoloom</div>
+    <a class="brand" href="/project#overview" title="Kinoloom">
+      <span class="brand-mark" data-icon="reel"></span>
+      <span class="brand-name">Kinoloom</span>
     </a>
-
-    <div class="proj-switch">
-      <select id="proj-select" title="Current project"></select>
-      <button class="btn small icon" id="btn-new-project" type="button" data-tip="New project" data-icon="plus"></button>
-      <button class="btn small icon ghost" id="btn-del-project" type="button" data-tip="Delete this project (rendered files stay on disk)" data-icon="trash"></button>
-    </div>
-
-    <nav id="nav"></nav>
-
-    <div class="side-foot" id="side-gpu"></div>
+    <div id="studio-switch"></div>
+    <div id="proj-slot"></div>
+    <nav id="nav" aria-label="Pages"></nav>
+    <div class="dock" id="dock"></div>
   </aside>
 
   <div class="main">
     <header class="topbar">
-      <div class="tb-title" id="tb-title">No project</div>
-      <span class="badge mode-none" id="tb-mode">—</span>
-      <span class="pill st-gray" id="tb-status">—</span>
+      <div class="tb-main">
+        <div class="tb-title" id="tb-title">No project</div>
+        <div class="tb-status" id="tb-status"></div>
+      </div>
       <span class="spacer"></span>
       <span class="tb-eta" id="tb-eta" data-tip="Estimated render time left for this project"></span>
-      <button class="btn small hidden" id="btn-stop" type="button" data-tip="Stop the director and the render queue"><span data-icon="stop"></span>Stop</button>
-      <button class="btn small primary" id="btn-run" type="button" data-verb="run"><span data-icon="play"></span><span class="lbl">Run</span></button>
+      <button class="btn hidden" id="btn-stop" type="button" data-tip="Stop the director and the render queue"><span data-icon="stop"></span>Stop</button>
+      <button class="btn primary" id="btn-run" type="button" data-verb="run"><span data-icon="play"></span><span class="lbl">Start production</span></button>
     </header>
 
     <main class="content" id="page-root">
@@ -44,27 +39,31 @@
       <section class="page" id="page-story"></section>
       <section class="page" id="page-cast"></section>
       <section class="page" id="page-shots"></section>
-      <section class="page" id="page-generate"></section>
+      <section class="page" id="page-render"></section>
       <section class="page" id="page-review"></section>
       <section class="page" id="page-film"></section>
+      <div id="step-next" class="hidden"></div>
     </main>
   </div>
 </div>
 
-<!-- ============================== NEW PROJECT MODAL ============================== -->
+<!-- ============================== NEW PROJECT ============================== -->
 <div class="np-modal hidden" id="np-modal">
-  <div class="np-card">
-    <div class="ws-modal-head">
-      <h3>New project</h3>
-      <button class="ws-modal-x" type="button" id="np-close" title="close"><span data-icon="x"></span></button>
+  <div class="np-card" role="dialog" aria-modal="true" aria-labelledby="np-h">
+    <div class="np-head">
+      <div>
+        <h3 id="np-h">New movie</h3>
+        <p>A title and the idea in a paragraph. You can change all of it later.</p>
+      </div>
+      <button class="btn ghost icon" type="button" id="np-close" title="Close"><span data-icon="x"></span></button>
     </div>
     <div class="np-form">
-      <label class="np-label">Title <input id="np-title" placeholder="The Crown of Embers" autocomplete="off"></label>
-      <label class="np-label">Idea
-        <textarea id="np-idea" rows="3" placeholder="one paragraph — the seed of the movie"></textarea>
-      </label>
+      <div class="field"><label for="np-title">Title</label>
+        <input id="np-title" placeholder="The Crown of Embers" autocomplete="off"></div>
+      <div class="field"><label for="np-idea">Idea</label>
+        <textarea id="np-idea" class="script" rows="4" placeholder="An exiled queen returns to a frozen city to take back the crown her brother stole."></textarea></div>
       <div class="np-row">
-        <label class="np-label">Genre
+        <div class="field"><label for="np-genre">Genre</label>
           <select id="np-genre">
             <option>dark fantasy</option>
             <option>sci-fi</option>
@@ -77,9 +76,8 @@
             <option>western</option>
             <option>epic</option>
             <option>drama</option>
-          </select>
-        </label>
-        <label class="np-label">Tone
+          </select></div>
+        <div class="field"><label for="np-tone">Tone</label>
           <select id="np-tone">
             <option>epic</option>
             <option>gritty</option>
@@ -88,46 +86,44 @@
             <option>hopeful</option>
             <option>melancholic</option>
             <option>suspenseful</option>
-          </select>
-        </label>
+          </select></div>
+        <div class="field"><label for="np-duration">Length (seconds)</label>
+          <input id="np-duration" type="number" min="10" max="7200" value="60"></div>
       </div>
-      <div class="np-row">
-        <label class="np-label">Duration target (s)
-          <input id="np-duration" type="number" min="10" max="600" value="60">
-        </label>
-        <label class="np-label">Mode
-          <select id="np-mode">
-            <option value="checkpoints">checkpoints — auto until approval gates</option>
-            <option value="autopilot">autopilot — no stops</option>
-            <option value="manual">manual — explicit actions only</option>
-          </select>
-        </label>
+      <div class="field">
+        <span class="f-label">How production runs</span>
+        <div class="choices np-modes" id="np-mode-cards">
+          <button class="choice on" type="button" data-mode="checkpoints"><span class="c-t">Checkpoints</span><span class="c-d">Runs on its own and stops for your approval at the checkpoints.</span></button>
+          <button class="choice" type="button" data-mode="autopilot"><span class="c-t">Autopilot</span><span class="c-d">Runs every step without stopping.</span></button>
+          <button class="choice" type="button" data-mode="manual"><span class="c-t">Manual</span><span class="c-d">Each step waits until you start it.</span></button>
+        </div>
+        <input type="hidden" id="np-mode" value="checkpoints">
       </div>
       <div class="np-actions">
         <button class="btn" type="button" id="np-cancel">Cancel</button>
-        <button class="btn primary" type="button" id="np-create">Create project</button>
+        <button class="btn primary" type="button" id="np-create">Create movie</button>
       </div>
     </div>
   </div>
 </div>
 
 <div id="modal-root"></div>
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="/static/js/api.js?v=3"></script>
-<script src="/static/js/icons.js?v=2"></script>
+<script src="/static/js/icons.js?v=5"></script>
 <script src="/static/js/dialogs.js?v=2"></script>
-<script src="/static/js/shell.js?v=2"></script>
-<script src="/static/js/ui.js?v=11"></script>
-<script src="/static/js/state.js?v=3"></script>
-<script src="/static/js/batch.js?v=4"></script>
-<script src="/static/js/pages/overview.js?v=3"></script>
-<script src="/static/js/pages/story.js?v=7"></script>
-<script src="/static/js/pages/cast.js?v=11"></script>
-<script src="/static/js/pages/shots.js?v=5"></script>
-<script src="/static/js/model-catalog.js?v=4"></script>
-<script src="/static/js/pages/generate.js?v=15"></script>
-<script src="/static/js/pages/review.js?v=4"></script>
-<script src="/static/js/pages/film.js?v=4"></script>
+<script src="/static/js/shell.js?v=3"></script>
+<script src="/static/js/ui.js?v=16"></script>
+<script src="/static/js/state.js?v=6"></script>
+<script src="/static/js/batch.js?v=5"></script>
+<script src="/static/js/pages/overview.js?v=5"></script>
+<script src="/static/js/pages/story.js?v=11"></script>
+<script src="/static/js/pages/cast.js?v=14"></script>
+<script src="/static/js/pages/shots.js?v=14"></script>
+<script src="/static/js/model-catalog.js?v=5"></script>
+<script src="/static/js/pages/generate.js?v=20"></script>
+<script src="/static/js/pages/review.js?v=6"></script>
+<script src="/static/js/pages/film.js?v=6"></script>
 </body>
 </html>

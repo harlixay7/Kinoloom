@@ -316,16 +316,16 @@
     });
     const passedAll = shots.filter(function (r) { return r.status === "passed"; }).length;
     el.innerHTML =
-      '<div class="page-slate">' +
-        "<h1>Shots</h1>" +
-        '<span class="slate-meta">' + shots.length + " shots · " + Object.keys(allScenes).length +
-          " scenes · " + passedAll + " passed</span>" +
-        '<span class="spacer"></span>' +
-        '<div class="slate-acts">' +
-          '<button class="btn small" type="button" data-batchrefs data-tip="Generate start images for many shots with one config and assign the sharpest to each">' +
-            Icon.get("image") + "Batch refs</button>" +
+      '<header class="page-intro">' +
+        '<div class="pi-text"><h1>Shots</h1>' +
+          "<p>Every shot of the shot plan, scene by scene.</p></div>" +
+        '<div class="pi-acts">' +
+          '<span class="pi-stat"><b>' + shots.length + "</b> shots in <b>" + Object.keys(allScenes).length +
+            "</b> scenes, <b>" + passedAll + "</b> passed</span>" +
+          '<button class="btn small ghost" type="button" data-batchrefs data-tip="Make start pictures for many shots with one setup, and give each shot the sharpest">' +
+            Icon.get("image") + "Start pictures</button>" +
         "</div>" +
-      "</div>" +
+      "</header>" +
       Object.keys(allScenes).sort().map(function (sceneId) {
       const rows = allScenes[sceneId];
       const meta = Object.assign({}, scenes[sceneId] || {},
@@ -333,18 +333,18 @@
       const passed = rows.filter(function (r) { return r.status === "passed"; }).length;
       const body = rows.length
         ? '<div class="shot-grid"></div>'
-        : '<div class="ws-empty"><div class="ws-empty-mark">' + Icon.get("film") + "</div><div>" +
-            'scene ' + esc(sceneId) + " — script not written yet" +
-          "</div>" +
-          '<div class="ws-empty-hint">Generate it in the Story tab (scene-by-scene panel) or paste this scene\'s AI reply</div></div>';
+        : '<div class="ws-empty slim"><div>This scene has no shots yet.</div>' +
+          '<div class="ws-empty-hint">Write them on the Story page: with the AI writer, or paste a chat AI&apos;s reply for this scene.</div></div>';
+      const slugline = [meta.location, meta.time].filter(Boolean).map(function (x) {
+        return String(x).replace(/_/g, " ").toUpperCase();
+      }).join(" - ");
       return '<section class="scene-block" data-scene="' + esc(sceneId) + '">' +
         '<header class="scene-head">' +
           '<h2 class="scene-title">' + esc(sceneId) + "</h2>" +
-          '<span class="scene-meta">' + esc(meta.location || "") +
-            (meta.time ? " · " + esc(meta.time) : "") +
-            (meta.mood ? " · " + esc(meta.mood) : "") + "</span>" +
+          (slugline ? '<span class="scene-slug">' + esc(slugline) + "</span>" : "") +
+          (meta.mood ? '<span class="scene-meta">' + esc(meta.mood) + "</span>" : "") +
           '<span class="spacer"></span>' +
-          '<span class="scene-count">' + (rows.length ? passed + "/" + rows.length + " passed" : "no shots") + "</span>" +
+          '<span class="scene-count">' + (rows.length ? passed + " of " + rows.length + " passed" : "No shots") + "</span>" +
           '<div class="scene-prog"><div class="scene-prog-fill" style="width:' +
             (rows.length ? Math.round((passed / rows.length) * 100) : 0) + '%"></div></div>' +
           (rows.length
@@ -372,13 +372,13 @@
           const r = await post("/api/projects/" + encodeURIComponent(State.pid) +
             "/cast/scenes/" + encodeURIComponent(sceneId) + "/delete", {}, 60000);
           if (r && r.ok) {
-            toast("scene deleted — " + (r.removed_shots || 0) + " shots removed");
+            toast("Scene deleted, with its " + (r.removed_shots || 0) + " shots");
             await State.refreshProject();
             await State.refreshShots();
             Bus.emit("project", State.project);
             render(el);
           } else if (r) {
-            toast("delete failed: " + (r.error || "?"), true);
+            toast("Could not delete the scene: " + (r.error || "unknown error"), true);
           }
         };
       };
@@ -405,8 +405,8 @@
       if (frame) {
         frame.innerHTML =
           '<img loading="lazy" src="' + esc(refUrl(sid, row.ref_image)) + '" alt="reference">' +
-          '<div class="sc-frame-tag ref">REF</div>' +
-          '<div class="sc-frame-tag start">START</div>';
+          '<div class="sc-frame-tag ref">Ref</div>' +
+          '<div class="sc-frame-tag start">Start</div>';
       }
     }
     const foot = card.querySelector(".sc-foot");
@@ -453,8 +453,8 @@
           "</select>"
         : "") +
       (j.power
-        ? '<label class="sc-lvl" data-tip="Power intensity: the renderer passes the reference image whose level is the highest at or below it (floor rule). Blank = story curve.">' +
-            "lvl" +
+        ? '<label class="sc-lvl" data-tip="How strong the power looks in this shot. The power picture with the closest level at or below it is used. Leave it blank to follow the story.">' +
+            "Power" +
             '<input type="number" class="sc-lvl-in" min="0" max="99" step="1" ' +
               'value="' + (j.power_level != null ? j.power_level : "") + '" placeholder="auto">' +
           "</label>"
@@ -476,14 +476,18 @@
         const refs = j.applied_references || [];
         const warns = j.reference_warnings || [];
         if (!refs.length && !warns.length) return "";
+        // "character:Sara:royal gown" reads "Sara (royal gown)",
+        // "location:Palace:the sky docks" reads "Palace, the sky docks"
         const chips = refs.map(function (r) {
-          const src = String(r.source || "?").replace(/^character:/, "")
-            .replace(/^location:/, "env:");
-          return '<span class="lora-chip refchip" data-tip="' + esc(src) + '">' +
-            esc(String(r.slot || "?")) + ": " + esc(src) + "</span>";
+          const raw = String(r.source || "?");
+          const parts = raw.replace(/^(character|location):/, "").split(":");
+          const label = /^location:/.test(raw) ? parts.join(", ")
+            : parts[0] + (parts.length > 1 ? " (" + parts.slice(1).join(", ") + ")" : "");
+          return '<span class="lora-chip refchip" data-tip="Picture ' + esc(String(r.slot || "?")) +
+            ' of the last render">' + Icon.get(/^location:/.test(raw) ? "pin" : "users") + esc(label) + "</span>";
         }).join("");
         // the warnings themselves already show on the card (refs: …)
-        return chips ? '<div class="sc-refplan" data-tip="References applied to the last render">' + chips + "</div>" : "";
+        return chips ? '<div class="sc-refplan">' + chips + "</div>" : "";
       })();
     foot.insertAdjacentElement("beforebegin", ctl);
 

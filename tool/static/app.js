@@ -103,8 +103,8 @@ function toast(msg, isErr = false) {
 /* The sidebar is the shared shell nav (js/shell.js); this shell's pages are
    hash routes (/studio-tools#videostudio). */
 const PAGE_LOADERS = {
-  settings: () => loadSettings(),
-  training: () => refreshDatasets(),
+  settings: () => { loadSettings(); setSettingsPane(SET_PANE); },
+  casting: () => refreshDatasets(),
   videos: () => refreshVideos(),
   images: () => imagesPage(),
   videostudio: () => videoStudioPage(),
@@ -121,7 +121,8 @@ function go(page) {
 window.addEventListener("hashchange", () => go(location.hash.replace(/^#/, "")));
 
 /* --------------------------------------------------------- training */
-/* New 5-pane Training UI (Datasets | Generate | Curate | Train | Models) */
+/* Casting: Generate looks | Pick the best | All batches, and the legacy
+   Wan 2.2 LoRA panes (Train | Models), reached from the page foot. */
 
 /* ---- pane switching ---- */
 document.querySelectorAll("#train-tabs .ds-tab").forEach((t) => {
@@ -129,8 +130,10 @@ document.querySelectorAll("#train-tabs .ds-tab").forEach((t) => {
     const pane = t.dataset.pane;
     document.querySelectorAll("#train-tabs .ds-tab").forEach((x) =>
       x.classList.toggle("active", x === t));
-    document.querySelectorAll("#page-training .ds-pane").forEach((p) =>
+    document.querySelectorAll("#page-casting .ds-pane").forEach((p) =>
       p.classList.toggle("active", p.id === "pane-" + pane));
+    // the Wan 2.2 LoRA tabs show only while one of their panes is open
+    $("train-tabs").classList.toggle("legacy-open", pane === "train" || pane === "models");
     if (pane === "datasets") refreshDatasets();
     if (pane === "curate") loadCuration();
     if (pane === "train") { refreshTrainDatasets(); refreshRuns(); }
@@ -141,10 +144,16 @@ function trainGo(pane) {
   const tab = document.querySelector(`#train-tabs [data-pane="${pane}"]`);
   if (tab) tab.click();
 }
+document.querySelectorAll("#casting-legacy [data-legacy]").forEach((b) => {
+  b.onclick = () => { trainGo(b.dataset.legacy); document.querySelector(".content").scrollTo({ top: 0, behavior: "smooth" }); };
+});
 
 /* ======================= DATASETS PANE ======================= */
 let CUR_DATASETS = [];
 let CUR_FILTER_TYPE = "";
+// what each kind of batch is, in words
+const DS_KIND = { face: "character", environment: "place", power: "power", weapon: "weapon",
+                  anatomy: "anatomy LoRA", quality: "quality LoRA" };
 
 $("ds-new-dataset").onclick = () => {
   $("wiz-name").value = "";
@@ -160,7 +169,7 @@ $("ds-imp-go").onclick = async () => {
     type: $("ds-imp-type").value, name: $("ds-imp-name").value.trim(),
     urls, license: "",
   });
-  toast(JSON.stringify(r.ok ? "import started" : r), !r.ok);
+  toast(r.ok ? "Importing the pictures" : "The import did not start: " + (r.error || JSON.stringify(r)), !r.ok);
   $("ds-import-modal").classList.add("hidden");
   refreshDatasets();
 };
@@ -175,11 +184,12 @@ async function refreshDatasets() {
   (jr.jobs || []).forEach((j) => {
     runByKey[j.dataset_type + "/" + j.dataset_name] = j;
   });
-  $("ds-total").textContent = CUR_DATASETS.length + " dataset" +
-    (CUR_DATASETS.length === 1 ? "" : "s");
+  $("ds-total").textContent = CUR_DATASETS.length + " batch" +
+    (CUR_DATASETS.length === 1 ? "" : "es");
+  fillCurPick();
   const el = $("ds-grid");
   if (!CUR_DATASETS.length) {
-    el.innerHTML = `<div class="ds-empty"><span class="big">${Icon.get("box")}</span>No datasets yet.<br>Hit "+ New dataset" and generate your first batch.</div>`;
+    el.innerHTML = `<div class="ds-empty"><span class="big">${Icon.get("box")}</span><b>No batches yet</b>Make looks under Generate looks and they show up here.</div>`;
     return;
   }
   el.innerHTML = CUR_DATASETS.map((d) => {
@@ -190,10 +200,12 @@ async function refreshDatasets() {
     const st = run ? run.status : "";
     const resumable = run && ["partial", "failed", "canceled"].includes(st) &&
       (run.done || 0) < (run.total || 0);
-    const badgeTxt = d.generation_status ||
-      (run && ["partial", "canceled"].includes(st)
-        ? `${st} ${run.done || 0}/${run.total || 0}` : "");
-    return `<div class="ds-card" data-name="${escapeHtml(d.name)}" data-type="${d.type}">
+    // "active 3/40" from the server, or the last run that stopped early
+    const gs = /^(\w+) (\d+)\/(\d+)$/.exec(d.generation_status || "");
+    const badgeTxt = gs ? (gs[1] === "active" ? "Making " : "Waiting, ") + gs[2] + " of " + gs[3]
+      : st === "canceled" ? `Stopped at ${run.done || 0} of ${run.total || 0}`
+      : st === "partial" ? `Partly made, ${run.done || 0} of ${run.total || 0}` : "";
+    return `<div class="ds-card batch-card" data-name="${escapeHtml(d.name)}" data-type="${d.type}">
       <div class="ds-menu">
         <button title="Import URLs" data-act="import">${Icon.get("upload")}</button>
         <button title="Export zip" data-act="export">${Icon.get("download")}</button>
@@ -206,29 +218,29 @@ async function refreshDatasets() {
       <div class="poster" style="aspect-ratio:auto;height:120px" data-open>
         ${d.thumbnail
           ? `<img loading="lazy" src="/api/dataset_img?type=${d.type}&name=${encodeURIComponent(d.name)}&file=${encodeURIComponent(d.thumbnail)}" style="width:100%;height:100%;object-fit:cover">`
-          : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted)">no images yet</div>`}
+          : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim)">No pictures yet</div>`}
         ${badgeTxt
           ? `<span class="ds-badge" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.7);color:var(--amber)">${escapeHtml(badgeTxt)}</span>`
           : ""}
-        ${d.ready
-          ? `<span class="ds-badge" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:var(--green)">ready</span>`
+        ${d.ready && ["anatomy", "quality"].includes(d.type)
+          ? `<span class="ds-badge" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:var(--green)" title="At least 5 kept: enough to train a LoRA">enough to train</span>`
           : ""}
       </div>
       <div class="body">
-        <div class="name">${escapeHtml(d.name)} <span class="ds-badge ${d.type}">${d.type}</span></div>
+        <div class="name">${escapeHtml(d.name)} <span class="ds-badge ${d.type}">${escapeHtml(DS_KIND[d.type] || d.type)}</span></div>
         <div class="meta">
-          <span class="ds-meta-txt">${d.kept} kept · ${d.rejected || 0} rejected · ${total} total</span>
+          <span class="ds-meta-txt">${d.kept} kept, ${d.rejected || 0} rejected, of ${total}</span>
+          <span class="ds-meta-txt">${escapeHtml(d.last_modified || "")}</span>
         </div>
-        <div class="meta">${models || `<span class="ds-meta-txt">models: —</span>`}</div>
-        <div class="meta"><span class="ds-meta-txt">${escapeHtml(d.last_modified || "")}</span></div>
+        ${models ? `<div class="meta">${models}</div>` : ""}
         <div class="ds-actions">
-          <button class="ds-btn primary tiny" data-open>Open</button>
-          ${resumable ? `<button class="ds-btn warn tiny" data-continue data-run="${run.id}">Continue the batch</button>` : ""}
+          <button class="ds-btn primary tiny" data-open>Pick the best</button>
+          ${resumable ? `<button class="ds-btn warn tiny" data-continue data-run="${run.id}">Finish the batch</button>` : ""}
           ${["face", "environment", "power", "weapon"].includes(d.type)
-            ? `<button class="ds-btn tiny" data-cast data-tip="Create/update the Bible entry for this dataset: identity text + framing plates + loadouts (face), place-tagged refs (environment), level-tagged refs (power), design refs (weapon)">Send to cast</button>`
+            ? `<button class="ds-btn tiny" data-cast data-tip="Add it to a movie's Cast &amp; World: a character's description, looks, outfits and weapons, a place's pictures, a power's levels, a weapon's design">Send to Cast &amp; World</button>`
             : ""}
-          <button class="ds-btn tiny" data-train>Train</button>
-          <button class="ds-btn tiny" data-more>Generate more</button>
+          ${["anatomy", "quality"].includes(d.type) ? `<button class="ds-btn tiny" data-train data-tip="Train a Wan 2.2 LoRA on it (legacy)">Train</button>` : ""}
+          <button class="ds-btn tiny" data-more>Make more</button>
         </div>
       </div>
     </div>`;
@@ -252,7 +264,7 @@ async function refreshDatasets() {
     const cb = card.querySelector("[data-continue]");
     if (cb) cb.onclick = async () => {
       const rr = await post("/api/training/jobs/retry", { run_id: +cb.dataset.run });
-      toast(rr.ok ? "batch continued — missing images only" : "error: " + rr.error, !rr.ok);
+      toast(rr.ok ? "Finishing the batch: only the missing pictures" : "It did not start: " + rr.error, !rr.ok);
       refreshDatasets();
     };
     card.querySelectorAll(".ds-menu button").forEach((b) => {
@@ -1303,7 +1315,7 @@ function wizMatrixHtml() {
           '<span class="ds-meta-txt wzm-look-total" data-tip="variants × multiplier: 1 unarmed + N armed, repeated by the count">' +
             (1 + (r.weapons || []).length) + " × " + Math.max(1, r.count || 1) + " = " +
             ((1 + (r.weapons || []).length) * Math.max(1, r.count || 1)) + " img</span>" +
-          '<label class="toggle" data-tip="include this look"><input type="checkbox" class="wzm-on" ' + (r.on !== false ? "checked" : "") + "></label>" +
+          '<label class="toggle" data-tip="Include this look"><input type="checkbox" class="wzm-on" ' + (r.on !== false ? "checked" : "") + "><span></span></label>" +
           '<button class="btn small ghost" type="button" data-wzrm2="' + i + '" data-tip="remove this look">' + Icon.get("x") + "</button>" +
         "</div>").join("") ||
           ('<span class="ds-meta-txt">no looks yet — add one. Until then the classic Outfits / Wardrobe axes drive the batch.</span>' +
@@ -1417,7 +1429,7 @@ function renderWizVariation() {
           ? opts.map((o) => `<span class="ds-chip ${sel.includes(o) ? "on" : ""}" data-v="${escapeHtml(o)}">${escapeHtml(o)}</span>`).join("")
           : '<span class="ds-meta-txt">(options load after restart — defaults are active)</span>'}
       </div>
-      <label class="toggle" title="lock = use first value only"><input type="checkbox" class="axis-lock" ${a.locked ? "checked" : ""}><span>lock</span></label>
+      <label class="toggle" title="Locked: every picture uses the first value"><input type="checkbox" class="axis-lock" ${a.locked ? "checked" : ""}><span></span><em>Lock</em></label>
     </div>`;
   }).join("");
   el.querySelectorAll("[data-axis]").forEach((row) => {
@@ -1589,7 +1601,7 @@ function renderWizModels() {
       <span class="ds-meta-txt wiz-m-desc">${escapeHtml((mi.description || "").slice(0, 70))}</span>
       <button class="ds-btn tiny wiz-m-del">${Icon.get("x")}</button>
       ${lorasOk ? `<button class="ds-btn tiny wiz-lora-toggle">LoRAs ${loras.length ? "(" + loras.length + ")" : ""}</button>` : ""}
-      ${hiresOk ? `<label class="toggle" style="margin-left:4px"><input type="checkbox" class="wiz-hires" ${row.hires ? "checked" : ""}><span style="font-size:11px">Hires</span></label>` : ""}
+      ${hiresOk ? `<label class="toggle" style="margin-left:4px"><input type="checkbox" class="wiz-hires" ${row.hires ? "checked" : ""}><span></span><em>Sharpen</em></label>` : ""}
       ${lorasOk && row.loraOpen ? loraBox : ""}
     </div>`;
   }).join("");
@@ -1627,7 +1639,7 @@ function renderWizModels() {
     if (add) add.onclick = () => {
       const used = new Set((WIZ_MODELS[i].loras || []).map((l) => l.file));
       const free = Object.keys(WIZ_LORAS).filter((f) => !used.has(f));
-      if (!free.length) return toast("all LoRAs already in use", true);
+      if (!free.length) return toast("Every LoRA is already added", true);
       WIZ_MODELS[i].loras = WIZ_MODELS[i].loras || [];
       WIZ_MODELS[i].loras.push({ file: free[0], strength: WIZ_LORAS[free[0]].strength || 0.7 });
       renderWizModels();
@@ -1927,7 +1939,7 @@ $("wiz-stop").onclick = async () => {
 };
 
 setInterval(async () => {
-  if (!document.getElementById("page-training").classList.contains("active")) return;
+  if (!document.getElementById("page-casting").classList.contains("active")) return;
   if (!WIZ_RUN_ID) return;
   const s = await api("/api/training/jobs/" + WIZ_RUN_ID);
   const j = (s && s.job) || {};
@@ -1989,11 +2001,40 @@ $("cur-source-filter").onchange = () => loadCuration();
 if ($("cur-cat-filter")) $("cur-cat-filter").onchange = () => loadCuration();
 
 $("btn-cur-load").onclick = loadCuration;
+/* the batch picker: every batch, by name and kind */
+function fillCurPick() {
+  const sel = $("cur-pick");
+  if (!sel) return;
+  const cur = $("cur-type").value + "/" + $("cur-name").value;
+  sel.innerHTML = '<option value="">' + (CUR_DATASETS.length ? "Pick a batch" : "No batches yet") + "</option>" +
+    CUR_DATASETS.map((d) => {
+      const v = d.type + "/" + d.name;
+      return `<option value="${escapeHtml(v)}"${v === cur ? " selected" : ""}>${escapeHtml(d.name)} (${escapeHtml(DS_KIND[d.type] || d.type)})</option>`;
+    }).join("");
+}
+$("cur-pick").onchange = () => {
+  const v = $("cur-pick").value;
+  const i = v.indexOf("/");
+  $("cur-type").value = i > 0 ? v.slice(0, i) : "";
+  $("cur-name").value = i > 0 ? v.slice(i + 1) : "";
+  loadCuration();
+};
 async function loadCuration() {
   const t = $("cur-type").value, n = $("cur-name").value;
+  fillCurPick();
+  if (!n) {
+    curDataset = null;
+    $("curation-grid").innerHTML = `<div class="ds-empty"><span class="big">${Icon.get("grid")}</span><b>Pick a batch</b>` +
+      (CUR_DATASETS.length ? "Choose one above to go through its pictures." : "Batches you make under Generate looks show up here.") + "</div>";
+    return;
+  }
   const r = await api("/api/training/datasets");
   const d = (r.datasets || []).find((x) => x.type === t && x.name === n);
-  if (!d) { $("curation-grid").innerHTML = "<div class='ds-empty'>dataset not found</div>"; return; }
+  if (!d) {
+    curDataset = null;
+    $("curation-grid").innerHTML = `<div class="ds-empty"><b>That batch is gone</b>Pick another one above.</div>`;
+    return;
+  }
   curDataset = d;
   $("cur-caption").value = d.caption || "";
   $("cur-license").value = d.license || "";
@@ -2035,7 +2076,7 @@ async function loadCuration() {
   const catSel = $("cur-cat-filter");
   if (catSel) {
     const cur = catSel.value;
-    catSel.innerHTML = '<option value="">All categories</option>' +
+    catSel.innerHTML = '<option value="">All looks</option>' +
       [...cats].sort().map((c) => `<option value="${escapeHtml(c)}"${c === cur ? " selected" : ""}>${escapeHtml(c.replace(":", ": "))}</option>`).join("");
   }
   const catFilter = catSel ? catSel.value : "";
@@ -2070,31 +2111,28 @@ async function loadCuration() {
       lastGroup = group;
     }
     const catLabel = cat.outfit
-      ? (cat.weapon ? cat.outfit + " · " + cat.weapon : cat.outfit + " · unarmed")
-      : (cat.plate ? "plate: " + cat.plate
-        : (cat.place ? "place: " + cat.place
-          : (cat.level ? "power level " + cat.level : "")));
-    cells.push(`<div class="ds-card" data-file="${escapeHtml(c)}">
-      <div style="position:relative">
+      ? cat.outfit + (cat.weapon ? ", " + cat.weapon : ", unarmed")
+      : (cat.plate || cat.place || (cat.level ? "power level " + cat.level : ""));
+    cells.push(`<div class="ds-card cand${keep === true ? " kept" : keep === false ? " rejected" : ""}" data-file="${escapeHtml(c)}">
+      <div class="cand-pic">
         <img loading="lazy" src="/api/dataset_img?type=${t}&name=${encodeURIComponent(n)}&file=${encodeURIComponent(c)}"
-          style="width:100%;aspect-ratio:1/1;object-fit:cover;display:block;cursor:zoom-in" data-zoom="${escapeHtml(c)}" title="click to zoom">
-        <span class="ds-badge" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65)">${escapeHtml(model || "?")}</span>
-        <span class="ds-badge" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.65)">${src === "imported" ? "imported" : "gen"}</span>
-        ${catLabel ? `<span class="ds-badge" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:#e8b04b" title="recorded category">${escapeHtml(catLabel)}</span>` : ""}
+          data-zoom="${escapeHtml(c)}" title="Click to zoom" alt="">
+        <span class="ds-badge cand-tag">${escapeHtml(model || "?")}${src === "imported" ? ", imported" : ""}</span>
+        ${catLabel ? `<span class="ds-badge cand-look" title="The look it was made for">${escapeHtml(catLabel)}</span>` : ""}
+        <label class="cand-sel" title="Select"><input type="checkbox" class="del-chk" value="${escapeHtml(c)}" aria-label="Select"><span>${Icon.get("check")}</span></label>
       </div>
       <div class="body">
         <div class="name">${escapeHtml(c.split("/").pop())}</div>
         <div class="ds-actions">
           <button class="ds-btn tiny ${keep === true ? "primary" : ""}" data-k="1">Keep</button>
           <button class="ds-btn tiny danger ${keep === false ? "on" : ""}" data-k="0">Reject</button>
-          <button class="ds-btn tiny" data-meta="${escapeHtml(c)}" title="inspect metadata">i</button>
-          <label class="toggle" style="margin-left:auto"><input type="checkbox" class="del-chk" value="${escapeHtml(c)}"><span>sel</span></label>
+          <button class="ds-btn tiny icon" data-meta="${escapeHtml(c)}" title="How it was made" aria-label="How it was made" style="margin-left:auto">${Icon.get("info")}</button>
         </div>
       </div>
     </div>`);
   }
   $("curation-grid").innerHTML = cells.join("") ||
-    "<div class='ds-empty'><span class='big'>" + Icon.get("image") + "</span>No images match this filter.</div>";
+    "<div class='ds-empty'><span class='big'>" + Icon.get("image") + "</span><b>No pictures match</b>Try another filter.</div>";
   delSelected.clear();
   $("cur-sel-count").textContent = "0 selected";
   document.querySelectorAll(".del-chk").forEach((chk) => {
@@ -2118,7 +2156,7 @@ async function loadCuration() {
       e.stopPropagation();
       const c = b.dataset.meta;
       const m = await post("/api/training/images/meta", { type: t, name: n, file: c });
-      $("cur-meta-body").textContent = m.ok ? JSON.stringify(m.meta, null, 2) : "no provenance record — imported before the provenance system";
+      $("cur-meta-body").textContent = m.ok ? JSON.stringify(m.meta, null, 2) : "No record of how this picture was made: it came in before the studio kept one.";
       $("cur-meta-modal").classList.remove("hidden");
     };
   });
@@ -2209,59 +2247,60 @@ $("cur-meta-modal").addEventListener("click", (e) => {
   if (e.target === $("cur-meta-modal")) $("cur-meta-modal").classList.add("hidden");
 });
 $("btn-cur-regen-sel").onclick = async () => {
-  if (!curDataset || !delSelected.size) return toast("select candidates first", true);
-  const okRegen = await Dlg.confirm({ title: "Regenerate", message: "Regenerate " + delSelected.size + " selected image(s) with their original model/prompt/seed?", okLabel: "Regenerate" });
+  if (!curDataset || !delSelected.size) return toast("Select some pictures first", true);
+  const okRegen = await Dlg.confirm({ title: "Make these again?", message: "Each of the " + delSelected.size + " selected pictures is made again with its own model, prompt and seed.", okLabel: "Make again" });
   if (!okRegen) return;
   let okCount = 0;
   for (const f of delSelected) {
     const r = await post("/api/training/images/regenerate", { type: curDataset.type, name: curDataset.name, file: f });
     if (r.ok) okCount++;
   }
-  toast(okCount + " regeneration jobs queued");
+  toast(okCount + (okCount === 1 ? " picture" : " pictures") + " queued to be made again");
   delSelected.clear();
 };
 $("btn-cur-keep-sel").onclick = () => bulkCurate(true);
 $("btn-cur-reject-sel").onclick = () => bulkCurate(false);
 async function bulkCurate(keep) {
-  if (!curDataset || !delSelected.size) return toast("select candidates first", true);
+  if (!curDataset || !delSelected.size) return toast("Select some pictures first", true);
   const keepMap = {};
   delSelected.forEach((c) => { keepMap[c] = keep; });
   await post("/api/training/curate", { type: curDataset.type, name: curDataset.name, keep: keepMap });
-  toast(keep ? "kept" : "rejected", false);
+  toast(keep ? "Kept" : "Rejected", false);
   delSelected.clear();
   loadCuration();
 }
 $("btn-cur-save").onclick = async () => {
-  if (!curDataset) return toast("open a dataset first", true);
+  if (!curDataset) return toast("Pick a batch first", true);
   await post("/api/training/curate", { type: curDataset.type, name: curDataset.name, caption: $("cur-caption").value, license: $("cur-license").value });
-  toast("curation saved");
+  toast("Caption and licence saved");
 };
 $("btn-cur-autofilter").onclick = async () => {
+  if (!curDataset) return toast("Pick a batch first", true);
   const r = await post("/api/training/autofilter", { type: $("cur-type").value, name: $("cur-name").value });
-  toast(r.ok ? `auto-filter: kept ${r.kept ?? "?"} of ${r.scored ?? "?"}` : "auto-filter error: " + (r.error || JSON.stringify(r)), !r.ok);
+  toast(r.ok ? `Kept ${r.kept ?? "?"} of ${r.scored ?? "?"} pictures` : "Auto-pick failed: " + (r.error || JSON.stringify(r)), !r.ok);
   loadCuration();
 };
 $("btn-cur-clear").onclick = async () => {
-  if (!curDataset) return toast("open a dataset first", true);
-  const okClear = await Dlg.confirm({ title: "Clear dataset", message: "Clear ALL candidates of <b>" + escapeHtml(curDataset.name) + "</b>?", okLabel: "Clear", danger: true });
+  if (!curDataset) return toast("Pick a batch first", true);
+  const okClear = await Dlg.confirm({ title: "Clear this batch?", message: "Every picture in <b>" + escapeHtml(curDataset.name) + "</b> is removed.", okLabel: "Clear the batch", danger: true });
   if (!okClear) return;
   await post("/api/training/dataset/clear", { type: curDataset.type, name: curDataset.name });
-  toast("cleared");
+  toast("Batch cleared");
   refreshDatasets();
   loadCuration();
 };
 $("btn-del-selected").onclick = async () => {
-  if (!curDataset || !delSelected.size) return toast("select candidates first", true);
-  const okDel = await Dlg.confirm({ title: "Delete files", message: "Delete " + delSelected.size + " selected files?", okLabel: "Delete", danger: true });
+  if (!curDataset || !delSelected.size) return toast("Select some pictures first", true);
+  const okDel = await Dlg.confirm({ title: "Delete these pictures?", message: "The " + delSelected.size + " selected pictures are deleted from the batch.", okLabel: "Delete", danger: true });
   if (!okDel) return;
   const r = await post("/api/training/dataset/delete_files", { type: curDataset.type, name: curDataset.name, files: [...delSelected] });
   delSelected.clear();
-  toast(r.removed + " deleted");
+  toast(r.removed + (r.removed === 1 ? " picture" : " pictures") + " deleted");
   refreshDatasets();
   loadCuration();
 };
 $("btn-train-cta").onclick = () => {
-  if (!curDataset) return toast("open a dataset first", true);
+  if (!curDataset) return toast("Pick a batch first", true);
   openTrainConfig(curDataset.type, curDataset.name, curDataset.kept || 0);
 };
 
@@ -2335,7 +2374,7 @@ $("btn-train-start").onclick = async () => {
 };
 $("btn-train-stop").onclick = async () => { await post("/api/training/stop"); refreshRuns(); };
 setInterval(async () => {
-  if (!document.getElementById("page-training").classList.contains("active")) return;
+  if (!document.getElementById("page-casting").classList.contains("active")) return;
   const tp = document.getElementById("pane-train");
   if (!tp || !tp.classList.contains("active")) return;
   refreshRuns();
@@ -2553,21 +2592,28 @@ let VID_DATA = { films: [], scenes: [], drafts: [], raw: [] };
 let VID_CAT = "all";
 let VID_QUERY = "";
 
+const VID_SECTIONS = [["films", "Films"], ["scenes", "Scenes"], ["videostudio", "Video Studio"],
+                      ["drafts", "Drafts"], ["raw", "Raw renders"]];
+/* "00:00:35" reads "0:35", "00:12:04" reads "12:04" */
+function vidDuration(d) {
+  const m = /^(\d+):(\d\d):(\d\d)/.exec(String(d || ""));
+  if (!m) return String(d || "");
+  const h = parseInt(m[1], 10);
+  if (!h && m[2] === "00" && m[3] === "00") return "";
+  return h ? h + ":" + m[2] + ":" + m[3] : parseInt(m[2], 10) + ":" + m[3];
+}
 function vidCard(item, cat) {
-  const label = { films: "Film", scenes: "Scene", drafts: "Draft", raw: "Raw",
-                  videostudio: "Video Studio" }[cat] || cat;
   return `<div class="ds-card" data-cat="${cat}" data-name="${escapeHtml(item.name)}">
     <div class="poster" data-play="${cat}" data-file="${escapeHtml(item.name)}">
-      <img loading="lazy" src="/api/video/poster?folder=${cat}&name=${encodeURIComponent(item.name)}" alt="">
+      <img loading="lazy" src="/api/video/poster?folder=${cat}&name=${encodeURIComponent(item.name)}" alt="" onerror="this.style.display='none'">
       <div class="play">${Icon.get("play")}</div>
+      ${vidDuration(item.duration) ? `<span class="dur">${escapeHtml(vidDuration(item.duration))}</span>` : ""}
     </div>
     <div class="body">
       <div class="name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
       <div class="meta">
-        <span class="ds-badge ${cat}">${label}</span>
-        ${item.duration ? `<span class="ds-meta-txt">${item.duration}</span>` : ""}
-        <span class="ds-meta-txt">${item.size_mb} MB</span>
         <span class="ds-meta-txt">${escapeHtml(item.date)}</span>
+        <span class="ds-meta-txt">${item.size_mb} MB</span>
       </div>
       <div class="vid-acts">
         <a class="btn small ghost icon" href="/api/video/${cat}/${encodeURIComponent(item.name)}" download data-tip="Download">${Icon.get("download")}</a>
@@ -2579,19 +2625,33 @@ function vidCard(item, cat) {
     </div>
   </div>`;
 }
+const VID_EMPTY = {
+  films: "Films you put together on the Film page land here.",
+  scenes: "Scenes cut from rendered shots land here.",
+  videostudio: "Clips and chains from Video Studio land here.",
+  drafts: "A quick-play copy of each finished shot lands here.",
+  raw: "Shot renders before finishing land here.",
+};
 function vidGrid(list, cat) {
   if (!list.length) {
-    return `<div class="ds-empty"><span class="big">${Icon.get("video")}</span>Nothing here yet.</div>`;
+    return `<div class="ds-empty"><span class="big">${Icon.get("video")}</span><b>Nothing here yet</b>${VID_EMPTY[cat] || ""}</div>`;
   }
   return `<div class="ds-grid">${list.map((i) => vidCard(i, cat)).join("")}</div>`;
 }
+/* the counts ride on the tabs */
 function renderVidStats() {
-  const s = VID_DATA;
-  const stat = (k, label) =>
-    `<div class="ds-stat"><div class="v">${s[k].length}</div><div class="k">${label}</div></div>`;
-  $("vid-stats").innerHTML =
-    stat("films", "Films") + stat("scenes", "Scenes") +
-    stat("drafts", "Drafts") + stat("raw", "Raw renders");
+  let total = 0;
+  document.querySelectorAll("#vid-tabs .ds-tab").forEach((t) => {
+    const cat = t.dataset.cat;
+    const n = cat === "all" ? null : (VID_DATA[cat] || []).length;
+    if (n != null) total += n;
+    let c = t.querySelector(".sec-count");
+    if (!c) { c = document.createElement("span"); c.className = "sec-count"; t.appendChild(c); }
+    c.textContent = n == null ? "" : n;
+    c.hidden = n == null;
+  });
+  const all = document.querySelector('#vid-tabs [data-cat="all"] .sec-count');
+  if (all) { all.textContent = total; all.hidden = false; }
 }
 function vidFiltered(cat) {
   let list = cat === "all" ? [] : (VID_DATA[cat] || []);
@@ -2610,24 +2670,26 @@ function vidFiltered(cat) {
   });
   return list;
 }
+/* All: the newest four of each kind that has any */
 function renderVidAll() {
   const q = VID_QUERY;
   let html = "";
-  const sections = [["films", "Recent Films"], ["drafts", "Recent Drafts"],
-                    ["scenes", "Recent Scenes"], ["raw", "Recent Raw Renders"],
-                    ["videostudio", "Recent Video Studio Renders"]];
-  for (const [cat, title] of sections) {
+  for (const [cat, title] of VID_SECTIONS) {
     let list = (VID_DATA[cat] || []).slice();
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q));
-    list = list.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
-    html += `<div class="ds-section-title">${title} <span class="ds-meta-txt">(${VID_DATA[cat].length})</span></div>`;
-    if (list.length) {
-      html += `<div class="ds-grid">${list.map((i) => vidCard(i, cat)).join("")}</div>`;
-    } else {
-      html += `<div class="ds-empty"><span class="big">${Icon.get("video")}</span>No ${title.toLowerCase()} yet.</div>`;
-    }
+    if (!list.length) continue;
+    const more = list.length > 4;
+    list = list.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+    html += `<div class="ds-section-title">${title}<span class="sec-count">${(VID_DATA[cat] || []).length}</span>` +
+      (more ? `<button class="linkish vid-more" type="button" data-more="${cat}">See all</button>` : "") + "</div>" +
+      `<div class="ds-grid">${list.map((i) => vidCard(i, cat)).join("")}</div>`;
   }
-  $("vid-content").innerHTML = html || `<div class="ds-empty"><span class="big">${Icon.get("video")}</span>No matches for "${escapeHtml(q)}".</div>`;
+  $("vid-content").innerHTML = html || (q
+    ? `<div class="ds-empty"><span class="big">${Icon.get("search")}</span><b>No matches</b>Nothing is called "${escapeHtml(q)}".</div>`
+    : `<div class="ds-empty"><span class="big">${Icon.get("video")}</span><b>No videos yet</b>Films, scenes and Video Studio clips land here once they render.</div>`);
+  $("vid-content").querySelectorAll("[data-more]").forEach((b) => {
+    b.onclick = () => { const t = document.querySelector(`#vid-tabs [data-cat="${b.dataset.more}"]`); if (t) t.click(); };
+  });
 }
 async function upscaleOnWorker(folder, name) {
   let fleet = [];
@@ -2641,7 +2703,7 @@ async function upscaleOnWorker(folder, name) {
     });
   } catch (e) { /* no fleet */ }
   if (!fleet.length) {
-    toast("no online worker with the upscale role — set one up on the Workers page", true);
+    toast("No worker PC with the upscale role is online. Set one up under Worker PCs.", true);
     return;
   }
   const choice = await Dlg.choose({
@@ -2654,18 +2716,18 @@ async function upscaleOnWorker(folder, name) {
     })).concat([{ label: "Cancel", value: null }]),
   });
   if (!choice) return;
-  toast("upscaling " + name + " on " + choice + " — a few minutes…");
+  toast("Upscaling " + name + " on " + choice + ". This takes a few minutes.");
   try {
     const r = await post("/api/upscale/file",
       { folder: folder, name: name, worker: choice }, 7200000);
     if (r && r.ok) {
-      toast("upscaled → " + r.name);
+      toast("Upscaled: " + r.name);
       if (typeof refreshVideos === "function") refreshVideos();
     } else {
-      toast((r && r.error) || "upscale failed", true);
+      toast((r && r.error) || "The upscale failed", true);
     }
   } catch (e) {
-    toast("upscale failed: " + e.message, true);
+    toast("The upscale failed: " + e.message, true);
   }
 }
 
@@ -2685,7 +2747,7 @@ function renderVidCategory(cat) {
   $("vid-content").innerHTML = vidGrid(list, cat);
   if (!list.length && VID_QUERY) {
     $("vid-content").innerHTML =
-      `<div class="ds-empty"><span class="big">${Icon.get("video")}</span>No matches for "${escapeHtml(VID_QUERY)}".</div>`;
+      `<div class="ds-empty"><span class="big">${Icon.get("search")}</span><b>No matches</b>Nothing is called "${escapeHtml(VID_QUERY)}".</div>`;
   }
 }
 document.querySelectorAll("#vid-tabs .ds-tab").forEach((t) => {
@@ -2715,11 +2777,11 @@ document.addEventListener("click", (e) => {
   const del = e.target.closest("[data-del]");
   if (del) {
     const cat = del.dataset.cat || "raw";
-    Dlg.confirm({ title: "Delete video", message: "Delete <b>" + escapeHtml(del.dataset.del) + "</b> from " + escapeHtml(cat) + "?", okLabel: "Delete", danger: true })
+    Dlg.confirm({ title: "Delete this video?", message: "<b>" + escapeHtml(del.dataset.del) + "</b> is removed from this PC.", okLabel: "Delete", danger: true })
       .then((ok) => {
         if (ok) post("/api/videos/delete", { folder: cat, name: del.dataset.del })
           .then((r) => {
-            if (r && r.ok === false) toast(r.error || "delete failed", true);
+            if (r && r.ok === false) toast(r.error || "The video was not deleted", true);
             refreshVideos();
           });
       });
@@ -2759,7 +2821,9 @@ document.addEventListener("keydown", (e) => {
 document.querySelectorAll("#set-tabs button").forEach((b) => {
   b.addEventListener("click", () => setSettingsPane(b.dataset.pane));
 });
+let SET_PANE = "models";         // the pane Settings opens on
 function setSettingsPane(pane) {
+  SET_PANE = pane;
   document.querySelectorAll("#set-tabs button").forEach((b) =>
     b.classList.toggle("on", b.dataset.pane === pane));
   document.querySelectorAll("#page-settings .set-pane").forEach((p) =>
@@ -2790,7 +2854,7 @@ $("btn-settings-token-save").onclick = () => {
     toast("API token saved");
   } else {
     // "********" is the redaction placeholder from GET /api/settings
-    toast("that is the redacted placeholder — paste the real token from tool/settings.yaml", true);
+    toast("That is the hidden placeholder. Paste the real token from tool/settings.yaml.", true);
   }
 };
 $("btn-settings-token-clear").onclick = () => {
@@ -2821,20 +2885,20 @@ async function settingsWithCurrentFolders(doc) {
 $("btn-settings-format").onclick = () => {
   try {
     $("settings-yaml").value = JSON.stringify(JSON.parse($("settings-yaml").value), null, 2);
-    toast("formatted");
-  } catch (e) { toast("invalid JSON: " + e.message, true); }
+    toast("Tidied");
+  } catch (e) { toast("That is not valid JSON: " + e.message, true); }
 };
 $("btn-settings-save").onclick = async () => {
   let parsed;
   try { parsed = JSON.parse($("settings-yaml").value); }
-  catch (e) { toast("invalid JSON: " + e.message, true); return; }
+  catch (e) { toast("That is not valid JSON: " + e.message, true); return; }
   try {
     // secrets come back from GET as "********"; the server keeps the stored
     // value for any placeholder left untouched
     const r = await post("/api/settings", { settings: await settingsWithCurrentFolders(parsed) });
-    toast(r.ok ? "settings saved" : "error: " + r.error, !r.ok);
+    toast(r.ok ? "Settings saved" : "Not saved: " + r.error, !r.ok);
     if (r.ok) loadSettings();
-  } catch (e) { toast("settings not saved: " + e.message, true); }
+  } catch (e) { toast("Settings not saved: " + e.message, true); }
 };
 
 /* Model files (routers/model_folders.py, tool/model_files.py). Folders are
@@ -2981,7 +3045,13 @@ const BIBLE_DEFAULTS = {
 function bibleNeedsId() {
   return ["character", "location", "scene"].indexOf($("bible-kind").value) >= 0;
 }
-$("bible-kind").onchange = () => { $("bible-id").classList.toggle("hidden", !bibleNeedsId()); };
+// universe and crowd types load as soon as they are picked; a character,
+// place or scene waits for its id and Load
+$("bible-kind").onchange = () => {
+  $("bible-id").classList.toggle("hidden", !bibleNeedsId());
+  if (!bibleNeedsId()) $("btn-bible-load").click();
+  else { $("bible-yaml").value = ""; $("bible-id").focus(); }
+};
 $("btn-bible-load").onclick = async () => {
   const kind = $("bible-kind").value;
   const b = await api("/api/bible");
@@ -2997,21 +3067,25 @@ $("btn-bible-load").onclick = async () => {
 $("btn-bible-save").onclick = async () => {
   let data;
   try { data = JSON.parse($("bible-yaml").value); }
-  catch (e) { toast("invalid JSON: " + e.message, true); return; }
+  catch (e) { toast("That is not valid JSON: " + e.message, true); return; }
   const r = await post("/api/bible/save", { kind: $("bible-kind").value, id: $("bible-id").value.trim() || undefined, data });
-  toast(r.ok ? "saved · commit " + r.commit : "error: " + r.error, !r.ok);
+  toast(r.ok ? "Saved as version " + r.commit : "Not saved: " + r.error, !r.ok);
   loadBibleFiles();
 };
 async function loadBibleFiles() {
   const [b, log] = await Promise.all([api("/api/bible"), api("/api/bible/log")]);
-  $("bible-commit").textContent = b && b.commit ? "commit " + b.commit : "";
-  $("bible-log").textContent = (log && log.log && log.log.join("\n")) || "no commits";
+  $("bible-commit").textContent = b && b.commit ? "version " + b.commit : "";
+  $("bible-log").textContent = (log && log.log && log.log.join("\n")) || "No changes saved yet.";
+  if (!$("bible-yaml").value.trim() && !bibleNeedsId()) $("btn-bible-load").click();
 }
 
 /* --------------------------------------------------------- logs */
 async function refreshLogs() {
   const r = await api("/api/logs?name=" + encodeURIComponent($("log-name").value));
-  $("log-view").textContent = (r.lines || []).join("\n");
+  const lines = r.lines || [];
+  $("log-view").textContent = lines.length ? lines.join("\n") : "This log is empty.";
+  $("log-view").classList.toggle("empty", !lines.length);
+  $("log-view").scrollTop = $("log-view").scrollHeight;
 }
 $("btn-refresh-logs").onclick = refreshLogs;
 
@@ -3022,13 +3096,20 @@ const IMS_RATIOS = {
   "768x768": "Square", "768x1344": "Tall", "1344x768": "Wide",
   "768x1152": "Portrait", "1152x768": "Landscape",
 };
-/* Short tag for a model card — derived from the backend registry
-   (/api/images/stacks), so new models never need a frontend edit. */
-function imsModelTag(m) {
-  const src = String((m && (m.best_for || m.description)) || "").trim();
-  if (!src) return "";
-  const first = src.split(/[.;]/)[0].trim();
-  return first.length > 46 ? first.slice(0, 44) + "…" : first;
+/* Model card names — from the backend registry (/api/images/stacks), so new
+   models never need a frontend edit. "Qwen-Image 2.1 (fast, DMD 8-step)"
+   reads "Qwen-Image 2.1" on its card and "Fast" on the card's switch. */
+function imsShortName(m) {
+  return String((m && (m.name || m.label || m.id)) || "?").replace(/\s*\(.*\)\s*$/, "");
+}
+function imsVariantName(m) {
+  const p = /\(([^,)]+)/.exec(String((m && m.name) || ""));
+  const w = p ? p[1].trim() : "Standard";
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+function imsHasVariants(key) {
+  const st = IMS_STACKS[key] || {};
+  return !!st.variant_of || Object.keys(IMS_STACKS).some((k) => IMS_STACKS[k].variant_of === key);
 }
 let IMS_STACKS = {};
 let IMS_PRESETS = [];
@@ -3079,6 +3160,12 @@ async function imagesPage() {
     IMS_PRESETS = s.presets || [];
     const saved = imsLoadParams();
     if (saved.model && IMS_STACKS[saved.model]) IMS_MODEL = saved.model;
+    // start on an installed model: the first one when the saved pick is gone
+    if (!IMS_STACKS[IMS_MODEL] || IMS_STACKS[IMS_MODEL].available === false) {
+      const first = Object.keys(IMS_STACKS).find((k) =>
+        IMS_STACKS[k].available !== false && IMS_STACKS[k].family !== "wan");
+      if (first) IMS_MODEL = first;
+    }
     if (saved.size) IMS_SIZE = saved.size;
     wsRefreshSelects();   // fill the "Run on" worker selects
     try {
@@ -3136,7 +3223,7 @@ function renderImsLoras() {
         <output>${parseFloat(row.strength).toFixed(2)}</output>
         <button class="ims-btn danger tiny" title="remove">${Icon.get("x")}</button>
       </div>
-      <div class="l-trig">${m.trigger ? "trigger words (type them into your prompt if you want them): " + escapeHtml(m.trigger) : "no trigger word needed"}${m.note ? " · " + escapeHtml(m.note) : ""}</div>
+      <div class="l-trig">${m.trigger ? "Trigger words, if you want them in the prompt: " + escapeHtml(m.trigger) : "No trigger word needed"}${m.note ? ". " + escapeHtml(m.note) : ""}</div>
     </div>`;
   }).join("");
   $("ims-lora-add").style.display =
@@ -3162,7 +3249,7 @@ function renderImsLoras() {
 $("ims-lora-add").onclick = () => {
   const used = new Set(IMS_LORA_ROWS.map((r) => r.file));
   const free = Object.keys(IMS_LORAS).filter((f) => !used.has(f));
-  if (!free.length) return toast("all LoRAs already in use", true);
+  if (!free.length) return toast("Every LoRA is already added", true);
   IMS_LORA_ROWS.push({ file: free[0], strength: IMS_LORAS[free[0]].strength || 0.7 });
   renderImsLoras();
 };
@@ -3197,7 +3284,7 @@ function renderImsRefs() {
           <button class="ims-btn danger tiny" data-rm-ref="${i}" title="remove">${Icon.get("x")}</button>
         </div>`;
       }).join("")
-    : '<div class="ims-muted tiny">no references — upload up to 5</div>';
+    : '<div class="ims-note">No reference pictures. Add up to 5.</div>';
   list.querySelectorAll("[data-rm-ref]").forEach((b) => {
     b.onclick = () => { IMS_REF_ROWS.splice(Number(b.dataset.rmRef), 1); renderImsRefs(); imsGenSub(); };
   });
@@ -3242,31 +3329,59 @@ $("ims-ref-strength").oninput = () => {
 $("ims-ref-anchor").onchange = () => { IMS_REF_ANCHOR = $("ims-ref-anchor").checked; };
 
 /* ---- model cards ---- */
+/* one card per model; a variant (variant_of) is a switch on its base's card,
+   and Wan 2.2 (legacy) gets a card only while it is the picked model */
 function renderImsModels() {
   const el = $("ims-models");
-  el.innerHTML = Object.keys(IMS_STACKS).map((key) => {
+  const keys = Object.keys(IMS_STACKS);
+  const famOf = (k) => [k].concat(keys.filter((v) => IMS_STACKS[v].variant_of === k));
+  const installed = (k) => famOf(k).some((v) => IMS_STACKS[v].available !== false);
+  const bases = keys.filter((k) => !IMS_STACKS[k].variant_of &&
+    (IMS_STACKS[k].family !== "wan" || famOf(k).includes(IMS_MODEL)))
+    .sort((a, b) => installed(b) - installed(a));   // installed models first
+  el.innerHTML = bases.map((base) => {
+    const fam = famOf(base);
+    const on = fam.includes(IMS_MODEL);
+    const key = on ? IMS_MODEL : base;
     const m = IMS_STACKS[key];
-    const tag = imsModelTag(m);
-    const name = m.name || m.label || m.id || "?";
-    const mono = name.split(/\s+/).map((w) => w[0] || "").join("").replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "IM";
-    return `<div class="ims-model ${key === IMS_MODEL ? "selected" : ""}" data-model="${key}">
-      <div class="m-top"><div class="m-ico">${mono}</div>
-        <div><div class="m-name">${escapeHtml(name)}</div>
-        <div class="m-tag">${escapeHtml(tag)} · ~${m.steps} steps</div></div>
-        <div class="m-check">${Icon.get("check")}</div></div>
+    const ok = m.available !== false;
+    const seg = fam.length > 1
+      ? '<span class="m-seg">' + fam.map((k) =>
+          `<button type="button" data-variant="${escapeHtml(k)}" class="${k === key ? "on" : ""}">${escapeHtml(imsVariantName(IMS_STACKS[k]))}</button>`).join("") + "</span>"
+      : "";
+    return `<div class="ims-model${on ? " selected" : ""}${ok ? "" : " off"}" data-model="${escapeHtml(key)}"
+        role="radio" aria-checked="${on}" tabindex="0" title="${escapeHtml(m.description || "")}">
+      <span class="m-dot"></span>
+      <span class="m-body">
+        <span class="m-top"><span class="m-name">${escapeHtml(imsShortName(m))}</span>
+          ${m.family === "wan" ? '<span class="m-meta"><i>legacy</i></span>' : ""}${ok ? "" : '<span class="m-meta"><i class="bad">not installed</i></span>'}${seg}</span>
+        <span class="m-tag">${escapeHtml(m.best_for || "")}</span>
+      </span>
     </div>`;
   }).join("");
+  const pick = (key) => {
+    const st = IMS_STACKS[key];
+    if (!st) return;
+    if (st.available === false) {
+      toast(imsShortName(st) + " is not installed. Install it, or point Settings at the file you already have.", true);
+      return;
+    }
+    IMS_MODEL = key;
+    IMS_SIZE = st.sizes.includes(IMS_SIZE) ? IMS_SIZE : st.default_size;
+    renderImsModels();
+    renderImsRatios();
+    syncImsControls();
+    renderImsRefs();
+    imsSaveParams();
+  };
   el.querySelectorAll(".ims-model").forEach((c) => {
-    c.onclick = () => {
-      IMS_MODEL = c.dataset.model;
-      const st = IMS_STACKS[IMS_MODEL];
-      IMS_SIZE = st.sizes.includes(IMS_SIZE) ? IMS_SIZE : st.default_size;
-      renderImsModels();
-      renderImsRatios();
-      syncImsControls();
-      renderImsRefs();
-      imsSaveParams();
+    c.onclick = () => pick(c.dataset.model);
+    c.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(c.dataset.model); }
     };
+  });
+  el.querySelectorAll("[data-variant]").forEach((b) => {
+    b.onclick = (e) => { e.stopPropagation(); pick(b.dataset.variant); };
   });
 }
 
@@ -3274,7 +3389,7 @@ function renderImsModels() {
 function renderImsPresets() {
   const el = $("ims-presets");
   el.innerHTML = IMS_PRESETS.map((p) =>
-    `<button class="ims-preset" data-preset="${p.id}"><span class="ico">${p.icon}</span>${p.title}</button>`).join("");
+    `<button class="ims-preset" type="button" data-preset="${escapeHtml(p.id)}">${escapeHtml(p.title)}</button>`).join("");
   el.querySelectorAll(".ims-preset").forEach((c) => {
     c.onclick = () => {
       const p = IMS_PRESETS.find((x) => x.id === c.dataset.preset);
@@ -3289,7 +3404,8 @@ function renderImsPresets() {
 $("ims-preset-toggle").onclick = () => {
   IMS_PRESETS_SHOWN = !IMS_PRESETS_SHOWN;
   $("ims-presets").classList.toggle("hidden", !IMS_PRESETS_SHOWN);
-  $("ims-preset-toggle").textContent = IMS_PRESETS_SHOWN ? "hide" : "show";
+  $("ims-preset-toggle").classList.toggle("on", IMS_PRESETS_SHOWN);
+  $("ims-preset-toggle").setAttribute("aria-expanded", String(IMS_PRESETS_SHOWN));
 };
 
 /* ---- ratios / controls ---- */
@@ -3309,7 +3425,7 @@ function syncImsControls() {
   if (!st) {
     /* the model registry could not be read — never guess defaults */
     $("ims-generate").disabled = true;
-    $("ims-gen-sub").textContent = "model list unavailable — reload the page";
+    $("ims-gen-sub").textContent = "The model list did not load. Reload the page.";
     return;
   }
   const steps = $("ims-steps");
@@ -3332,8 +3448,9 @@ function syncImsControls() {
   const lorasOk = imsLorasSupported();
   $("ims-lora-manual").classList.toggle("hidden", !lorasOk);
   $("ims-lora-none").classList.toggle("hidden", lorasOk);
-  $("ims-negative").placeholder = st.negative
-    ? "auto (" + st.negative.slice(0, 36) + "…)" : "auto";
+  $("ims-lora-fold").classList.toggle("hidden", !lorasOk);
+  $("ims-negative").placeholder = "The model's own";
+  $("ims-negative").title = st.negative ? "Left empty, it uses: " + st.negative : "";
   const hint = $("ims-hint");
   if (st.hint) { hint.textContent = st.hint; hint.classList.remove("hidden"); }
   else hint.classList.add("hidden");
@@ -3344,8 +3461,9 @@ $("ims-cfg").oninput = () => { $("ims-cfg-val").textContent = $("ims-cfg").value
 function imsGenSub() {
   const st = IMS_STACKS[IMS_MODEL] || {};
   $("ims-gen-sub").textContent =
-    (st.name || st.label || st.id || "?") + " · " + IMS_SIZE + " · " + $("ims-steps").value + " steps · " +
-    IMS_COUNT + " image" + (IMS_COUNT > 1 ? "s" : "");
+    IMS_COUNT + (IMS_COUNT > 1 ? " pictures" : " picture") + ", " +
+    String(IMS_RATIOS[IMS_SIZE] || IMS_SIZE || "").toLowerCase() + ", with " +
+    imsShortName(st) + (imsHasVariants(IMS_MODEL) ? " " + imsVariantName(st) : "");
 }
 $("ims-prompt").addEventListener("input", imsPromptCount);
 function imsPromptCount() {
@@ -3385,7 +3503,7 @@ function renderImsAlbumTabs() {
   }
   const tabs = $("ims-album-tabs");
   tabs.innerHTML = IMS_ALBUMS.map((a) =>
-    `<button class="ims-album-tab ${IMS_ALBUM === a ? "active" : ""}" data-album="${escapeHtml(a)}" title="right-click to rename / delete">${escapeHtml(a)}<span class="cnt">${counts[a] || 0}</span></button>`).join("");
+    `<button class="ims-album-tab ${IMS_ALBUM === a ? "active" : ""}" data-album="${escapeHtml(a)}" title="Right-click to rename or delete">${escapeHtml(a)}<span class="cnt">${counts[a] || 0}</span></button>`).join("");
   tabs.querySelectorAll(".ims-album-tab").forEach((b) => {
     b.onclick = () => { IMS_ALBUM = b.dataset.album; renderImsAlbumTabs(); renderImsGallery(); renderImsAlbumTarget(); };
     b.oncontextmenu = (e) => {
@@ -3439,10 +3557,10 @@ function renderImsGallery() {
   const el = $("ims-grid");
   const imgs = imsFiltered();
   const head = $("ims-album-head");
-  const name = IMS_ALBUM === "__all__" ? "All images" : IMS_ALBUM === "__unsorted__" ? "Unsorted" : IMS_ALBUM;
-  head.innerHTML = `<h2>${escapeHtml(name)}</h2><span class="cnt">${imgs.length} image${imgs.length === 1 ? "" : "s"}</span>`;
+  const name = IMS_ALBUM === "__all__" ? "All pictures" : IMS_ALBUM === "__unsorted__" ? "Unsorted" : IMS_ALBUM;
+  head.innerHTML = `<h2>${escapeHtml(name)}</h2><span class="sec-count">${imgs.length}</span>`;
   if (!imgs.length) {
-    el.innerHTML = `<div class="ims-empty"><span class="big">${Icon.get("image")}</span>Nothing here yet.<br>Write a prompt, hit Generate, and your picture will land here.</div>`;
+    el.innerHTML = `<div class="ims-empty"><span class="big">${Icon.get("image")}</span><b>No pictures here yet</b>Describe one on the left and press Generate.</div>`;
     return;
   }
   el.innerHTML = imgs.map((im) => {
@@ -3612,7 +3730,7 @@ $("ims-generate").onclick = async () => {
   $("ims-progress-wrap").classList.remove("hidden");
   $("ims-seed").value = "";
 };
-$("ims-stop").onclick = async () => { await post("/api/images/stop"); toast("stopped"); };
+$("ims-stop").onclick = async () => { await post("/api/images/stop"); toast("Stopped"); };
 setInterval(async () => {
   if (!document.getElementById("page-images").classList.contains("active")) return;
   const s = await api("/api/images/status");
@@ -3712,43 +3830,38 @@ async function videoStudioPage() {
       }
     };
   }
-  // I2V start image: browser file picker -> upload into ComfyUI input/ ->
-  // fill the START_IMAGE field (manual filename entry still works).
+  // Start image: Browse, a click on the thumbnail or a dropped picture ->
+  // upload into ComfyUI input/ -> the START_IMAGE field (typing the name of
+  // a file already there still works).
   const startBrowse = vsEl("vs-startimg-browse");
   const startFile = vsEl("vs-startimg-file");
   if (startBrowse && startFile) {
     startBrowse.onclick = function () { startFile.click(); };
-    startFile.onchange = async function () {
+    vsEl("vs-startimg-thumb").onclick = function () { startFile.click(); };
+    startFile.onchange = function () {
       const f = startFile.files && startFile.files[0];
-      if (!f) return;
-      if (!/^image\/(png|jpeg|webp)$/.test(f.type)) {
-        toast("start image must be png, jpg or webp", true);
-        startFile.value = "";
-        return;
-      }
-      if (f.size > 25 * 1024 * 1024) {
-        toast("start image too large (25 MB max)", true);
-        startFile.value = "";
-        return;
-      }
-      startBrowse.disabled = true;
-      try {
-        const fd = new FormData();
-        fd.append("file", f, f.name);
-        const r = await api("/api/videostudio/upload_start_image",
-                            { method: "POST", body: fd });
-        if (r && r.ok) {
-          vsEl("vs-startimg").value = r.filename;
-          toast("start image uploaded: " + r.filename);
-        } else {
-          toast((r && r.error) || "upload failed", true);
-        }
-      } catch (e) {
-        toast("upload failed: " + e, true);
-      } finally {
-        startBrowse.disabled = false;
-        startFile.value = "";
-      }
+      startFile.value = "";
+      if (f) vsUploadStartImage(f);
+    };
+    vsEl("vs-startimg-clear").onclick = function () { vsSetStartImage("", null); };
+    const zone = vsEl("vs-startimg-wrap");
+    const isFile = function (e) {
+      return !!e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0;
+    };
+    zone.ondragover = function (e) {
+      if (!isFile(e)) return;
+      e.preventDefault();
+      zone.classList.add("drop");
+    };
+    zone.ondragleave = function (e) {
+      if (!zone.contains(e.relatedTarget)) zone.classList.remove("drop");
+    };
+    zone.ondrop = function (e) {
+      zone.classList.remove("drop");
+      if (!isFile(e)) return;
+      e.preventDefault();
+      const f = e.dataTransfer.files[0];
+      if (f) vsUploadStartImage(f);
     };
   }
   // Continuity: the newest finished clip or take in History — its tail frame
@@ -3769,9 +3882,12 @@ async function videoStudioPage() {
   }
   vsRenderRefs();
   vsRenderContChip();
-  // chain segments: the prompt is segment 1, each added segment follows it
+  // chain segments: the prompt is segment 1, each added segment follows it;
+  // Length's + and − add one or remove the last
   const chainAdd = vsEl("vs-chain-add");
-  if (chainAdd) chainAdd.onclick = function () { vsChainAddSegment(true); };
+  if (chainAdd) chainAdd.onclick = function () { vsSetLength(vsChainSegments() + 2); };
+  const chainLess = vsEl("vs-length-less");
+  if (chainLess) chainLess.onclick = function () { vsSetLength(vsChainSegments()); };
   vsChainRenumber();
   // prompt check and the agent's reply; a shown check follows the edits
   const checkBtn = vsEl("vs-check-btn");
@@ -3785,7 +3901,7 @@ async function videoStudioPage() {
       if (e.target && e.target.tagName === "TEXTAREA") vsCheckSoon();
     });
   }
-  vsEl("vs-startimg").oninput = vsCheckSoon;
+  vsEl("vs-startimg").oninput = vsStartImageChanged;
   if (VS_HIST_TIMER) clearInterval(VS_HIST_TIMER);
   VS_HIST_TIMER = setInterval(() => {
     const page = vsEl("page-videostudio");
@@ -3825,9 +3941,11 @@ async function vsLoadModels() {
   const lab = document.querySelector('label[for="vs-model"]');
   if (lab) lab.dataset.tip = ModelCatalog.SEAMLESS_NOTE + " · ★ = recommended config";
   sel.onchange = () => vsOnModelChange();
-  ["vs-width", "vs-height", "vs-frames", "vs-steps"].forEach((id) => {
+  ["vs-width", "vs-height", "vs-steps"].forEach((id) => {
     vsEl(id).oninput = vsAdvMeta;
   });
+  // the Length buttons and the Generate label count in clips of this many frames
+  vsEl("vs-frames").oninput = () => { vsAdvMeta(); vsChainRenumber(); };
   vsEl("vs-generate").onclick = () => vsGenerate();
   wsRefreshSelects();
   await vsOnModelChange();
@@ -3928,17 +4046,19 @@ async function vsOnModelChange() {
   const controls = m.supported_controls || [];
   const modes = m.supported_modes || [];
 
-  // ---- mode: only what the model actually supports
-  const modeSel = vsEl("vs-mode");
-  const prevMode = modeSel.value;
-  modeSel.innerHTML = "";
-  modes.forEach((mo) => {
-    const o = document.createElement("option");
-    o.value = mo; o.textContent = mo.toUpperCase();
-    modeSel.appendChild(o);
+  // ---- start from: Image (the default) or Text only, as far as the model
+  // offers them; a choice the new model also offers is kept
+  const modeIn = vsEl("vs-mode");
+  if (!modes.includes(modeIn.value)) {
+    modeIn.value = modes.includes("i2v") ? "i2v" : (modes[0] || "t2v");
+  }
+  vsEl("vs-mode-seg").querySelectorAll("button").forEach((b) => {
+    b.style.display = modes.includes(b.dataset.mode) ? "" : "none";
+    b.onclick = () => { modeIn.value = b.dataset.mode; vsApplyMode(); };
   });
-  modeSel.value = modes.includes(prevMode) ? prevMode : (modes[0] || "t2v");
-  modeSel.onchange = () => vsApplyMode();
+  vsEl("vs-mode-seg").style.display = modes.length > 1 ? "" : "none";
+  vsEl("vs-mode-label").textContent = modes.length > 1 ? "Start from" : "Start image";
+  vsEl("vs-start-block").style.display = modes.includes("i2v") ? "" : "none";
 
   // ---- defaults from the registry
   const d = m.defaults || {};
@@ -3968,7 +4088,6 @@ async function vsOnModelChange() {
   vsEl("vs-nocache").disabled = !has("cache");
   vsEl("vs-tea-thresh").disabled = !has("cache");
   vsEl("vs-tea-end").disabled = !has("cache");
-  vsEl("vs-mode-wrap").style.display = modes.length > 1 ? "" : "none";
   // LTX-2.5 reference picker — only for models that declare the capability
   const refsWrap = vsEl("vs-refs-wrap");
   if (refsWrap) refsWrap.style.display = has("refs") ? "" : "none";
@@ -3988,7 +4107,9 @@ async function vsOnModelChange() {
     ["quant " + (m.quantization || "?"), "modes " + modes.join("/"),
       m.moe ? "MoE pair (2 experts)" : "", m.source && m.source !== "studio" ? "mounted from " + m.source : "",
       m.declared_status || "", "id " + m.id].filter(Boolean).join(" · ")].filter(Boolean).join("\n\n");
-  vsChainEngineNote();
+  // a config that is rarely the right pick says so under the picker
+  vsEl("vs-model-caution").textContent = (m.catalog || {}).caution || "";
+  vsChainRenumber();
   vsAdvMeta();
 
   await vsLoadLoras(id);
@@ -3997,8 +4118,74 @@ async function vsOnModelChange() {
 
 function vsApplyMode() {
   const mode = vsEl("vs-mode").value;
+  vsEl("vs-mode-seg").querySelectorAll("button").forEach(function (b) {
+    const on = b.dataset.mode === mode;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-checked", on ? "true" : "false");
+  });
   vsEl("vs-startimg-wrap").style.display = mode === "i2v" ? "" : "none";
-  vsCheckSoon();
+  vsStartImageChanged();
+}
+
+/* ------------------------------------------------------------- start image */
+let VS_START_THUMB = null;   // {name, url}: the local picture behind the field
+
+/* Upload a picked or dropped start image into the ComfyUI input folders and
+   select it; the thumbnail shows the local file. */
+async function vsUploadStartImage(f) {
+  if (!/^image\/(png|jpeg|webp)$/.test(f.type)) {
+    toast("the start image must be a png, jpg or webp", true);
+    return;
+  }
+  if (f.size > 25 * 1024 * 1024) {
+    toast("the start image is too large (25 MB max)", true);
+    return;
+  }
+  const btn = vsEl("vs-startimg-browse");
+  btn.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append("file", f, f.name);
+    const r = await api("/api/videostudio/upload_start_image", { method: "POST", body: fd });
+    if (r && r.ok) {
+      vsSetStartImage(r.filename, URL.createObjectURL(f));
+      toast("start image: " + f.name);
+    } else {
+      toast((r && r.error) || "upload failed", true);
+    }
+  } catch (e) {
+    toast("upload failed: " + e, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function vsSetStartImage(name, url) {
+  if (VS_START_THUMB) URL.revokeObjectURL(VS_START_THUMB.url);
+  VS_START_THUMB = url ? { name: name, url: url } : null;
+  vsEl("vs-startimg").value = name;
+  vsStartImageChanged();
+}
+
+/* The thumbnail, the clear button and the line under the start image follow
+   the field, the mode and the model; so do the references' empty state, the
+   H3 size and a shown prompt check. */
+function vsStartImageChanged() {
+  const name = vsEl("vs-startimg").value.trim();
+  const thumb = vsEl("vs-startimg-thumb");
+  const url = VS_START_THUMB && VS_START_THUMB.name === name ? VS_START_THUMB.url : "";
+  thumb.classList.toggle("has", !!url);
+  thumb.innerHTML = url ? '<img src="' + esc(url) + '" alt="">' : Icon.get("image");
+  thumb.dataset.tip = url ? name : "Pick a start image";
+  vsEl("vs-startimg-clear").style.display = name ? "" : "none";
+  // what the model does with it, in prompt_check's words
+  const fam = String((VS_CURRENT && VS_CURRENT.family) || "");
+  vsEl("vs-startimg-note").textContent = !name
+    ? "No picture yet: without one the video is made from the prompt alone."
+    : fam.indexOf("ltx") === 0
+      ? "LTX-2.5 uses this picture as its key image: it guides the render but is not pinned as the exact first frame."
+      : "The video opens exactly on this picture: it is the first frame.";
+  vsRenderRefs();
 }
 
 async function vsLoadLoras(model) {
@@ -4066,13 +4253,71 @@ function vsChainRenumber() {
   const segs = document.querySelectorAll("#vs-chain-segments .vs-seg");
   segs.forEach(function (s, i) {
     s.querySelector(".vs-seg-n").textContent = String(i + 2);
-    s.querySelector("textarea").placeholder = "Segment " + (i + 2) + " — what happens next";
+    s.querySelector("textarea").placeholder = "Segment " + (i + 2) + ": what happens next";
   });
   const chain = segs.length > 0;
-  vsEl("vs-prompt-label").textContent = chain ? "Segment 1" : "Prompt";
+  const n = segs.length + 1;
+  vsEl("vs-prompt-n").textContent = chain ? "1" : "";
+  vsEl("vs-prompt-label").textContent = chain ? "Prompts" : "Prompt";
+  vsEl("vs-prompt").placeholder = chain
+    ? "Segment 1: how it opens: who is in it, where, what happens, how the camera moves"
+    : "Describe the shot: who is in it, where, what happens, how the camera moves";
   vsEl("vs-generate-label").textContent = chain
-    ? "Generate chain · " + (segs.length + 1) + " segments" : "Generate";
+    ? "Generate · " + n + " segments, about " + vsLengthSeconds(n) + " s" : "Generate";
+  vsRenderLength();
   vsChainEngineNote();
+}
+
+/* ------------------------------------------------------------------ length */
+/* Length is the number of segments, set with + and − (no top: a chain takes
+   as many segments as you write). A segment is one clip of the Frames field
+   (5 s on the LTX-2.5 and H3 tiers); later segments add one frame less, since
+   a take carries its last frame on. A stretched tier (slow motion) plays longer. */
+function vsClipSeconds() {
+  const m = VS_CURRENT || {};
+  const fps = Number(m.fps) || 24;
+  const fr = parseInt(vsEl("vs-frames").value, 10) || 121;
+  const x = Number((m.catalog || {}).stretch) || 1;
+  return { first: fr / fps * x, later: (fr - 1) / fps * x };
+}
+
+function vsLengthSeconds(n) {
+  const s = vsClipSeconds();
+  return Math.round(s.first + (n - 1) * s.later);
+}
+
+function vsRenderLength() {
+  const val = vsEl("vs-length-val");
+  if (!val) return;
+  const n = vsChainSegments() + 1;
+  val.innerHTML = "<b>" + vsLengthSeconds(n) + " s</b> · " + (n === 1 ? "1 clip" : n + " segments");
+  vsEl("vs-length-less").disabled = n === 1;
+  vsEl("vs-chain-add").dataset.tip = "One segment more: about " + Math.round(vsClipSeconds().later) +
+    " s of new action, with its own prompt";
+}
+
+/* Show `n` segment boxes. Removing a box that holds a prompt asks first. */
+async function vsSetLength(n) {
+  const box = vsEl("vs-chain-segments");
+  const drop = Array.prototype.slice.call(box.querySelectorAll(".vs-seg")).slice(n - 1);
+  const written = drop.filter(function (s) { return s.querySelector("textarea").value.trim(); });
+  if (written.length) {
+    const nums = written.map(function (s) { return s.querySelector(".vs-seg-n").textContent; });
+    const ok = await Dlg.confirm({
+      title: drop.length === 1 ? "Remove a segment?" : "Remove " + drop.length + " segments?",
+      message: (nums.length === 1 ? "Segment " + nums[0] + " has" : "Segments " + nums.join(", ") + " have") +
+        " a prompt, which is removed with " + (nums.length === 1 ? "it." : "them."),
+      okLabel: "Remove", danger: true,
+    });
+    if (!ok) return;
+  }
+  drop.forEach(function (s) { s.remove(); });
+  const had = vsChainSegments();
+  while (vsChainSegments() < n - 1) vsChainAddSegment(false);
+  vsChainRenumber();
+  const first = box.querySelectorAll(".vs-chain-prompt")[had];
+  if (first) first.focus();
+  vsCheckSoon();
 }
 
 /* Which continuation the selected model's chains use (shown once there is a
@@ -4098,6 +4343,20 @@ function vsChainEngineNote() {
   }
   // base-only H3 tiers deliver the draft take itself: nothing to finish
   if (prev) prev.style.display = chain && kind && m.chain_finish ? "" : "none";
+  // what the chosen length renders, in one line under the buttons
+  const txt = vsEl("vs-length-text");
+  if (txt) {
+    const s = vsClipSeconds();
+    const per = Math.round(s.later);
+    const stretched = (Number((m.catalog || {}).stretch) || 1) > 1;
+    txt.textContent = chain
+      ? (kind ? "Write what happens in each segment (about " + per + " s each): they render as one continuous shot."
+              : "Each segment (about " + per + " s) opens on the last frame of the one before, and the clips are joined.")
+      : stretched
+        ? "One clip played as about " + Math.round(s.first) + " s of slow motion."
+        : "One clip. For a longer video, add segments with +: each adds about " + per +
+          " s of new action, with its own prompt.";
+  }
 }
 
 /* Advanced summary: what the hidden fields will render. */
@@ -4256,14 +4515,14 @@ function vsRenderRefs() {
   if (hint) hint.dataset.tip = vsRefsHint() + " Applied to single clips and every chain segment.";
   vsApplyResolutionHint();
   if (!VS_REFS.length) {
-    // mode-aware empty state: in I2V with a start image — or continuing from
-    // a previous clip — the render is NOT text-to-video.
+    // mode-aware empty state: with a start image — or continuing from a
+    // previous clip — the render is NOT text-to-video
     const si = vsEl("vs-startimg");
-    const i2vAnchor = ((vsEl("vs-mode").value === "i2v" && si && si.value)
-                       || VS_CONT);
-    box.innerHTML = '<div class="vs-none">' + (i2vAnchor
-      ? "No extra references: the start frame anchors the render"
-      : "No references: text-to-video") + "</div>";
+    const startImg = vsEl("vs-mode").value === "i2v" && si && si.value.trim();
+    box.innerHTML = '<div class="vs-none">' + (startImg
+      ? "No other references: the start image leads the render"
+      : VS_CONT ? "No other references: the previous clip's last frame leads the render"
+        : "No references: text-to-video") + "</div>";
     vsCheckSoon();
     return;
   }
@@ -4363,17 +4622,19 @@ function vsRenderRefs() {
 
 /* ---------------------------------------------------------- prompt check */
 /* The request Generate sends, shared by the prompt check and the cast sheet.
-   One prompt is a clip, two or more a chain; a chain opens on the start image
-   or on the ↪ clip's staged last frame, a clip carries the continuation.
-   `boxes` are the textareas the prompts came from (the fixes edit them);
-   `segments` counts every segment box, empty ones too. For the cast sheet
-   (`sheet`) the boxes decide clip or chain, since its reply fills them. */
-function vsRenderRequest(sheet) {
+   One segment box is a clip, two or more a chain (Length); a chain opens on
+   the start image or on the ↪ clip's staged last frame, a clip carries the
+   continuation. A chain sends every box, so the check names an empty one
+   instead of rendering fewer segments than Length shows. `boxes` are the
+   textareas the prompts came from (the fixes edit them); `segments` counts
+   them. The start image counts only when the video starts from an image. */
+function vsRenderRequest() {
   const m = VS_CURRENT;
   const all = [vsEl("vs-prompt")].concat(Array.prototype.slice.call(
     document.querySelectorAll("#vs-chain-segments .vs-chain-prompt")));
-  const boxes = all.filter(function (ta) { return ta.value.trim(); });
-  const si = ((vsEl("vs-startimg") && vsEl("vs-startimg").value) || "").trim();
+  const boxes = all.length > 1 ? all : all.filter(function (ta) { return ta.value.trim(); });
+  const si = vsEl("vs-mode").value === "i2v"
+    ? ((vsEl("vs-startimg") && vsEl("vs-startimg").value) || "").trim() : "";
   const frames = parseInt(vsEl("vs-frames").value, 10);
   const req = {
     model: vsEl("vs-model").value,
@@ -4388,11 +4649,11 @@ function vsRenderRequest(sheet) {
       : [],
     frames: m ? vsSnapFrames(m, frames) : frames,
   };
-  if ((sheet ? all.length : req.prompts.length) > 1) {
+  if (all.length > 1) {
     req.start_image = si || (VS_CONT ? VS_CONT.input_filename : null);
     req.start_from_clip = !si && !!VS_CONT;
   } else {
-    req.start_image = vsEl("vs-mode").value === "i2v" ? (si || null) : null;
+    req.start_image = si || null;
     req.continuation = VS_CONT ? VS_CONT.path : null;
   }
   return req;
@@ -4596,7 +4857,7 @@ async function vsCopyCast() {
   if (!VS_CURRENT) { toast("pick a model first", true); return; }
   let r = null;
   try {
-    r = await post("/api/videostudio/cast_sheet", vsCheckBody(vsRenderRequest(true)));
+    r = await post("/api/videostudio/cast_sheet", vsCheckBody(vsRenderRequest()));
   } catch (e) {
     toast("cast sheet failed: " + e.message, true);
     return;
@@ -4802,7 +5063,7 @@ async function vsGenerate() {
   btn.disabled = true;
   try {
     // ── the request the prompt check reads: the prompt is segment 1, then
-    // every non-empty added segment; two or more make a chain ───────────
+    // every added segment; two or more make a chain ───────────────────────
     const req = vsRenderRequest();
     if (!req.prompts.length) { toast("write a prompt first", true); return; }
     const isChain = req.prompts.length > 1;
@@ -4815,9 +5076,11 @@ async function vsGenerate() {
       return;
     }
 
+    // "Image" with no picture picked renders from the prompt alone
+    const modes = (VS_CURRENT && VS_CURRENT.supported_modes) || [];
     const body = {
       model: req.model,
-      mode: vsEl("vs-mode").value,
+      mode: !req.start_image && modes.includes("t2v") ? "t2v" : vsEl("vs-mode").value,
       prompt: req.prompts[0],
       negative: vsEl("vs-negative").value,
       seed: parseInt(vsEl("vs-seed").value, 10),
@@ -4841,26 +5104,26 @@ async function vsGenerate() {
     // promoted server-side (H3: frame-0 identity anchor; LTX: pic1 subject
     // reference applied at stage 1), an explicit continuation is anchored by
     // definition, and a multi-segment chain anchors from segment 2 onward —
-    // the warning would be wrong in all three cases.
+    // the warning would be wrong in all three cases. "Text only" on LTX-2.5
+    // is a choice already made; on H3 it still changes the tier, so it asks.
     if (VS_CURRENT) {
       const _fam = String(VS_CURRENT.family || "");
-      const _si = vsEl("vs-startimg");
       const _anchored = (_fam.indexOf("h3") === 0 || _fam.indexOf("ltx") === 0) &&
-        ((vsEl("vs-mode").value === "i2v" && _si && _si.value) || VS_CONT);
+        (req.start_image || VS_CONT);
+      const _h3 = _fam.indexOf("h3") === 0;
       if ((VS_CURRENT.supported_controls || []).includes("refs") &&
-          !VS_REFS.length && !_anchored && !isChain) {
-        const fam = String(VS_CURRENT.family || "");
+          !VS_REFS.length && !_anchored && !isChain &&
+          (vsEl("vs-mode").value === "i2v" || _h3)) {
         const ok = await Dlg.confirm({
-          title: "No references attached",
-          message: "This render will run as text-to-video." +
-            (fam.indexOf("h3") === 0
-              ? " For MiniMax H3 that means the SINGLE-PASS fallback " +
+          title: "No start image or references",
+          message: "This clip will be made from the prompt alone." +
+            (_h3
+              ? " For MiniMax H3 that is the single-pass fallback at 1344×768 " +
                 "(no upscaler, no identity anchor)."
               : "") +
-            "<br><br>Attach character / power / environment references " +
-            "(References → Batch or Upload) for the proven result, or continue " +
-            "without them.",
-          okLabel: "Continue without refs", danger: true,
+            "<br><br>For the recommended result, add a start image or cast " +
+            "references (References → Batch or Upload). Or go on without them.",
+          okLabel: "Make it from the prompt",
         });
         if (!ok) { btn.disabled = false; return; }
       }

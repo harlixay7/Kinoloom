@@ -1,4 +1,4 @@
-"""Simple "Generate photo" box (Training tab) — routed through the shared
+"""Simple "Generate photo" box (Casting page) — routed through the shared
 job engine so every model in the registry is available."""
 from __future__ import annotations
 

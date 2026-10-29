@@ -177,8 +177,8 @@ def project_update(pid: str, body: ProjectUpdateBody) -> dict:
                 import workers as workers_mod
                 if workers_mod.get(pw) is None:
                     return {"ok": False,
-                            "error": f"unknown worker '{pw}' (register it on "
-                                     f"the Workers page first)"}
+                            "error": f"unknown worker '{pw}' (add it on "
+                                     f"the Worker PCs page first)"}
             except Exception as e:
                 log.exception("projects operation failed: %s", e)
                 return JSONResponse(status_code=500, content={"ok": False, "error": f"worker registry error: {e}"})

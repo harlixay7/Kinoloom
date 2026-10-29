@@ -66,8 +66,8 @@ rem The studio refuses workers without the fleet token (workers.shared_token).
 set "WTOKEN=__TOKEN__"
 if "%WTOKEN%"=="%_P%TOKEN%_P%" set "WTOKEN="
 if not "%KINOLOOM_WORKER_TOKEN%"=="" set "WTOKEN=%KINOLOOM_WORKER_TOKEN%"
-if "%WTOKEN%"=="" set /p WTOKEN="Fleet token (studio Workers page): "
-if "%WTOKEN%"=="" echo [FAIL] fleet token required - download this installer from the studio's Workers page & pause & exit /b 1
+if "%WTOKEN%"=="" set /p WTOKEN="Fleet token (studio Worker PCs page): "
+if "%WTOKEN%"=="" echo [FAIL] fleet token required - download this installer from the studio's Worker PCs page & pause & exit /b 1
 
 echo.
 echo Pick model packages to copy (install\model_packages.json):
@@ -148,8 +148,8 @@ echo [5/6] configs...
   echo.
   echo # --- optional start gating: with require_models true the agent reports
   echo #     itself blocked ^(and refuses jobs^) until every listed file exists
-  echo #     under models_dir. Install them from the studio's Workers page
-  echo #     ^("Install models"^) - nothing installs itself.
+  echo #     under models_dir. Add them on the studio's Worker PCs page
+  echo #     ^("Add models"^) - nothing installs itself.
   echo require_models: false
   echo # required_models:
   echo #   - upscale_models/RealESRGAN_x4plus.pth
@@ -186,7 +186,7 @@ echo   Worker config : %DST%\worker\worker_config.yaml
 echo   Launcher      : %DST%\WORKER.bat   (double-click to go online;
 echo                   the agent starts its own ComfyUI and registers with
 echo                   %MURL%)
-echo   The worker appears in the studio's Workers page within seconds.
+echo   The worker appears on the studio's Worker PCs page within seconds.
 echo.
 echo   NOTE: the render farm needs NVIDIA driver R560 or newer (CUDA 12.6).
 pause

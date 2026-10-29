@@ -420,8 +420,11 @@ def chain_has_finish(entry: dict) -> bool:
 
 # ------------------------------------------------------------------ catalog
 # How the model pickers group and order the registry. An entry's optional
-# `catalog` block ({group, label, detail, rank, recommended}) places it; an
-# entry without one falls back to its family's group and its display_name.
+# `catalog` block ({group, label, detail, rank, recommended, caution, stretch})
+# places it; an entry without one falls back to its family's group and its
+# display_name. `caution` is a line the pickers show under a config that is
+# rarely the right choice; `stretch` is how many times longer the delivered
+# clip plays than the frames it renders (the temporal x2 tier: 2).
 CATALOG_GROUPS: tuple[tuple[str, str], ...] = (
     ("ltx25", "LTX-2.5 · 22B"),
     ("h3_1080p", "MiniMax H3 · 1080p"),
@@ -445,7 +448,8 @@ def _family_group(m: dict) -> str:
 
 def catalog_entry(mid: str, m: dict) -> dict:
     """The picker placement of an entry: group, short label, detail line,
-    rank inside the group and the recommended flag."""
+    rank inside the group, the recommended flag, the caution line and the
+    stretch factor."""
     c = m.get("catalog")
     c = c if isinstance(c, dict) else {}
     group = str(c.get("group") or "")
@@ -455,7 +459,9 @@ def catalog_entry(mid: str, m: dict) -> dict:
             "label": str(c.get("label") or m.get("display_name") or mid),
             "detail": str(c.get("detail") or ""),
             "rank": int(c.get("rank") or 99),
-            "recommended": bool(c.get("recommended", False))}
+            "recommended": bool(c.get("recommended", False)),
+            "caution": str(c.get("caution") or ""),
+            "stretch": int(c.get("stretch") or 1)}
 
 
 def catalog() -> dict:

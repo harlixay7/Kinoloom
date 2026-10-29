@@ -1,7 +1,17 @@
-/* story.js — five versioned story stages with regenerate / import / rollback. */
+/* story.js — the idea, the two ways to write the story (the AI writer, or
+   any chat AI by copy and paste), and the five versioned parts of the story
+   with regenerate / import / rollback per part. */
 (function () {
   "use strict";
   const STAGES = ["treatment", "bible", "beats", "scenes", "shots"];
+  const STAGE_LABEL = { treatment: "Treatment", bible: "Story bible", beats: "Beats", scenes: "Scenes", shots: "Shot plan" };
+  const STAGE_HINT = {
+    treatment: "The logline, the synopsis, the themes and the ending.",
+    bible: "Who and where: the characters, places and world rules the story uses. They merge into Cast & World, and your cast there wins.",
+    beats: "The story scene by scene: where, when, the goal and the turn.",
+    scenes: "Each scene's mood, music and shot count.",
+    shots: "Every shot: its action, camera and size. These become the Shots.",
+  };
   let activeStage = "treatment";
 
   function render(el) {
@@ -9,72 +19,109 @@
     if (!p || !State.pid) { el.innerHTML = noProject(); return; }
     const story = p.story || {};
     el.innerHTML =
-      '<div class="idea-row" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px">' +
-        '<label class="muted small" style="min-width:52px;padding-top:6px" ' +
-          'data-tip="The premise the Architect prompt carries. The CAST / LOCATIONS / POWERS lists stay authoritative — if the idea names someone who is not in the cast, the AI adapts it.">Idea</label>' +
-        '<textarea id="st-idea" class="mono" rows="2" style="flex:1" ' +
-          'placeholder="one paragraph — the seed of the movie">' + esc(p.idea || "") + "</textarea>" +
-        '<div style="display:flex;flex-direction:column;gap:4px">' +
-          '<button class="btn small" type="button" id="st-idea-save" ' +
-            'data-tip="Save the premise — the architect prompt uses it immediately">Save</button>' +
-          '<button class="btn small" type="button" id="st-idea-rewrite" ' +
-            'data-tip="Rewrite the premise from the CURRENT cast with the architect AI — review it, then Save. Fixes premises that still name characters you replaced.">' + Icon.get("wand") + "Rewrite with AI</button>" +
+      '<header class="page-intro">' +
+        '<div class="pi-text"><h1>Story</h1>' +
+          "<p>Your idea, written out as a script: the treatment, the story bible, the beats, the scenes and " +
+          "the shot plan. It uses your cast, and invents one if Cast &amp; World is empty.</p></div>" +
+        '<div class="pi-acts">' +
+          (STAGES.some(function (s) { return story[s] && Object.keys(story[s]).length; })
+            ? '<button class="btn danger quiet" type="button" id="st-clear" ' +
+                'data-tip="Delete the whole story (all five parts), its history and the shots, so you can write it again. The cast is not touched.">' +
+                Icon.get("trash") + "Clear story</button>"
+            : "") +
         "</div>" +
-      "</div>" +
-      '<div class="tabs" id="story-tabs">' +
-        STAGES.map(function (s) {
-          const filled = story[s] && Object.keys(story[s] || {}).length;
-          return '<button class="tab' + (s === activeStage ? " active" : "") + '" data-stage="' + s + '">' +
-            s.charAt(0).toUpperCase() + s.slice(1) +
-            (filled ? Icon.get("check") : "") + "</button>";
-        }).join("") +
-      "</div>" +
-      '<div class="story-toolbar">' +
-        '<button class="btn primary" type="button" id="st-aigen" data-tip="One click: prompts the AI and writes every stage down to shots — continuity-checked">' + Icon.get("wand") + "Generate full script</button>" +
-        '<button class="btn" type="button" id="st-aicfg" data-tip="AI endpoint — OpenAI/Claude/Gemini-compatible, or local via Ollama / LM Studio">' + Icon.get("sliders") + "AI config</button>" +
-        '<button class="btn" type="button" id="st-aiprompt" data-tip="Copy the Story Architect prompt for any chat AI">' + Icon.get("copy") + "Copy AI prompt</button>" +
-        '<button class="btn" type="button" id="st-spine" data-tip="1-hour movies: treatment + bible + beats only">' + Icon.get("copy") + "Spine prompt (1hr)</button>" +
-        '<label class="muted small tb-labeled" data-tip="Movie length — scene/shot counts scale from this">Duration (s) <input id="st-dur" type="number" min="10" max="7200" style="width:80px"></label>' +
-        '<button class="btn" type="button" id="st-pastepkg" data-tip="Paste the AI\'s JSON package — stages distributed, shots validated and queued">' + Icon.get("import") + "Paste package</button>" +
-        '<span class="spacer"></span>' +
-        '<button class="btn" type="button" id="st-regen" data-tip="Rewrite the current stage — the old version is kept in history">' + Icon.get("refresh") + "Regenerate stage</button>" +
-        '<button class="btn" type="button" id="st-import" data-tip="Import this stage from JSON">' + Icon.get("import") + "Import JSON</button>" +
-        '<select id="st-ver" title="version history"><option value="">versions…</option></select>' +
-        '<button class="btn small" type="button" id="st-rollback" disabled>Rollback</button>' +
-        '<button class="btn small danger" type="button" id="st-ver-del" disabled ' +
-          'data-tip="Delete the selected version from history (the live story stays)">Delete version</button>' +
-        '<button class="btn danger" type="button" id="st-clear" ' +
-          'data-tip="Delete the whole live story (treatment/bible/beats/scenes/shots) and its history + shot rows, so a fresh package can be pasted. The cast is NOT touched.">' + Icon.get("trash") + "Clear story</button>" +
-      "</div>" +
+      "</header>" +
+      '<section class="story-top">' +
+        '<div class="idea-card">' +
+          '<label class="f-label" for="st-idea" data-tip="The premise the story writer gets. Your cast stays in charge: if the idea names someone who is not in the cast, the AI adapts it.">The idea</label>' +
+          '<textarea id="st-idea" class="script" rows="4" ' +
+            'placeholder="One paragraph: who wants what, what stands in the way, how it ends.">' + esc(p.idea || "") + "</textarea>" +
+          '<div class="idea-row">' +
+            '<button class="btn small" type="button" id="st-idea-save" ' +
+              'data-tip="Save the idea: the story writer uses it from now on">Save idea</button>' +
+            '<button class="btn small ghost" type="button" id="st-idea-rewrite" ' +
+              'data-tip="Rewrite the idea around your current cast with the AI writer. Review it, then Save. Useful when it still names characters you replaced.">' +
+              Icon.get("wand") + "Rewrite from the cast</button>" +
+            '<span class="spacer"></span>' +
+            '<label class="idea-len" data-tip="The film&apos;s length: the number of scenes and shots follows it">Length ' +
+              '<input id="st-dur" type="number" min="10" max="7200"> seconds</label>' +
+          "</div>" +
+        "</div>" +
+        '<div class="write-paths">' +
+          '<div class="wpath">' +
+            '<div class="wpath-h">' + Icon.get("spark") + "<h3>With the AI writer</h3></div>" +
+            "<p>Writes all five parts down to the shot list, scene by scene, and checks each scene against the story bible.</p>" +
+            '<div class="wpath-acts">' +
+              '<button class="btn primary" type="button" id="st-aigen">' + Icon.get("wand") + "Write the story</button>" +
+              '<button class="btn ghost" type="button" id="st-aicfg">' + Icon.get("sliders") + "AI writer</button>" +
+            "</div>" +
+          "</div>" +
+          '<div class="wpath">' +
+            '<div class="wpath-h">' + Icon.get("copy") + "<h3>With any chat AI</h3></div>" +
+            '<ol class="wpath-steps"><li>Copy the prompt.</li><li>Paste it into a chat AI.</li><li>Paste its whole reply back here.</li></ol>' +
+            '<div class="wpath-acts">' +
+              '<button class="btn" type="button" id="st-aiprompt" data-tip="Copy the story prompt for any chat AI">' + Icon.get("copy") + "Copy prompt</button>" +
+              '<button class="btn" type="button" id="st-pastepkg" data-tip="Paste the AI&apos;s reply: the parts are filled in and the shots checked and queued">' + Icon.get("import") + "Paste reply</button>" +
+            "</div>" +
+            '<button class="linkish" type="button" id="st-spine" data-tip="For a long film (an hour): the treatment, story bible and beats only. You then write the shots scene by scene.">' +
+              "Long film? Copy the outline prompt instead</button>" +
+          "</div>" +
+        "</div>" +
+      "</section>" +
       '<div id="st-aigen-box" class="aigen-box hidden"></div>' +
       '<div id="st-scenebox" class="aigen-box hidden"></div>' +
+      '<div class="story-bar">' +
+        '<div class="tabs" id="story-tabs" role="tablist">' +
+          STAGES.map(function (s) {
+            const filled = story[s] && Object.keys(story[s] || {}).length;
+            return '<button class="tab' + (s === activeStage ? " active" : "") + (filled ? " filled" : "") +
+              '" type="button" role="tab" data-stage="' + s + '">' +
+              '<span class="tab-dot"></span>' + STAGE_LABEL[s] + "</button>";
+          }).join("") +
+        "</div>" +
+        '<div class="story-tools">' +
+          '<button class="btn small ghost" type="button" id="st-regen" data-tip="Write this part again with the AI writer. The current version stays in its history.">' + Icon.get("refresh") + "Rewrite part</button>" +
+          '<button class="btn small ghost" type="button" id="st-import" data-tip="Import this part from JSON">' + Icon.get("import") + "Import</button>" +
+          '<select id="st-ver" title="This part&apos;s earlier versions" class="small-sel"><option value="">History</option></select>' +
+          '<button class="btn small" type="button" id="st-rollback" disabled data-tip="Go back to the selected version">Restore</button>' +
+          '<button class="btn small ghost icon" type="button" id="st-ver-del" disabled ' +
+            'data-tip="Delete the selected version from the history (the current story stays)">' + Icon.get("trash") + "</button>" +
+        "</div>" +
+      "</div>" +
+      '<p class="stage-hint" id="st-stage-hint">' + esc(STAGE_HINT[activeStage]) + "</p>" +
       '<div id="story-body"></div>' +
       '<div class="story-import-modal hidden" id="st-pkg-modal">' +
         '<div class="card">' +
-          '<div class="card-head"><h2>Paste full package (the AI\'s whole JSON reply)</h2>' +
-            '<button class="btn ghost small" type="button" id="st-pkg-close">' + Icon.get("x") + "</button></div>" +
-          '<textarea id="st-pkg-ta" class="mono" rows="16" spellcheck="false" ' +
+          '<div class="card-head"><h2>Paste the chat AI&apos;s reply</h2><span class="spacer"></span>' +
+            '<button class="btn ghost small icon" type="button" id="st-pkg-close">' + Icon.get("x") + "</button></div>" +
+          '<p class="sec-sub">Its whole reply, as it came. The parts it contains are filled in and its shots checked and queued.</p>' +
+          '<textarea id="st-pkg-ta" class="mono" rows="14" spellcheck="false" ' +
             'placeholder=\'{"treatment": {…}, "bible": {…}, "beats": {…}, "shots": {"shots": [ … ]}}\'></textarea>' +
-          '<div class="ctl-row">' +
-            '<button class="btn primary" type="button" id="st-pkg-go">Import package</button>' +
-            '<span class="muted small">or import from a file:</span>' +
-            '<input id="st-pkg-file" class="mono" style="flex:1" placeholder="story_package.txt">' +
-            '<button class="btn" type="button" id="st-pkg-file-go" data-tip="Read the AI reply straight from a file on disk — avoids clipboard truncation">Import file</button>' +
+          '<div class="ctl-row" style="margin-top:12px">' +
+            '<button class="btn primary" type="button" id="st-pkg-go">Import reply</button>' +
+            '<span class="spacer"></span>' +
+            '<input id="st-pkg-file" class="mono" style="flex:0 1 320px" placeholder="or a file on disk: C:\\…\\story_package.txt">' +
+            '<button class="btn" type="button" id="st-pkg-file-go" data-tip="Read the reply from a file on disk: avoids a clipboard that cut it short">Import file</button>' +
           "</div>" +
         "</div>" +
       "</div>" +
       '<div class="story-import-modal hidden" id="st-import-modal">' +
         '<div class="card">' +
-          '<div class="card-head"><h2>Import JSON — <span id="st-import-stage"></span></h2>' +
-            '<button class="btn ghost small" type="button" id="st-import-close">' + Icon.get("x") + "</button></div>" +
-          '<textarea id="st-import-ta" class="mono" rows="16" spellcheck="false" ' +
+          '<div class="card-head"><h2>Import <span id="st-import-stage"></span> as JSON</h2><span class="spacer"></span>' +
+            '<button class="btn ghost small icon" type="button" id="st-import-close">' + Icon.get("x") + "</button></div>" +
+          '<textarea id="st-import-ta" class="mono" rows="14" spellcheck="false" ' +
             'placeholder=\'{"logline": "…", …}\'></textarea>' +
-          '<div class="ctl-row"><button class="btn primary" type="button" id="st-import-go">Import</button></div>' +
+          '<div class="ctl-row" style="margin-top:12px"><button class="btn primary" type="button" id="st-import-go">Import</button></div>' +
         "</div>" +
       "</div>";
 
     el.querySelectorAll("#story-tabs .tab").forEach(function (t) {
-      t.onclick = function () { activeStage = t.dataset.stage; renderStage(el); refreshTabs(el); };
+      t.onclick = function () {
+        activeStage = t.dataset.stage;
+        el.querySelector("#st-stage-hint").textContent = STAGE_HINT[activeStage];
+        renderStage(el);
+        refreshTabs(el);
+      };
     });
     el.querySelector("#st-regen").onclick = function () { regenerate(activeStage); };
     // Idea editor: the premise is carried by the Architect prompt, so it must
@@ -85,28 +132,26 @@
     if (ideaSave) ideaSave.onclick = async function () {
       const r = await post("/api/projects/" + encodeURIComponent(State.pid),
         { idea: ideaTa.value }, 30000);
-      toast(r && r.ok ? "idea saved — the architect prompt uses it now"
-                      : "save failed", !(r && r.ok));
+      toast(r && r.ok ? "Idea saved" : "Could not save the idea", !(r && r.ok));
       if (r && r.ok && State.refreshProject) State.refreshProject();
     };
     const ideaRe = el.querySelector("#st-idea-rewrite");
     if (ideaRe) ideaRe.onclick = async function () {
-      toast("rewriting the premise from the current cast…");
+      toast("Rewriting the idea around your cast…");
       const r = await post("/api/projects/" + encodeURIComponent(State.pid) +
         "/story/rewrite-idea", {}, 120000);
-      if (!r || !r.ok) return toast((r && r.error) || "rewrite failed", true);
+      if (!r || !r.ok) return toast((r && r.error) || "Could not rewrite the idea", true);
       ideaTa.value = r.idea;
-      toast("premise rewritten — review it, then press Save");
+      toast("Idea rewritten. Read it, then Save idea.");
     };
     // Clear the whole story (a wrong generation must be removable before a
     // new package is pasted — the old UI only offered rollback).
     const clearBtn = el.querySelector("#st-clear");
     if (clearBtn) clearBtn.onclick = function () {
       Dlg.confirm({
-        title: "Clear story",
-        message: "Delete the live story (treatment, bible, beats, scenes, shots), "
-          + "its version history and the shot rows? The CAST (characters/locations) "
-          + "is not touched. This cannot be undone.",
+        title: "Clear the story?",
+        message: "This deletes all five parts of the story, their history and the shots. "
+          + "Your cast and places in Cast &amp; World stay. It cannot be undone.",
         okLabel: "Clear story",
         danger: true,
       }).then(async function (yes) {
@@ -114,28 +159,28 @@
         const r = await post("/api/projects/" + encodeURIComponent(State.pid) +
           "/story/clear", { also_shots: true, keep_history: false }, 120000);
         if (r && r.ok) {
-          toast("story cleared — paste a new package or generate again");
+          toast("Story cleared");
           await State.refreshProject();
           await State.refreshShots();
           renderStage(el);
           refreshTabs(el);
         } else {
-          toast((r && r.error) || "clear failed", true);
+          toast((r && r.error) || "Could not clear the story", true);
         }
       });
     };
     const verDel = el.querySelector("#st-ver-del");
     if (verDel) verDel.onclick = async function () {
       const sel = el.querySelector("#st-ver");
-      if (!sel || !sel.value) { toast("pick a version first", true); return; }
+      if (!sel || !sel.value) { toast("Pick a version in History first", true); return; }
       const v = parseInt(sel.value, 10);
       const r = await post("/api/projects/" + encodeURIComponent(State.pid) +
         "/story/delete-version", { stage: activeStage, version: v }, 30000);
       if (r && r.ok) {
-        toast("version " + v + " deleted from history");
-        refreshTabs(el);
+        toast("Version " + v + " deleted");
+        loadVersions(el);
       } else {
-        toast((r && r.error) || "delete failed", true);
+        toast((r && r.error) || "Could not delete the version", true);
       }
     };
     el.querySelector("#st-aiprompt").onclick = function () { copyAiPrompt("full"); };
@@ -150,8 +195,8 @@
         const r = await post("/api/projects/" + encodeURIComponent(State.pid),
           { duration_target: Math.min(7200, Math.max(10, v)) }, 30000);
         if (r && r.ok) {
-          toast("duration → " + Math.min(7200, Math.max(10, v)) + "s — "
-            + "copy the spine prompt again for the new scene count");
+          toast("Length set to " + Math.min(7200, Math.max(10, v)) + " seconds. "
+            + "Copy the prompt again so it asks for the new number of shots.");
           await State.refreshProject();
         }
       };
@@ -167,13 +212,13 @@
     el.querySelector("#st-pkg-go").onclick = function () { doPastePackage(el); };
     el.querySelector("#st-pkg-file-go").onclick = async function () {
       const path = el.querySelector("#st-pkg-file").value.trim();
-      if (!path) { toast("enter a file path", true); return; }
-      toast("importing from file…");
+      if (!path) { toast("Type the file's path first", true); return; }
+      toast("Importing the file…");
       const r = await post("/api/projects/" + encodeURIComponent(State.pid) +
                            "/story/import-file", { path: path }, 300000);
       if (!r) return;
-      if (r.ok) toast("package imported from file");
-      else toast("import failed: " + (r.error || "?"), true);
+      if (r.ok) toast("Reply imported from the file");
+      else toast("Could not import it: " + (r.error || "unknown error"), true);
       el.querySelector("#st-pkg-modal").classList.add("hidden");
       await State.refreshProject();
       await State.refreshShots();
@@ -181,7 +226,7 @@
       render(el);
     };
     el.querySelector("#st-import").onclick = function () {
-      el.querySelector("#st-import-stage").textContent = activeStage;
+      el.querySelector("#st-import-stage").textContent = STAGE_LABEL[activeStage].toLowerCase();
       el.querySelector("#st-import-ta").value = "";
       el.querySelector("#st-import-modal").classList.remove("hidden");
     };
@@ -214,44 +259,44 @@
       written[s.scene] = (written[s.scene] || 0) + 1;
     });
     box.classList.remove("hidden");
+    const done = beats.filter(function (b) { return written[b.scene]; }).length;
     box.innerHTML =
-      '<span class="aigen-status">Long film — scene by scene</span>' +
-      '<span class="muted small">copy one scene prompt, paste the reply ' +
-      'back; repeat. Each reply can cover 2-4 scenes (compact format).</span>';
-    const wrap = document.createElement("div");
-    wrap.className = "scene-rows";
+      '<details class="fold scene-fold"' + (done < beats.length ? " open" : "") + ">" +
+        "<summary><span class=\"fold-t\">Shots scene by scene</span>" +
+          '<span class="fold-d">' + done + " of " + beats.length + " scenes have their shots. " +
+          "For a long film or a chat AI: copy a scene&apos;s prompt into the same chat and paste its reply back.</span></summary>" +
+        '<div class="scene-rows"></div>' +
+      "</details>";
+    const wrap = box.querySelector(".scene-rows");
     beats.forEach(function (b) {
       const row = document.createElement("div");
       row.className = "scene-row";
       const n = written[b.scene] || 0;
       const badge = n
-        ? '<span class="badge st-green" data-tip="This scene\'s shots are in the queue">' +
-          Icon.get("check") + " written · " + n + " shot" + (n === 1 ? "" : "s") + "</span>"
-        : '<span class="badge st-gray" data-tip="Paste this scene\'s AI reply to fill it">not written</span>';
+        ? '<span class="badge st-green" data-tip="This scene&apos;s shots are in the shot list">' +
+          Icon.get("check") + n + " shot" + (n === 1 ? "" : "s") + "</span>"
+        : '<span class="badge st-gray" data-tip="Paste this scene&apos;s reply to fill it">No shots yet</span>';
       row.innerHTML =
         '<span class="sr-id">' + esc(b.scene) + "</span>" +
+        '<span class="sr-slug">' + esc(slug(b)) + "</span>" +
         badge +
-        '<span class="muted small">' + esc(b.location || "") + " · " +
-          esc(b.time || "") + " · " + esc(String(b.est_shots || "")) +
-          " shots</span>" +
         '<span class="spacer"></span>' +
-        '<button class="btn small" type="button" data-cp="' + esc(b.scene) +
-          '" data-tip="Copy this scene\'s prompt (running continuity included)">' + Icon.get("copy") + "Copy</button>" +
+        '<button class="btn small ghost" type="button" data-cp="' + esc(b.scene) +
+          '" data-tip="Copy this scene&apos;s prompt, with what happened so far">' + Icon.get("copy") + "Copy prompt</button>" +
         '<button class="btn small" type="button" data-ps="' + esc(b.scene) +
-          '" data-tip="Paste the AI reply for this scene">' + Icon.get("import") + "Paste</button>";
+          '" data-tip="Paste the chat AI&apos;s reply for this scene">' + Icon.get("import") + "Paste reply</button>";
       wrap.appendChild(row);
     });
-    box.appendChild(wrap);
     wrap.querySelectorAll("[data-cp]").forEach(function (btn) {
       btn.onclick = async function () {
         const scene = btn.dataset.cp;
-        toast("building scene prompt…");
+        toast("Building the scene prompt…");
         const r = await get("/api/projects/" + encodeURIComponent(State.pid) +
           "/story/scene-prompt?scene=" + encodeURIComponent(scene), 30000);
-        if (!r || !r.prompt) { toast("scene prompt unavailable", true); return; }
+        if (!r || !r.prompt) { toast("Could not build the scene prompt", true); return; }
         const v = openModal('<textarea class="mono" rows="20" style="width:100%" ' +
           'id="sp-ta" spellcheck="false">' + esc(r.prompt) + "</textarea>",
-          { title: "Scene prompt — copy it into the SAME chat", wide: true });
+          { title: "Prompt for " + scene + ": paste it into the same chat", wide: true });
         if (v) {
           const ta = v.querySelector("#sp-ta");
           ta.onfocus = function () { ta.select(); };
@@ -265,9 +310,9 @@
           '<textarea id="ps-ta" class="mono" rows="16" spellcheck="false" ' +
           'placeholder=\'{"shots": {"shots": [{"scene": "' + esc(scene) +
           '", "location": "...", "time": "...", "shots": [...]}]}}\'></textarea>' +
-          '<div class="ctl-row"><button class="btn primary" type="button" ' +
-          'id="ps-go">Import scene shots</button></div>',
-          { title: "Paste scene " + scene + " reply", wide: true });
+          '<div class="ctl-row" style="margin-top:12px"><button class="btn primary" type="button" ' +
+          'id="ps-go">Import the shots</button></div>',
+          { title: "Paste the reply for " + scene, wide: true });
         if (!v) return;
         v.querySelector("#ps-go").onclick = async function () {
           const rawText = v.querySelector("#ps-ta").value;
@@ -283,7 +328,7 @@
                   : { scene: scene, text: rawText }, 120000);
           if (!r) return;
           if (r.ok) toast(scene + ": " + r.added + " shots imported");
-          else toast("import rejected: " + (r.error || "?"), true);
+          else toast("Could not import it: " + (r.error || "unknown error"), true);
           closeModal(v);
           await State.refreshProject();
           await State.refreshShots();
@@ -316,7 +361,7 @@
         esc(a.model || "llama3.1:70b") + '"></label>' +
       '<div class="ctl-row"><button class="btn" type="button" id="ai-test">Test connection</button>' +
       '<button class="btn primary" type="button" id="ai-save">Save</button></div>',
-      { title: "Story Architect AI config", wide: true });
+      { title: "AI writer", wide: true });
     if (!v) return;
     v.querySelector("#ai-test").onclick = async function () {
       toast("testing…");
@@ -338,13 +383,13 @@
   async function startAiGen(el) {
     const box = aiBox(el);
     box.classList.remove("hidden");
-    box.innerHTML = '<span class="aigen-status">starting…</span>';
+    box.innerHTML = '<span class="leader small"></span><span class="aigen-status">Starting the AI writer…</span>';
     const r = await post("/api/projects/" + encodeURIComponent(State.pid) +
                          "/story/generate-ai", {}, 60000);
     if (!r) { box.classList.add("hidden"); return; }
     if (!r.ok) {
       box.innerHTML = '<span class="aigen-status err">' +
-        esc(r.error || "failed") + "</span>";
+        esc(r.error || "The AI writer did not start") + "</span>";
       if ((r.error || "").indexOf("not configured") >= 0) openAiConfig(el);
       return;
     }
@@ -360,8 +405,7 @@
         clearInterval(aiPollTimer);
         box2.innerHTML = '<span class="aigen-status ' +
           ((a.message || "").indexOf("failed") >= 0 ? "err" : "ok") + '">' +
-          esc(a.message || "complete") + "</span>" +
-          ' <button class="btn small" type="button" id="st-aistop2" style="display:none"></button>';
+          esc(a.message || "The story is written") + "</span>";
         await State.refreshProject();
         await State.refreshShots();
         Bus.emit("project", State.project);
@@ -369,52 +413,50 @@
         return;
       }
       box2.innerHTML =
-        '<span class="aigen-status">' + esc(a.stage || "working") + "</span>" +
+        '<span class="leader small"></span>' +
+        '<span class="aigen-status">' + esc(a.stage || "Writing") + "</span>" +
         '<span class="aigen-bar"><span class="aigen-fill" style="width:' +
           (a.total ? Math.round((a.done / a.total) * 100) : 5) + '%"></span></span>' +
-        '<span class="muted small">' + (a.done || 0) + "/" + (a.total || "?") +
-        " scenes · " + esc(a.message || "") + "</span>" +
-        ' <button class="btn small warn" type="button" id="st-aistop">' + Icon.get("stop") + "Stop</button>";
+        '<span class="muted small">' + (a.total ? (a.done || 0) + " of " + a.total + " scenes. " : "") +
+          esc(a.message || "") + "</span>" +
+        '<span class="spacer"></span>' +
+        '<button class="btn small warn" type="button" id="st-aistop">' + Icon.get("stop") + "Stop</button>";
       const sb = box2.querySelector("#st-aistop");
       if (sb) sb.onclick = async function () {
         await post("/api/projects/" + encodeURIComponent(State.pid) +
                    "/story/generate-ai/stop", {}, 30000);
-        toast("stopping after the current AI call…");
+        toast("Stopping after the AI's current answer…");
       };
     }, 3000);
   }
 
   async function copyAiPrompt(kind) {
-    toast("building the architect prompt…");
+    toast("Building the prompt…");
     const q = kind === "spine" ? "?kind=spine" : "";
     const r = await get("/api/projects/" + encodeURIComponent(State.pid) +
                          "/story/architect-prompt" + q, 30000);
-    if (!r || !r.prompt) { toast("prompt unavailable", true); return; }
+    if (!r || !r.prompt) { toast("Could not build the prompt", true); return; }
     // stale-premise warning: names the idea mentions that are not in the
-    // cast — surfaced with the copy confirmation so it is never missed
+    // cast, surfaced with the copy confirmation so it is never missed
     const staleNames = (r.idea_warnings || []).filter(Boolean);
-    const warnTxt = staleNames.length
-      ? " — note: the IDEA mentions " + staleNames.join(", ") +
-        " (not in the cast; the AI is told to adapt, or press Rewrite with AI)"
+    const size = r.shot_count
+      ? " It asks for " + r.shot_count + " shots" + (kind === "spine" && r.scene_count ? " over " + r.scene_count + " scenes" : "") + "."
       : "";
-    if (r.shot_count && !staleNames.length) {
-      toast((kind === "spine" ? "spine prompt copied — " + r.shot_count + " shots over "
-             + r.scene_count + " scenes" : "prompt copied — " + r.shot_count + " shots"));
-    }
     function copy(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function () {
           if (staleNames.length) {
-            toast("prompt copied" + warnTxt, true);
+            toast("Prompt copied. Your idea names " + staleNames.join(", ") + ", who is not in the cast: " +
+              "the AI is told to adapt, or use Rewrite from the cast.", true);
           } else {
-            toast("prompt copied — paste it into any chat AI");
+            toast("Prompt copied. Paste it into a chat AI." + size);
           }
         }).catch(function () { showCopyModal(text); });
       } else { showCopyModal(text); }
     }
     function showCopyModal(text) {
       const v = openModal('<textarea class="mono" rows="20" style="width:100%" id="cp-ta" spellcheck="false">' +
-        esc(text) + "</textarea>", { title: "Architect prompt — copy it", wide: true });
+        esc(text) + "</textarea>", { title: "The story prompt: copy it", wide: true });
       if (v) {
         const ta = v.querySelector("#cp-ta");
         ta.onfocus = function () { ta.select(); };
@@ -429,17 +471,18 @@
     try { pkg = JSON.parse(rawText); }
     catch (e) { pkg = null; }
     const payload = pkg !== null ? { package: pkg } : { text: rawText };
-    toast("importing package — validating shots…");
+    toast("Importing the reply and checking its shots…");
     const r = await post("/api/projects/" + encodeURIComponent(State.pid) +
                          "/story/import-all", payload, 300000);
     if (!r) return;
     if (r.ok) {
       const n = r.stages && r.stages.shots && r.stages.shots.ok;
-      toast("package imported" + (n ? " — shots queued" : ""));
+      toast("Reply imported" + (n ? ". Its shots are in the shot list." : ""));
     } else {
       const bad = (r.stages && Object.keys(r.stages)
-        .filter(function (k) { return !r.stages[k].ok; }).join(", ")) || "";
-      toast("import failed: " + (r.error || "issues in: " + (bad || "?")),
+        .filter(function (k) { return !r.stages[k].ok; })
+        .map(function (k) { return STAGE_LABEL[k] || k; }).join(", ")) || "";
+      toast("Could not import it: " + (r.error || "problems in " + (bad || "the reply")),
             true);
     }
     el.querySelector("#st-pkg-modal").classList.add("hidden");
@@ -450,20 +493,22 @@
   }
 
   async function regenerate(stage) {
+    const label = STAGE_LABEL[stage] || stage;
     const okGo = await Dlg.confirm({
-      title: "Regenerate stage",
-      message: "Regenerate the <b>" + esc(stage) + "</b> stage? Existing content is kept in version history.",
-      okLabel: "Regenerate",
+      title: "Rewrite the " + label.toLowerCase() + "?",
+      message: "The AI writer writes the <b>" + esc(label.toLowerCase()) + "</b> again. " +
+        "The current version stays in its History.",
+      okLabel: "Rewrite",
     });
     if (!okGo) return;
-    toast("generating " + stage + " — this can take minutes…");
+    toast("Rewriting the " + label.toLowerCase() + ". This can take a few minutes…");
     const r = await post("/api/projects/" + encodeURIComponent(State.pid) + "/story/generate",
       { stages: [stage] }, 900000);
     if (!r) return;
     if (r.ok) {
-      toast(stage + " done" + (r.shots_ingested ? " — " + r.shots_ingested + " shots ingested" : ""));
+      toast(label + " rewritten" + (r.shots_ingested ? ". " + r.shots_ingested + " shots added to the shot list." : ""));
     } else {
-      toast("generation failed: " + (r.error || "?"), true);
+      toast("Could not rewrite it: " + (r.error || "unknown error"), true);
     }
     await State.refreshProject();
     await State.refreshShots();
@@ -496,19 +541,19 @@
         const done = Object.keys(r.stages || {}).filter(function (k) {
           return (r.stages[k] || {}).ok;
         });
-        toast("package imported — stages: " + (done.join(", ") || "none"));
+        toast("Imported: " + (done.map(function (k) { return STAGE_LABEL[k] || k; }).join(", ") || "nothing"));
       } else {
-        toast(activeStage + " imported");
+        toast(STAGE_LABEL[activeStage] + " imported");
       }
     } else {
       const firstErr = (function () {
         const st = r.stages || {};
         for (const k of Object.keys(st)) {
-          if (st[k] && st[k].ok === false) return k + ": " + (st[k].error || "?");
+          if (st[k] && st[k].ok === false) return (STAGE_LABEL[k] || k) + ": " + (st[k].error || "unknown error");
         }
-        return r.error || "?";
+        return r.error || "unknown error";
       })();
-      toast("import failed: " + firstErr, true);
+      toast("Could not import it: " + firstErr, true);
     }
     el.querySelector("#st-import-modal").classList.add("hidden");
     await State.refreshProject();
@@ -521,10 +566,12 @@
     const r = await get("/api/projects/" + encodeURIComponent(State.pid) +
       "/story/versions?stage=" + encodeURIComponent(activeStage), 20000);
     const versions = (r && r.versions) || [];
-    sel.innerHTML = '<option value="">versions…</option>' + versions.map(function (v) {
-      return '<option value="' + esc(v.version) + '">v' + esc(v.version) + " · " +
-        esc(fmt.ts(v.created)) + "</option>";
-    }).join("");
+    sel.innerHTML = '<option value="">' + (versions.length ? "History (" + versions.length + ")" : "No history") + "</option>" +
+      versions.map(function (v) {
+        return '<option value="' + esc(v.version) + '">Version ' + esc(v.version) + ", " +
+          esc(fmt.ts(v.created)) + "</option>";
+      }).join("");
+    sel.disabled = !versions.length;
     // enable Rollback + Delete-version only with a selection
     const rb = el.querySelector("#st-rollback");
     const vd = el.querySelector("#st-ver-del");
@@ -539,23 +586,38 @@
 
   async function rollback(el) {
     const sel = el.querySelector("#st-ver");
-    if (!sel.value) { toast("pick a version first", true); return; }
+    if (!sel.value) { toast("Pick a version in History first", true); return; }
     const r = await post("/api/projects/" + encodeURIComponent(State.pid) + "/story/rollback",
       { stage: activeStage, version: Number(sel.value) }, 30000);
-    if (r) toast(r.ok ? "rolled back to v" + sel.value : "rollback failed", !r.ok);
+    if (r) toast(r.ok ? "Restored version " + sel.value : "Could not restore it", !r.ok);
     await State.refreshProject();
     Bus.emit("project", State.project);
     render(el);
   }
 
   /* ------------------------------------------------------------- stage view */
+  const STAGE_EMPTY = {
+    treatment: "The treatment is the film on one page. Write the story with the AI writer, or paste a chat AI's reply.",
+    bible: "The story bible lists who and where. The AI writer fills it from your cast, or invents one.",
+    beats: "The beats come after the treatment: one per scene.",
+    scenes: "The scenes come from the beats: their mood, music and shot count.",
+    shots: "The shot plan is the last part. Once it is written, its shots appear on the Shots page.",
+  };
+
+  /* a screenplay scene heading: "ROOFTOP - NIGHT" */
+  function slug(b) {
+    return [b.location, b.time].filter(Boolean).map(function (x) {
+      return String(x).replace(/_/g, " ").toUpperCase();
+    }).join(" - ");
+  }
+
   function renderStage(el) {
     const story = (State.project && State.project.story) || {};
     const c = story[activeStage];
     const body = el.querySelector("#story-body");
     if (!c || !Object.keys(c || {}).length) {
-      body.innerHTML = empty("No " + activeStage + " yet",
-        "Hit “Regenerate this stage” — or import your own JSON.");
+      body.innerHTML = empty("No " + STAGE_LABEL[activeStage].toLowerCase() + " yet", STAGE_EMPTY[activeStage]);
+      loadVersions(el);
       return;
     }
     if (activeStage === "treatment") body.innerHTML = renderTreatment(c);
@@ -566,31 +628,33 @@
     loadVersions(el);
   }
 
+  function list(items, tag) {
+    items = (items || []).filter(Boolean);
+    if (!items.length) return "";
+    return "<" + tag + ">" + items.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</" + tag + ">";
+  }
+
   function renderTreatment(c) {
     const themes = c.themes || [];
-    return '<section class="treat-grid">' +
-      '<div class="card treat-logline"><div class="card-head"><h2>Logline</h2></div>' +
-        '<p class="treat-big">' + esc(c.logline || "") + "</p></div>" +
-      '<div class="card"><div class="card-head"><h2>Synopsis</h2></div>' +
-        '<p>' + esc(c.synopsis || "") + "</p></div>" +
-      '<div class="card"><div class="card-head"><h2>Themes</h2></div>' +
-        '<div class="chips">' + themes.map(function (t) {
+    const side = function (h, inner) { return inner ? '<div class="tr-block"><h3>' + h + "</h3>" + inner + "</div>" : ""; };
+    return '<section class="treat">' +
+      '<div class="treat-page">' +
+        (c.logline ? '<p class="treat-logline">' + esc(c.logline) + "</p>" : "") +
+        (c.synopsis ? '<div class="treat-syn">' + esc(c.synopsis).split(/\n{2,}/).map(function (para) {
+          return "<p>" + para + "</p>";
+        }).join("") + "</div>" : "") +
+        side("How it escalates", list(c.escalation, "ol")) +
+        side("How it ends", c.ending ? "<p>" + esc(c.ending) + "</p>" : "") +
+      "</div>" +
+      '<aside class="treat-side">' +
+        side("Protagonist", c.protagonist ? "<p>" + esc(c.protagonist) + "</p>" : "") +
+        side("Antagonist", c.antagonist ? "<p>" + esc(c.antagonist) + "</p>" : "") +
+        side("Themes", themes.length ? '<div class="chips">' + themes.map(function (t) {
           return '<span class="chip">' + esc(t) + "</span>";
-        }).join("") + "</div></div>" +
-      '<div class="card"><div class="card-head"><h2>Characters</h2></div>' +
-        '<div class="treat-two"><div><span class="muted small">Protagonist</span><div class="treat-char">' +
-          esc(c.protagonist || "") + "</div></div>" +
-        '<div><span class="muted small">Antagonist</span><div class="treat-char">' +
-          esc(c.antagonist || "") + "</div></div></div></div>" +
-      '<div class="card"><div class="card-head"><h2>Escalation</h2></div><ol class="ov-escalation">' +
-        (c.escalation || []).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
-        "</ol></div>" +
-      '<div class="card"><div class="card-head"><h2>Ending &amp; pacing</h2></div>' +
-        '<p>' + esc(c.ending || "") + "</p>" +
-        '<div class="muted small">pacing: ' + esc(c.pacing || "") + "</div></div>" +
-      '<div class="card"><div class="card-head"><h2>Clipable moments</h2></div><ul class="ulist">' +
-        (c.clipable_moments || []).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
-        "</ul></div>" +
+        }).join("") + "</div>" : "") +
+        side("Pacing", c.pacing ? "<p>" + esc(c.pacing) + "</p>" : "") +
+        side("Moments worth a clip", list(c.clipable_moments, "ul")) +
+      "</aside>" +
     "</section>";
   }
 
@@ -599,97 +663,101 @@
     const locs = asList(c.locations);
     const crowd = c.crowd_types || {};
     const uni = c.universe || {};
-    return '<section class="card"><div class="card-head"><h2>Characters</h2></div>' +
-      '<div class="char-grid">' + chars.map(function (ch) {
+    const world = [["Genre", uni.genre], ["Tone", uni.tone], ["Colour grade", uni.grade]]
+      .concat(Object.keys(uni.cinematography || {}).map(function (k) {
+        return [k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, " "), uni.cinematography[k]];
+      }))
+      .filter(function (r) { return r[1]; });
+    return '<p class="stage-note">' + Icon.get("info") +
+        "These merge into Cast &amp; World. Anything you set there wins.</p>" +
+      '<section class="bible-chars">' + chars.map(function (ch) {
         const powers = ch.powers || {};
-        return '<div class="char-card">' +
-          '<div class="char-head"><span class="char-name">' + esc(ch.name || ch.id || "?") + "</span>" +
-          '<span class="badge tier-' + esc(ch.tier || "supporting") + '">' + esc(ch.tier || "") + "</span></div>" +
-          '<div class="char-body">' + esc(ch.body || "") + "</div>" +
-          '<div class="char-outfit">' + esc(ch.outfit || "") + "</div>" +
-          '<div class="char-powers">' + Object.keys(powers).map(function (pn) {
+        return '<article class="bible-char">' +
+          '<header><h3>' + esc(ch.name || ch.id || "Unnamed") + "</h3>" +
+            (ch.tier ? '<span class="badge tier-' + esc(ch.tier) + '">' + esc(ch.tier) + "</span>" : "") + "</header>" +
+          (ch.body ? '<p class="bc-look">' + esc(ch.body) + "</p>" : "") +
+          (ch.outfit ? '<p class="bc-outfit">' + esc(ch.outfit) + "</p>" : "") +
+          (Object.keys(powers).length ? '<div class="bc-powers">' + Object.keys(powers).map(function (pn) {
             const pd = powers[pn] || {};
             return '<div class="power-row"><span class="swatch" style="background:' +
-              esc(pd.color || "#e8b04b") + '"></span><b>' + esc(pn) + "</b>" +
-              '<div class="muted small">' + esc(pd.descriptor || pd.motion || "") + "</div></div>";
-          }).join("") + "</div>" +
-          (ch.emotion_palette
+              esc(pd.color || "var(--accent)") + '"></span><b>' + esc(pn) + "</b>" +
+              ((pd.descriptor || pd.motion) ? "<span>" + esc(pd.descriptor || pd.motion) + "</span>" : "") + "</div>";
+          }).join("") + "</div>" : "") +
+          ((ch.emotion_palette || []).length
             ? '<div class="chips">' + ch.emotion_palette.map(function (em) {
                 return '<span class="chip emo">' + esc(em) + "</span>";
               }).join("") + "</div>"
             : "") +
-          (ch.voice
-            ? '<div class="muted small">voice: ' + esc(ch.voice.engine || "") + " · " +
-              esc(ch.voice.style_tag || "") + "</div>" : "") +
-          (ch.arc_summary ? '<div class="muted small">' + esc(ch.arc_summary) + "</div>" : "") +
-        "</div>";
-      }).join("") + "</div></section>" +
-      '<section class="grid two">' +
-        '<div class="card"><div class="card-head"><h2>Locations</h2></div><div class="loc-list">' +
-          (locs.length ? locs.map(function (l) {
-            return '<div class="loc-card"><b>' + esc(l.id || l.name || "?") + "</b>" +
-              '<div class="muted small">' + esc(l.descriptor || "") + "</div>" +
-              (l.lighting ? '<div class="muted small">lighting: ' + esc(l.lighting) + "</div>" : "") +
+          (ch.arc_summary ? '<p class="bc-arc">' + esc(ch.arc_summary) + "</p>" : "") +
+        "</article>";
+      }).join("") + "</section>" +
+      '<section class="bible-two">' +
+        '<div class="card"><div class="card-head"><h2>Places</h2></div>' +
+          (locs.length ? '<div class="loc-list">' + locs.map(function (l) {
+            return '<div class="loc-card"><b class="script-slug">' + esc(String(l.id || l.name || "").replace(/_/g, " ").toUpperCase()) + "</b>" +
+              (l.descriptor ? "<p>" + esc(l.descriptor) + "</p>" : "") +
+              (l.lighting ? '<p class="muted small">Light: ' + esc(l.lighting) + "</p>" : "") +
             "</div>";
-          }).join("") : '<div class="muted small">none</div>') +
-        "</div></div>" +
-        '<div class="card"><div class="card-head"><h2>World</h2></div>' +
-          '<div class="chips">' + Object.keys(crowd).map(function (k) {
-            return '<span class="chip">' + esc(k) + "</span>";
-          }).join("") + "</div>" +
-          '<div class="muted small" style="margin-top:10px">genre ' + esc(uni.genre || "—") +
-            " · tone " + esc(uni.tone || "—") + " · grade " + esc(uni.grade || "—") + "</div>" +
-          (uni.cinematography
-            ? '<div class="muted small">' + Object.keys(uni.cinematography).map(function (k) {
-                return esc(k) + ": " + esc(uni.cinematography[k]);
-              }).join(" · ") + "</div>" : "") +
+          }).join("") + "</div>" : '<p class="muted small">No places yet.</p>') +
+        "</div>" +
+        '<div class="card"><div class="card-head"><h2>The world</h2></div>' +
+          (world.length ? '<dl class="kv">' + world.map(function (r) {
+            return "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd>";
+          }).join("") + "</dl>" : "") +
+          (Object.keys(crowd).length ? '<h3 class="kv-h">Crowds</h3><div class="chips">' + Object.keys(crowd).map(function (k) {
+            return '<span class="chip">' + esc(k.replace(/_/g, " ")) + "</span>";
+          }).join("") + "</div>" : "") +
         "</div>" +
       "</section>";
   }
 
+  /* the beats as a screenplay page: a scene heading, then the action */
   function renderBeats(c) {
     const beats = c.beats || [];
-    return '<section class="card"><div class="card-head"><h2>Beats</h2></div>' +
-      '<div class="beat-list">' + beats.map(function (b, i) {
-        return '<div class="beat-row">' +
-          '<span class="beat-num">' + (i + 1) + "</span>" +
-          '<div class="beat-main"><b>' + esc(b.scene || "") + "</b>" +
-          '<span class="muted small"> · ' + esc(b.location || "") + " · " + esc(b.time || "") +
-            " · mood " + esc(b.mood || "") + " · ~" + esc(b.est_shots || 0) + " shots</span>" +
-          '<div class="muted">goal: ' + esc(b.goal || "") + "</div>" +
-          '<div class="muted">turn: ' + esc(b.turn || "") + "</div>" +
-          (b.hook ? '<div class="muted small">hook: ' + esc(b.hook) + "</div>" : "") +
-          "</div></div>";
-      }).join("") + "</div></section>";
+    return '<section class="script-page">' + beats.map(function (b, i) {
+      return '<div class="beat">' +
+        '<div class="beat-slug"><span class="beat-n">' + (i + 1) + "</span>" +
+          esc(slug(b) || b.scene || "") + "</div>" +
+        '<div class="beat-meta">' + esc(b.scene || "") +
+          (b.mood ? ", " + esc(b.mood) : "") + (b.est_shots ? ", about " + esc(b.est_shots) + " shots" : "") + "</div>" +
+        (b.goal ? '<p class="beat-line">' + esc(b.goal) + "</p>" : "") +
+        (b.turn ? '<p class="beat-line turn">' + esc(b.turn) + "</p>" : "") +
+        (b.hook ? '<p class="beat-hook">' + esc(b.hook) + "</p>" : "") +
+      "</div>";
+    }).join("") + "</section>";
   }
 
+  /* the scenes as index cards on a board */
   function renderScenes(c) {
     const scenes = c.scenes || [];
-    return '<section class="card"><div class="card-head"><h2>Scenes</h2></div>' +
-      '<div class="scene-grid">' + scenes.map(function (s) {
-        return '<div class="scene-card"><div class="scene-id">' + esc(s.id || "?") + "</div>" +
-          '<div class="muted small">' + esc(s.location || "") + " · " + esc(s.time || "") + "</div>" +
-          '<div class="muted small">arc: ' + esc(s.emotion_arc || "") + "</div>" +
-          '<div class="muted small">music: ' + esc(s.music_mood || "") + " · " +
-            esc(s.shot_count || 0) + " shots</div>" +
-          '<div class="chips">' + (s.beats || []).map(function (b) {
-            return '<span class="chip">' + esc(b) + "</span>";
-          }).join("") + "</div></div>";
-      }).join("") + "</div></section>";
+    return '<section class="index-board">' + scenes.map(function (s) {
+      return '<article class="index-card">' +
+        '<header><span class="ic-id">' + esc(s.id || "") + "</span>" +
+          (s.shot_count ? '<span class="ic-n">' + esc(s.shot_count) + " shots</span>" : "") + "</header>" +
+        '<div class="ic-slug">' + esc(slug(s)) + "</div>" +
+        (s.emotion_arc ? '<p class="ic-line">' + esc(s.emotion_arc) + "</p>" : "") +
+        (s.music_mood ? '<p class="ic-line music">' + Icon.get("music") + esc(s.music_mood) + "</p>" : "") +
+        ((s.beats || []).length ? '<div class="chips">' + s.beats.map(function (b) {
+          return '<span class="chip">' + esc(b) + "</span>";
+        }).join("") + "</div>" : "") +
+      "</article>";
+    }).join("") + "</section>";
   }
 
   function renderShots(c) {
     const shots = c.shots || [];
-    return '<section class="card"><div class="card-head"><h2>Shot plan — ' +
-      shots.length + " shots</h2></div>" +
-      '<div class="shot-plan">' + shots.map(function (s) {
+    return '<section class="shot-plan">' +
+      '<div class="plan-head"><span>Shot</span><span>Size and camera</span><span>Action</span></div>' +
+      shots.map(function (s) {
         return '<div class="plan-row">' +
-          '<span class="plan-id">' + esc(s.shot_id || "?") + "</span>" +
-          '<span class="badge ' + tierClass(s.tier) + '">' + esc(s.tier || "") + "</span>" +
-          '<span class="muted small">' + esc(s.camera || "") + " · " + esc(s.shot_size || "") + "</span>" +
+          '<span class="plan-id">' + esc(s.shot_id || "") +
+            (s.tier ? ' <span class="badge ' + tierClass(s.tier) + '">' + esc(s.tier) + "</span>" : "") + "</span>" +
+          '<span class="plan-cam">' + esc([s.shot_size, s.camera].filter(Boolean).join(", ").replace(/_/g, " ")) + "</span>" +
           '<span class="plan-act">' + esc(s.primary_action || "") + "</span>" +
         "</div>";
-      }).join("") + "</div></section>";
+      }).join("") +
+      '<p class="plan-foot">' + shots.length + " shots. Their video prompts and renders are on the Shots page.</p>" +
+    "</section>";
   }
 
   Router.register("story", {
